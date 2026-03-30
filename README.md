@@ -15,10 +15,12 @@ Repositorio: **https://github.com/keber/unicornt-store-springboot**
 | Framework | Spring Boot 4.0.3 |
 | Web | Spring MVC |
 | Vistas | Thymeleaf 3 |
-| Persistencia | Spring JdbcTemplate (CRUD) · Spring Data JPA (repositorios) |
+| Seguridad | Spring Security 7 (roles ADMIN / CLIENT, BCrypt) |
+| Persistencia | Spring JdbcTemplate (CRUD) · Spring Data JPA (usuarios/roles) |
 | Build | Maven 3.x · WAR |
 | Servidor | Apache Tomcat 10.1+ (externo) |
 | BD soportadas | MySQL 8+ · PostgreSQL 15+ |
+| Tests | JUnit 5 · Mockito · MockMvc · H2 (in-memory) |
 | UI | Bootstrap 5.3.8 · Font Awesome 6.5.1 |
 
 ---
@@ -101,17 +103,46 @@ Las variables de entorno (`SPRING_DATASOURCE_*`) deben estar disponibles para el
 
 ---
 
+## Seguridad
+
+La aplicación usa **Spring Security** con autenticación por formulario y autorización basada en roles.
+
+### Roles
+
+| Rol | Acceso |
+|-----|--------|
+| `ADMIN` | Panel de administración (`/admin/**`) + Catálogo (`/catalog`) |
+| `CLIENT` | Catálogo público (`/catalog`) |
+
+### Usuarios de prueba (seed automático)
+
+Al iniciar la aplicación, se crean automáticamente si no existen:
+
+| Email | Contraseña | Rol |
+|-------|------------|-----|
+| `admin@unicornt.cl` | `admin123` | ADMIN |
+| `cliente@unicornt.cl` | `cliente123` | CLIENT |
+
+### Páginas públicas
+
+`/login` y `/register` son accesibles sin autenticación.
+
+---
+
 ## Rutas principales
 
-| Método | URL | Descripción |
-|--------|-----|-------------|
-| `GET` | `/` | Redirige a `/admin/products` |
-| `GET` | `/admin/products` | Listado de productos (con búsqueda y filtro por categoría) |
-| `GET` | `/admin/products/new` | Formulario de creación |
-| `GET` | `/admin/products/edit?id={id}` | Formulario de edición |
-| `POST` | `/admin/products` | Crear producto |
-| `POST` | `/admin/products/update` | Actualizar producto |
-| `POST` | `/admin/products/delete` | Eliminar producto |
+| Método | URL | Acceso | Descripción |
+|--------|-----|--------|-------------|
+| `GET` | `/` | Autenticado | Redirige según rol (ADMIN → `/admin/products`, CLIENT → `/catalog`) |
+| `GET` | `/login` | Público | Formulario de inicio de sesión |
+| `GET/POST` | `/register` | Público | Registro de nuevo usuario (rol CLIENT) |
+| `GET` | `/catalog` | Autenticado | Catálogo de productos (solo lectura) |
+| `GET` | `/admin/products` | ADMIN | Listado de productos (búsqueda + filtro) |
+| `GET` | `/admin/products/new` | ADMIN | Formulario de creación |
+| `GET` | `/admin/products/edit?id={id}` | ADMIN | Formulario de edición |
+| `POST` | `/admin/products` | ADMIN | Crear producto |
+| `POST` | `/admin/products/update` | ADMIN | Actualizar producto |
+| `POST` | `/admin/products/delete` | ADMIN | Eliminar producto |
 
 ---
 
@@ -123,11 +154,16 @@ unicornt-store-springboot/
 ├── src/
 │   └── main/
 │       ├── java/com/unicornt/store/
-│       │   ├── StoreApplication.java    # Punto de entrada + SpringBootServletInitializer
+│       │   ├── StoreApplication.java    # Punto de entrada + seed de datos
+│       │   ├── config/
+│       │   │   ├── SecurityConfig.java   # Filtros, BCrypt, rutas protegidas
+│       │   │   └── CustomAuthSuccessHandler.java
 │       │   ├── model/
 │       │   │   ├── Product.java         # @Entity
 │       │   │   ├── Category.java        # @Entity
-│       │   │   └── ProductType.java     # @Entity
+│       │   │   ├── ProductType.java     # @Entity
+│       │   │   ├── User.java            # @Entity (autenticación)
+│       │   │   └── Role.java            # @Entity (ROLE_ADMIN, ROLE_CLIENT)
 │       │   ├── mapper/
 │       │   │   ├── ProductRowMapper.java
 │       │   │   ├── CategoryRowMapper.java
@@ -137,21 +173,37 @@ unicornt-store-springboot/
 │       │   │   ├── CategoryDAO.java
 │       │   │   └── ProductTypeDAO.java
 │       │   ├── repository/              # Spring Data JPA
+│       │   │   ├── UserRepository.java
+│       │   │   ├── RoleRepository.java
 │       │   │   ├── ProductRepository.java
 │       │   │   ├── CategoryRepository.java
 │       │   │   └── ProductTypeRepository.java
+│       │   ├── dto/
+│       │   │   └── RegisterRequest.java
 │       │   ├── service/
 │       │   │   ├── ProductService.java
-│       │   │   └── ProductServiceImpl.java
+│       │   │   ├── ProductServiceImpl.java
+│       │   │   ├── UserService.java
+│       │   │   ├── UserServiceImpl.java
+│       │   │   └── CustomUserDetailsService.java
 │       │   └── controller/
-│       │       ├── AdminProductController.java
+│       │       ├── AdminProductController.java  # @PreAuthorize(ADMIN)
+│       │       ├── CatalogController.java       # Catálogo público
+│       │       ├── AuthController.java          # Login + Registro
+│       │       ├── CustomErrorController.java
 │       │       └── HomeController.java
 │       ├── resources/
 │       │   ├── application.properties   # Datasource vía SPRING_DATASOURCE_*
 │       │   ├── templates/               # Thymeleaf
 │       │   │   ├── layout/
-│       │   │   │   ├── header.html      # Fragmentos th:fragment="head|navbar"
-│       │   │   │   └── footer.html      # Fragmento th:fragment="footer" + Bootstrap JS
+│       │   │   │   ├── header.html      # Navbar con sec:authorize
+│       │   │   │   └── footer.html      # Footer con sec:authorize
+│       │   │   ├── login.html
+│       │   │   ├── register.html
+│       │   │   ├── error/
+│       │   │   │   └── access-denied.html
+│       │   │   ├── catalog/
+│       │   │   │   └── product-list.html
 │       │   │   └── admin/
 │       │   │       ├── product-list.html
 │       │   │       └── product-form.html
@@ -160,9 +212,32 @@ unicornt-store-springboot/
 │       │           └── admin.css
 │       └── webapp/
 │           └── (vacío — sin JSPs ni web.xml)
+│   └── test/
+│       ├── java/com/unicornt/store/
+│       │   ├── service/
+│       │   │   └── UserServiceTest.java         # Tests unitarios (Mockito)
+│       │   └── controller/
+│       │       └── SecurityIntegrationTest.java  # Tests de integración (MockMvc)
+│       └── resources/
+│           └── application.properties            # H2 in-memory para tests
 └── target/
     └── unicornt-store-admin.war
 ```
+
+---
+
+## Tests
+
+```bash
+mvn clean test
+```
+
+| Clase | Tipo | Tests | Cobertura |
+|-------|------|-------|-----------|
+| `UserServiceTest` | Unitario (Mockito) | 4 | Registro, rol no encontrado, email exists |
+| `SecurityIntegrationTest` | Integración (MockMvc + H2) | 11 | Acceso público, roles CLIENT/ADMIN, registro, validaciones |
+
+Los tests de integración usan **H2 en memoria** y no requieren MySQL.
 
 ---
 
