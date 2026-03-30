@@ -239,6 +239,8 @@ mvn clean test
 
 Los tests de integración usan **H2 en memoria** y no requieren MySQL.
 
+> **Nota:** Los tests usan `@TestPropertySource` para forzar la conexión a H2. Esto es necesario porque las variables de entorno `SPRING_DATASOURCE_*` (usadas en producción/desarrollo) tienen prioridad sobre `application.properties` de test. Sin `@TestPropertySource`, si tienes esas variables definidas en tu terminal, los tests intentarían conectarse a MySQL en vez de H2.
+
 ---
 
 ## Proyectos relacionados
