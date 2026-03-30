@@ -4,6 +4,7 @@ import com.unicornt.store.dao.CategoryDAO;
 import com.unicornt.store.dao.ProductTypeDAO;
 import com.unicornt.store.model.Product;
 import com.unicornt.store.service.ProductService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,7 @@ import java.util.List;
  */
 @Controller
 @RequestMapping("/admin/products")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminProductController {
 
     private static final int PAGE_SIZE = 10;

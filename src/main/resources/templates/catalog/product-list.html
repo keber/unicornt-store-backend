@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head th:replace="~{layout/header :: head}"></head>
+
+<body>
+
+<header th:replace="~{layout/header :: navbar}"></header>
+
+<main class="container pb-5 mt-4">
+
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0 admin-page-title">
+            <i class="fa-solid fa-store me-2"></i>Catálogo
+        </h2>
+        <span class="text-muted small" th:text="${totalItems} + ' producto(s)'"></span>
+    </div>
+
+    <!-- Filtros -->
+    <div class="admin-filter-card p-3 mb-4">
+        <form th:action="@{/catalog}" method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-md-5">
+                <label for="search" class="form-label small fw-semibold mb-1">Buscar</label>
+                <input type="text" id="search" name="search" class="form-control form-control-sm"
+                       placeholder="Nombre del producto..." th:value="${searchParam}">
+            </div>
+            <div class="col-12 col-md-4">
+                <label for="category" class="form-label small fw-semibold mb-1">Categoría</label>
+                <select id="category" name="categoryId" class="form-select form-select-sm">
+                    <option value="">Todas</option>
+                    <option th:each="cat : ${categories}"
+                            th:value="${cat.id}"
+                            th:text="${cat.name}"
+                            th:selected="${categoryFilter != null and categoryFilter == cat.id}">
+                    </option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-fill">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i>Filtrar
+                </button>
+                <a th:href="@{/catalog}" class="btn btn-sm btn-outline-secondary flex-fill">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Grid de productos -->
+    <div th:if="${#lists.isEmpty(products)}" class="text-center admin-empty">
+        <i class="fa-solid fa-box-open"></i>
+        <p>No se encontraron productos.</p>
+    </div>
+
+    <div th:unless="${#lists.isEmpty(products)}" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+        <div class="col" th:each="p : ${products}">
+            <div class="card h-100 shadow-sm border-0" style="border-radius:.75rem; overflow:hidden;">
+                <!-- Imagen -->
+                <div style="height:200px; background:#faf9ff; display:flex; align-items:center; justify-content:center;">
+                    <img th:if="${p.imageBase != null and !p.imageBase.isEmpty()}"
+                         th:src="@{'https://unicornt-store.keber.cl/' + ${p.imageBase} + '-front.webp'}"
+                         th:alt="${p.name}"
+                         style="max-height:180px; max-width:90%; object-fit:contain;">
+                    <i th:unless="${p.imageBase != null and !p.imageBase.isEmpty()}"
+                       class="fa-solid fa-image fa-3x" style="color:#ddd;"></i>
+                </div>
+                <!-- Body -->
+                <div class="card-body d-flex flex-column">
+                    <span class="badge mb-2" style="background-color:var(--brand-light); color:var(--text-dark); font-size:.7rem; align-self:start;"
+                          th:text="${p.categoryName}"></span>
+                    <h6 class="card-title fw-semibold mb-1" th:text="${p.name}"></h6>
+                    <p class="text-muted small mb-2"
+                       th:text="${p.description != null and p.description.length() > 80 ? p.description.substring(0, 80) + '...' : p.description}"></p>
+                    <div class="mt-auto">
+                        <span class="fw-bold fs-5" style="color:var(--brand)" th:text="${p.formattedPrice}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    <div th:if="${totalPages > 1}" class="results-count mt-4 rounded d-flex justify-content-center">
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" th:classappend="${currentPage == 1 ? 'disabled' : ''}">
+                    <a class="page-link" th:href="@{/catalog(search=${searchParam}, categoryId=${categoryFilter}, page=${currentPage - 1})}">&laquo;</a>
+                </li>
+                <li th:each="i : ${#numbers.sequence(windowStart, windowEnd)}"
+                    class="page-item" th:classappend="${i == currentPage ? 'active' : ''}">
+                    <a class="page-link" th:href="@{/catalog(search=${searchParam}, categoryId=${categoryFilter}, page=${i})}" th:text="${i}"></a>
+                </li>
+                <li class="page-item" th:classappend="${currentPage == totalPages ? 'disabled' : ''}">
+                    <a class="page-link" th:href="@{/catalog(search=${searchParam}, categoryId=${categoryFilter}, page=${currentPage + 1})}">&raquo;</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+</main>
+
+<th:block th:replace="~{layout/footer :: footer}"></th:block>
+
+</body>
+</html>
