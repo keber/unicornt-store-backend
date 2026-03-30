@@ -123,6 +123,8 @@ Al iniciar la aplicación, se crean automáticamente si no existen:
 | `admin@unicornt.cl` | `admin123` | ADMIN |
 | `cliente@unicornt.cl` | `cliente123` | CLIENT |
 
+> **Producción:** El seed está controlado por la propiedad `app.seed.enabled`. Por defecto es `true` (se ejecuta). Para desactivarlo en producción, define la variable de entorno `APP_SEED_ENABLED=false` o agrega `app.seed.enabled=false` en `application.properties`. Esto evita que existan usuarios con contraseñas conocidas en el servidor.
+
 ### Páginas públicas
 
 `/login` y `/register` son accesibles sin autenticación.

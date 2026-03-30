@@ -7,6 +7,7 @@ import com.unicornt.store.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
@@ -32,6 +33,7 @@ public class StoreApplication extends SpringBootServletInitializer {
     }
 
     @Bean
+    @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true", matchIfMissing = true)
     CommandLineRunner initData(RoleRepository roleRepository,
                                UserRepository userRepository,
                                PasswordEncoder passwordEncoder) {
