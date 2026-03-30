@@ -116,7 +116,7 @@
     </dependencies>
 
     <build>
-        <finalName>unicornt-store-admin</finalName>
+        <finalName>unicornt-store</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
