@@ -77,6 +77,44 @@ mysql -u root -p unicornt_store < ecommerce-db-m3/mysql/sql/seed.sql
 
 ---
 
+## Configuración
+
+El archivo `src/main/resources/application.properties` centraliza la configuración de la aplicación.
+
+### Datasource
+
+El datasource **no** contiene credenciales en código fuente. Spring Boot resuelve las propiedades automáticamente a partir de las variables de entorno `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD` (ver sección [Variables de entorno](#variables-de-entorno)).
+
+```properties
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+```
+
+El driver se declara explícitamente para MySQL. Si se usa PostgreSQL, debe cambiarse a `org.postgresql.Driver`.
+
+### JPA
+
+```properties
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+```
+
+- `ddl-auto=update` permite que Hibernate cree y actualice automáticamente las tablas de seguridad (`users`, `roles`, `users_roles`) sin necesidad de scripts DDL adicionales.
+- Las tablas de productos, categorías y tipos se crean mediante los scripts SQL del repositorio [ecommerce-db-m3](https://github.com/keber/ecommerce-db-m3).
+
+### Vistas (Thymeleaf)
+
+```properties
+spring.thymeleaf.cache=false
+```
+
+- **Motor de plantillas:** Thymeleaf 3, integrado vía `spring-boot-starter-thymeleaf`.
+- **Ubicación de templates:** `src/main/resources/templates/` (convención por defecto de Spring Boot, no requiere configuración explícita).
+- **Fragmentos reutilizables:** `layout/header.html` y `layout/footer.html` se insertan en cada página con `th:replace`.
+- **Seguridad en vistas:** La dependencia `thymeleaf-extras-springsecurity6` habilita atributos como `sec:authorize="hasRole('ADMIN')"` y `sec:authentication="name"` para mostrar u ocultar elementos según el rol del usuario autenticado.
+- **Cache desactivado** en desarrollo para ver cambios sin reiniciar. En producción se recomienda `spring.thymeleaf.cache=true`.
+
+---
+
 ## Compilación y empaquetado
 
 ```bash
