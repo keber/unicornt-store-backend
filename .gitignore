@@ -1,0 +1,50 @@
+# ── Compilación ──────────────────────────────────────────────────
+target/
+out/
+build/
+*.class
+*.jar
+*.war
+*.ear
+
+# ── Maven ─────────────────────────────────────────────────────────
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ── IDEs ──────────────────────────────────────────────────────────
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse / STS
+.classpath
+.project
+.settings/
+.factorypath
+
+# VS Code
+.vscode/
+
+# NetBeans
+nbproject/
+nbbuild/
+nbdist/
+
+# ── Sistema operativo ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Secretos y configuración local ───────────────────────────────
+# NUNCA subir credenciales - usar variables de entorno (ver pom.xml)
+*.env
+.env
+.env.*
+secrets.properties
+local.properties
+
+# ── Logs ──────────────────────────────────────────────────────────
+*.log
+logs/

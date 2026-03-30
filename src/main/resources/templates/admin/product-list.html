@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/header :: head}"></head>
+
+<body>
+
+<header th:replace="~{layout/header :: navbar}"></header>
+
+<main class="container pb-5 mt-4">
+
+    <!-- ---- Encabezado de sección ---- -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0 admin-page-title">
+            <i class="fa-solid fa-tshirt me-2"></i>Catálogo de Productos
+        </h2>
+        <a th:href="@{/admin/products/new}" class="btn btn-brand">
+            <i class="fa-solid fa-plus me-1"></i> Nuevo Producto
+        </a>
+    </div>
+
+    <!-- ---- Mensajes de feedback (PRG) ---- -->
+    <div th:if="${param.success != null}"
+         class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-circle-check me-1"></i>
+        <span th:text="${param.success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+    <div th:if="${param.error != null}"
+         class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>
+        <span th:text="${param.error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+
+    <!-- ---- Filtros ---- -->
+    <div class="admin-filter-card p-3 mb-4">
+        <form method="get" th:action="@{/admin/products}" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold small text-muted text-uppercase">
+                    Buscar por nombre
+                </label>
+                <input type="text" name="search" class="form-control"
+                       placeholder="Ej: Breaking Prod…"
+                       th:value="${searchParam}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small text-muted text-uppercase">
+                    Categoría
+                </label>
+                <select name="categoryId" class="form-select">
+                    <option value="">— Todas las categorías —</option>
+                    <option th:each="cat : ${categories}"
+                            th:value="${cat.id}"
+                            th:text="${cat.name}"
+                            th:selected="${categoryFilter != null and categoryFilter == cat.id}">
+                    </option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-brand w-100">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i> Buscar
+                </button>
+            </div>
+            <div class="col-md-1">
+                <a th:href="@{/admin/products}"
+                   class="btn btn-outline-secondary w-100" title="Limpiar filtros">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- ---- Tabla de resultados ---- -->
+    <div class="admin-table-wrapper">
+        <table class="table table-hover admin-table">
+            <thead>
+                <tr>
+                    <th class="ps-3" style="width:60px">ID</th>
+                    <th>Nombre</th>
+                    <th style="width:120px">Tipo</th>
+                    <th style="width:160px">Categoría</th>
+                    <th class="text-end" style="width:120px">Precio</th>
+                    <th class="text-center" style="width:90px">Activo</th>
+                    <th class="text-center pe-3" style="width:100px">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Estado vacío -->
+                <tr th:if="${#lists.isEmpty(products)}">
+                    <td colspan="7" class="text-center admin-empty">
+                        <i class="fa-solid fa-box-open"></i>
+                        No se encontraron productos con esos criterios.
+                    </td>
+                </tr>
+                <!-- Filas de productos -->
+                <tr th:each="p : ${products}">
+                    <td class="ps-3 text-muted small" th:text="'#' + ${p.id}"></td>
+                    <td class="fw-semibold" th:text="${p.name}"></td>
+                    <td class="small text-muted" th:text="${p.productTypeName}"></td>
+                    <td>
+                        <span class="badge-category" th:text="${p.categoryName}"></span>
+                    </td>
+                    <td class="text-end fw-semibold" th:text="${p.formattedPrice}"></td>
+                    <td class="text-center">
+                        <span th:if="${p.active}" class="badge-active">
+                            <i class="fa-solid fa-check me-1"></i>Sí
+                        </span>
+                        <span th:unless="${p.active}" class="badge-inactive">No</span>
+                    </td>
+                    <td class="text-center pe-3">
+                        <a th:href="@{/admin/products/edit(id=${p.id})}"
+                           class="btn btn-action btn-outline-secondary me-1"
+                           title="Editar">
+                            <i class="fa-solid fa-pen"></i>
+                        </a>
+                        <button type="button"
+                                class="btn btn-action btn-outline-danger"
+                                data-action="confirm-delete"
+                                th:attr="data-product-id=${p.id},data-product-name=${p.name}"
+                                title="Eliminar">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Conteo y paginación -->
+        <div th:if="${not #lists.isEmpty(products)}"
+             class="results-count d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+            <span th:text="${totalItems + ' producto' + (totalItems != 1 ? 's' : '') + ' encontrado' + (totalItems != 1 ? 's' : '')}"></span>
+
+            <nav th:if="${totalPages > 1}" aria-label="Paginación de productos">
+                <ul class="pagination pagination-sm mb-0">
+                    <!-- Anterior -->
+                    <li th:classappend="${currentPage == 1} ? 'disabled'" class="page-item">
+                        <a class="page-link"
+                           th:href="@{/admin/products(page=${currentPage - 1},search=${searchParam},categoryId=${categoryFilter})}">&laquo;</a>
+                    </li>
+                    <!-- Primera página + elipsis izquierda -->
+                    <li th:if="${windowStart > 1}" class="page-item">
+                        <a class="page-link"
+                           th:href="@{/admin/products(page=1,search=${searchParam},categoryId=${categoryFilter})}">1</a>
+                    </li>
+                    <li th:if="${windowStart > 2}" class="page-item disabled">
+                        <span class="page-link">&hellip;</span>
+                    </li>
+                    <!-- Ventana de páginas -->
+                    <li th:each="i : ${#numbers.sequence(windowStart, windowEnd)}"
+                        th:classappend="${i == currentPage} ? 'active'"
+                        class="page-item">
+                        <a class="page-link"
+                           th:href="@{/admin/products(page=${i},search=${searchParam},categoryId=${categoryFilter})}"
+                           th:text="${i}"></a>
+                    </li>
+                    <!-- Elipsis derecha + última página -->
+                    <li th:if="${windowEnd < totalPages - 1}" class="page-item disabled">
+                        <span class="page-link">&hellip;</span>
+                    </li>
+                    <li th:if="${windowEnd < totalPages}" class="page-item">
+                        <a class="page-link"
+                           th:href="@{/admin/products(page=${totalPages},search=${searchParam},categoryId=${categoryFilter})}"
+                           th:text="${totalPages}"></a>
+                    </li>
+                    <!-- Siguiente -->
+                    <li th:classappend="${currentPage == totalPages} ? 'disabled'" class="page-item">
+                        <a class="page-link"
+                           th:href="@{/admin/products(page=${currentPage + 1},search=${searchParam},categoryId=${categoryFilter})}">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- ---- Modal confirmación eliminar ---- -->
+    <div class="modal fade" id="deleteModal" tabindex="-1"
+         aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteModalLabel">
+                        <i class="fa-solid fa-trash me-2"></i>Confirmar eliminación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                            data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">¿Estás seguro que deseas eliminar el producto?</p>
+                    <p class="fw-bold" id="deleteProductName"></p>
+                    <p class="text-muted small mb-0">Esta acción no se puede deshacer.</p>
+                </div>
+                <div class="modal-footer gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-xmark me-1"></i>Cancelar
+                    </button>
+                    <form id="deleteForm" method="post"
+                          th:action="@{/admin/products/delete}"
+                          class="d-inline">
+                        <input type="hidden" name="id" id="deleteProductId"/>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fa-solid fa-trash me-1"></i>Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<footer th:replace="~{layout/footer :: footer}"></footer>
+
+<script>
+    (() => {
+        const deleteModal   = document.getElementById('deleteModal');
+        const deleteIdInput = document.getElementById('deleteProductId');
+        const deleteNameEl  = document.getElementById('deleteProductName');
+
+        document.querySelectorAll('[data-action="confirm-delete"]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                deleteIdInput.value      = btn.dataset.productId;
+                deleteNameEl.textContent = btn.dataset.productName;
+                bootstrap.Modal.getOrCreateInstance(deleteModal).show();
+            });
+        });
+    })();
+</script>
+
+</body>
+</html>

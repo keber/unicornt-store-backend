@@ -1,0 +1,225 @@
+/* ============================================================
+   Unicorn't Store — admin.css
+   Estilos complementarios del panel de administración.
+   Depende de: Bootstrap 5.3 + main.css (storefront)
+   Regla: solo definir aquí lo que NO esté en main.css.
+   ============================================================ */
+
+/* ── Layout general ─────────────────────────────────────────── */
+body {
+    background-color: #faf9ff;   /* igual que storefront */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+main { flex: 1; }
+
+/* ── Tabla de gestión de productos ──────────────────────────── */
+.admin-table-wrapper {
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(124, 58, 237, 0.08);
+}
+
+.admin-table {
+    margin-bottom: 0;
+}
+
+.admin-table thead th {
+    background-color: var(--brand-light);
+    color: var(--text-dark);
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-bottom: 2px solid rgba(124, 58, 237, .15);
+    padding-block: .85rem;
+}
+
+.admin-table tbody tr {
+    transition: background-color .12s ease;
+}
+
+.admin-table tbody tr:hover {
+    background-color: rgba(124, 58, 237, .04);
+}
+
+.admin-table tbody td {
+    vertical-align: middle;
+    border-color: rgba(124, 58, 237, .07);
+}
+
+/* Estado vacío */
+.admin-empty {
+    padding-block: 4rem;
+    color: var(--text-dark);
+    opacity: .45;
+}
+.admin-empty i {
+    font-size: 2.5rem;
+    margin-bottom: .75rem;
+    display: block;
+}
+
+/* ── Filtros / barra de búsqueda ─────────────────────────────── */
+.admin-filter-card {
+    background: #fff;
+    border: 1px solid rgba(124, 58, 237, .12);
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 6px rgba(124, 58, 237, .06);
+}
+
+/* ── Tarjeta de formulario ───────────────────────────────────── */
+.admin-form-card {
+    background: #fff;
+    border: 1px solid rgba(124, 58, 237, .12);
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 12px rgba(124, 58, 237, .08);
+}
+
+.admin-form-card .card-body {
+    padding: 2rem;
+}
+
+/* ── Preview de imagen en formulario ────────────────────────── */
+.img-preview-wrap {
+    flex: 1;
+    min-height: 160px;
+    border: 2px dashed rgba(124, 58, 237, .3);
+    border-radius: .75rem;
+    overflow: hidden;
+    background: #faf9ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color .2s;
+}
+
+.img-preview-wrap:has(.img-preview-img[style*="block"]) {
+    border-style: solid;
+    border-color: rgba(124, 58, 237, .2);
+}
+
+.img-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: .25rem;
+}
+
+.img-preview-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .4rem;
+    color: #c4b5fd;
+    font-size: .75rem;
+}
+
+.img-preview-placeholder i {
+    font-size: 2rem;
+}
+
+/* ── Botones de acción en tabla ──────────────────────────────── */
+.btn-action {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: .5rem;
+    font-size: .8rem;
+}
+
+/* ── Badges de estado en tabla ───────────────────────────────── */
+.badge-active {
+    background-color: #d1fae5;
+    color: #065f46;
+    font-weight: 600;
+    font-size: .72rem;
+    padding: .3em .7em;
+    border-radius: 999px;
+}
+.badge-inactive {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: .72rem;
+    padding: .3em .7em;
+    border-radius: 999px;
+}
+
+/* ── Badge de categoría (tabla) ──────────────────────────────── */
+.badge-category {
+    background-color: var(--brand-light);
+    color: var(--text-dark);
+    font-weight: 500;
+    font-size: .72rem;
+    padding: .3em .75em;
+    border-radius: 999px;
+}
+
+/* ── Footer de admin ─────────────────────────────────────────── */
+.admin-footer {
+    background-color: var(--footer-bg);
+}
+
+/* ── Paginación/contador de resultados ───────────────────────── */
+.results-count {
+    font-size: .8rem;
+    color: #6b7280;
+    padding: .6rem 1rem;
+    border-top: 1px solid rgba(124, 58, 237, .07);
+    background-color: #faf9ff;
+}
+
+/* Paginador — color activo con paleta brand */
+.results-count .pagination .page-link {
+    color: var(--brand);
+    border-color: #e5e7eb;
+}
+.results-count .pagination .page-item.active .page-link {
+    background-color: var(--brand);
+    border-color:     var(--brand);
+    color: #fff;
+}
+.results-count .pagination .page-link:hover {
+    background-color: var(--brand-light);
+    color: var(--brand-dark);
+    border-color: #d4bbfa;
+}
+.results-count .pagination .page-item.disabled .page-link {
+    color: #c4b5fd;
+}
+
+/* ── Modal de confirmación ───────────────────────────────────── */
+.modal-content {
+    border-radius: .75rem;
+    border: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15);
+}
+
+/* ── Títulos de sección ──────────────────────────────────────── */
+.admin-page-title {
+    color: var(--text-dark);
+    font-size: 1.5rem;
+}
+.admin-page-title i {
+    color: var(--brand);
+}
+
+/* ── Input group – prefijo $ en precio ───────────────────────── */
+.input-group-text {
+    background-color: var(--brand-light);
+    border-color: #dee2e6;
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+/* ── Focus visible consistente con storefront ────────────────── */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 .2rem rgba(124, 58, 237, .2);
+}

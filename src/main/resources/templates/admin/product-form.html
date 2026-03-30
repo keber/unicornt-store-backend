@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{layout/header :: head}"></head>
+
+<body>
+
+<header th:replace="~{layout/header :: navbar}"></header>
+
+<main class="container pb-5 mt-4">
+
+    <!-- ---- Encabezado ---- -->
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <a th:href="@{/admin/products}" class="btn btn-outline-secondary" title="Volver al listado">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h2 class="fw-bold mb-0 admin-page-title">
+            <!-- Modo edición -->
+            <th:block th:if="${product.id != null and product.id > 0}">
+                <i class="fa-solid fa-pen me-2"></i>Editar Producto
+                <small class="text-muted fw-normal fs-6 ms-2" th:text="'#' + ${product.id}"></small>
+            </th:block>
+            <!-- Modo creación -->
+            <th:block th:unless="${product.id != null and product.id > 0}">
+                <i class="fa-solid fa-plus me-2"></i>Nuevo Producto
+            </th:block>
+        </h2>
+    </div>
+
+    <!-- ---- Errores de validación ---- -->
+    <div th:if="${not #lists.isEmpty(errors)}" class="alert alert-danger" role="alert">
+        <strong><i class="fa-solid fa-triangle-exclamation me-1"></i>Corrige los siguientes errores:</strong>
+        <ul class="mb-0 mt-1">
+            <li th:each="e : ${errors}" th:text="${e}"></li>
+        </ul>
+    </div>
+
+    <!-- ---- Formulario ---- -->
+    <div class="admin-form-card">
+        <div class="card-body">
+            <form method="post" novalidate
+                  th:action="${product.id != null and product.id > 0}
+                             ? @{/admin/products/update}
+                             : @{/admin/products}">
+
+                <!-- Hidden id para edición -->
+                <input th:if="${product.id != null and product.id > 0}"
+                       type="hidden" name="id" th:value="${product.id}"/>
+
+                <div class="row g-3">
+
+                    <!-- Nombre -->
+                    <div class="col-12">
+                        <label for="name" class="form-label fw-semibold">
+                            Nombre <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" id="name" name="name" class="form-control"
+                               maxlength="200" required
+                               placeholder="Ej: Polera &lsquo;Breaking Prod&rsquo;"
+                               th:value="${product.name}">
+                    </div>
+
+                    <!-- Columnas: campos (izq) + preview (der) -->
+                    <div class="col-12">
+                        <div class="row g-3">
+
+                            <!-- Columna izquierda: campos -->
+                            <div class="col-12 col-md-7">
+                                <div class="row g-3">
+
+                                    <!-- Tipo de Producto -->
+                                    <div class="col-12">
+                                        <label for="productTypeId" class="form-label fw-semibold">
+                                            Tipo de Producto <span class="text-danger">*</span>
+                                        </label>
+                                        <select id="productTypeId" name="productTypeId" class="form-select" required>
+                                            <option value="">— Selecciona un tipo —</option>
+                                            <option th:each="type : ${productTypes}"
+                                                    th:value="${type.id}"
+                                                    th:text="${type.name}"
+                                                    th:selected="${product.productTypeId == type.id}">
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Categoría -->
+                                    <div class="col-12">
+                                        <label for="categoryId" class="form-label fw-semibold">
+                                            Categoría <span class="text-danger">*</span>
+                                        </label>
+                                        <select id="categoryId" name="categoryId" class="form-select" required>
+                                            <option value="">— Selecciona una categoría —</option>
+                                            <option th:each="cat : ${categories}"
+                                                    th:value="${cat.id}"
+                                                    th:text="${cat.name}"
+                                                    th:selected="${product.categoryId == cat.id}">
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Precio -->
+                                    <div class="col-12">
+                                        <label for="price" class="form-label fw-semibold">
+                                            Precio (CLP) <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" id="price" name="price" class="form-control"
+                                                   min="1" required
+                                                   placeholder="Ej: 13990"
+                                                   th:value="${product.price > 0 ? product.price : ''}">
+                                        </div>
+                                        <div class="form-text">Entero, en pesos chilenos (sin decimales).</div>
+                                    </div>
+
+                                    <!-- Ruta de imagen -->
+                                    <div class="col-12">
+                                        <label for="imageBase" class="form-label fw-semibold">
+                                            Ruta de imagen base
+                                        </label>
+                                        <input type="text" id="imageBase" name="imageBase" class="form-control"
+                                               placeholder="Ej: assets/img/devops/breaking-prod"
+                                               th:value="${product.imageBase}">
+                                        <div class="form-text">
+                                            Sin extensión. El frontend agrega
+                                            <code>.webp</code>, <code>-card.webp</code> y <code>-thumb.webp</code>.
+                                        </div>
+                                    </div>
+
+                                </div><!-- /row interna -->
+                            </div><!-- /col-md-7 -->
+
+                            <!-- Columna derecha: preview -->
+                            <div class="col-12 col-md-5 d-flex flex-column">
+                                <label class="form-label fw-semibold">Vista previa</label>
+                                <div class="img-preview-wrap flex-grow-1">
+                                    <img id="img-preview" src="" alt="Preview"
+                                         class="img-preview-img" style="display:none">
+                                    <div id="img-preview-placeholder" class="img-preview-placeholder">
+                                        <i class="fa-solid fa-image"></i>
+                                        <span>Sin imagen</span>
+                                    </div>
+                                </div>
+                            </div><!-- /col-md-5 -->
+
+                        </div><!-- /row exterior -->
+                    </div><!-- /col-12 -->
+
+                    <!-- Descripción -->
+                    <div class="col-12">
+                        <label for="description" class="form-label fw-semibold">Descripción</label>
+                        <textarea id="description" name="description"
+                                  class="form-control" rows="3"
+                                  placeholder="Descripción visible en la página de detalle del producto…"
+                                  th:text="${product.description}"></textarea>
+                    </div>
+
+                    <!-- Activo -->
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="isActive" name="isActive" value="1"
+                                   th:checked="${product.id == null or product.active}">
+                            <label class="form-check-label fw-semibold" for="isActive">
+                                Producto activo
+                                <small class="text-muted fw-normal">
+                                    (visible en el catálogo público)
+                                </small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Acciones -->
+                    <div class="col-12 d-flex gap-2 pt-3 border-top mt-1">
+                        <button type="submit" class="btn btn-brand">
+                            <i class="fa-solid fa-floppy-disk me-1"></i>
+                            <span th:text="${product.id != null and product.id > 0} ? 'Actualizar Producto' : 'Crear Producto'"></span>
+                        </button>
+                        <a th:href="@{/admin/products}" class="btn btn-outline-secondary">
+                            <i class="fa-solid fa-xmark me-1"></i>Cancelar
+                        </a>
+                    </div>
+
+                </div><!-- /row -->
+            </form>
+        </div>
+    </div>
+
+</main>
+
+<footer th:replace="~{layout/footer :: footer}"></footer>
+
+<script>
+    (function () {
+        const STORE = 'https://unicornt-store.keber.cl/';
+        const input       = document.getElementById('imageBase');
+        const img         = document.getElementById('img-preview');
+        const placeholder = document.getElementById('img-preview-placeholder');
+        let debounce;
+
+        function showPlaceholder() {
+            img.style.display         = 'none';
+            placeholder.style.display = 'flex';
+        }
+
+        function updatePreview(value) {
+            const trimmed = value.trim();
+            if (!trimmed) { showPlaceholder(); return; }
+            img.src                    = STORE + trimmed + '-card.webp';
+            img.style.display          = 'block';
+            placeholder.style.display  = 'none';
+        }
+
+        img.addEventListener('error', showPlaceholder);
+
+        input.addEventListener('input', function () {
+            clearTimeout(debounce);
+            debounce = setTimeout(function () { updatePreview(input.value); }, 350);
+        });
+
+        // Carga inicial al editar un producto existente
+        updatePreview(input.value);
+    })();
+</script>
+
+</body>
+</html>
