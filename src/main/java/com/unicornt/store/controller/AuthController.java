@@ -39,6 +39,11 @@ public class AuthController {
             return "register";
         }
 
+        if (registerRequest.getPassword().length() < 6) {
+            model.addAttribute("error", "La contraseña debe tener al menos 6 caracteres.");
+            return "register";
+        }
+
         if (userService.emailExists(registerRequest.getEmail())) {
             model.addAttribute("error", "Ya existe una cuenta con ese correo electrónico.");
             return "register";

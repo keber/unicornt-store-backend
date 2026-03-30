@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <!--
   Fragmento de pie de página reutilizable.
@@ -19,17 +20,23 @@
             <div class="col-12 col-md-6">
                 <h6 class="fw-bold d-flex align-items-center gap-2 mb-1">
                     <i class="fa-solid fa-unicorn"></i> Unicorn't Store
-                    <span class="badge bg-warning text-dark fw-semibold" style="font-size:.6rem">ADMIN</span>
+                    <span sec:authorize="hasRole('ADMIN')"
+                          class="badge bg-warning text-dark fw-semibold" style="font-size:.6rem">ADMIN</span>
                 </h6>
                 <p class="text-footer-muted small mb-0">
-                    Panel de administración del catálogo.
+                    Tu tienda de poleras para gente de TI.
                 </p>
             </div>
             <!-- Links rápidos -->
             <div class="col-12 col-md-6 text-md-end">
                 <ul class="list-unstyled small mb-0 d-flex flex-wrap gap-3 justify-content-md-end">
-                    <li><a th:href="@{/admin/products}" class="footer-link"><i class="fa-solid fa-tshirt me-1"></i>Productos</a></li>
-                    <li><a href="https://unicornt-store.keber.cl" target="_blank" rel="noopener" class="footer-link"><i class="fa-solid fa-store me-1"></i>Ver tienda</a></li>
+                    <li sec:authorize="isAuthenticated()">
+                        <a th:href="@{/catalog}" class="footer-link"><i class="fa-solid fa-store me-1"></i>Catálogo</a>
+                    </li>
+                    <li sec:authorize="hasRole('ADMIN')">
+                        <a th:href="@{/admin/products}" class="footer-link"><i class="fa-solid fa-tshirt me-1"></i>Productos</a>
+                    </li>
+                    <li><a href="https://unicornt-store.keber.cl" target="_blank" rel="noopener" class="footer-link"><i class="fa-solid fa-globe me-1"></i>Ver tienda</a></li>
                 </ul>
             </div>
         </div>
