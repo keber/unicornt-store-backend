@@ -21,7 +21,53 @@ public class ProductRowMapper implements RowMapper<Product> {
         p.setPrice(rs.getInt("price"));
         p.setDescription(rs.getString("description"));
         p.setImageBase(rs.getString("image_base"));
-        p.setActive(rs.getInt("is_active") == 1);
+        p.setActive(readBooleanCompat(rs, "is_active"));
         return p;
     }
+
+    private boolean readBooleanCompat(ResultSet rs, String column) throws SQLException {
+        Object value = rs.getObject(column);
+
+        if (value == null) {
+            return false;
+        }
+
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+
+        if (value instanceof Number) {
+            return ((Number) value).intValue() != 0;
+        }
+
+        if (value instanceof byte[]) {
+            String s = new String((byte[]) value).trim().toLowerCase();
+            return parseBooleanString(column, s);
+        }
+
+        String s = value.toString().trim().toLowerCase();
+        return parseBooleanString(column, s);
+    }
+
+    private boolean parseBooleanString(String column, String s) throws SQLException {
+        switch (s) {
+            case "1":
+            case "true":
+            case "t":
+            case "yes":
+            case "y":
+                return true;
+
+            case "0":
+            case "false":
+            case "f":
+            case "no":
+            case "n":
+                return false;
+
+            default:
+                throw new SQLException("No se pudo interpretar como boolean la columna '" + column + "' con valor: " + s);
+        }
+    }
 }
+

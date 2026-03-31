@@ -80,7 +80,7 @@ public class ProductDAO {
             p.getPrice(),
             emptyToNull(p.getDescription()),
             emptyToNull(p.getImageBase()),
-            p.isActive() ? 1 : 0);
+            p.isActive());
     }
 
     public void update(Product p) {
@@ -95,7 +95,7 @@ public class ProductDAO {
             p.getPrice(),
             emptyToNull(p.getDescription()),
             emptyToNull(p.getImageBase()),
-            p.isActive() ? 1 : 0,
+            p.isActive(),
             p.getId());
     }
 
