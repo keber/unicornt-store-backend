@@ -17,8 +17,9 @@ Repositorio: **https://github.com/keber/unicornt-store-springboot**
 | Vistas | Thymeleaf 3 |
 | Seguridad | Spring Security 7 (roles ADMIN / CLIENT, BCrypt) |
 | Persistencia | Spring JdbcTemplate (CRUD) · Spring Data JPA (usuarios/roles) |
-| Build | Maven 3.x · WAR |
-| Servidor | Apache Tomcat 10.1+ (externo) |
+| Build | Maven 3.x · JAR ejecutable |
+| Contenedores | Docker · Docker Compose |
+| Perfiles | `dev` (MySQL local) · `prod` (PostgreSQL / Supabase) |
 | BD soportadas | MySQL 8+ · PostgreSQL 15+ |
 | Tests | JUnit 5 · Mockito · MockMvc · H2 (in-memory) |
 | UI | Bootstrap 5.3.8 · Font Awesome 6.5.1 |
@@ -27,10 +28,16 @@ Repositorio: **https://github.com/keber/unicornt-store-springboot**
 
 ## Requisitos previos
 
+**Ejecución local (sin Docker):**
+
 - JDK 21+
 - Maven 3.8+
-- Apache Tomcat 10.1+
-- MySQL 8+
+- MySQL 8+ o PostgreSQL 15+
+
+**Ejecución con Docker:**
+
+- Docker y Docker Compose
+- MySQL 8+ o PostgreSQL 15+ (puede estar en el host o en un servicio externo)
 
 ---
 
@@ -40,29 +47,23 @@ Las credenciales **nunca se almacenan en el código fuente**. La aplicación usa
 
 | Variable | Descripción | Ejemplo |
 |----------|-------------|---------|
-| `SPRING_DATASOURCE_URL` | JDBC URL completa | `jdbc:mysql://localhost:3306/unicornt_store?useSSL=false&serverTimezone=America/Santiago&characterEncoding=UTF-8&useUnicode=true` |
+| `SPRING_PROFILES_ACTIVE` | Perfil activo | `dev` (MySQL) o `prod` (PostgreSQL) |
+| `SPRING_DATASOURCE_URL` | JDBC URL completa | `jdbc:mysql://localhost:3306/unicornt_store?...` |
 | `SPRING_DATASOURCE_USERNAME` | Usuario de la base de datos | `unicornt-store-admin` |
 | `SPRING_DATASOURCE_PASSWORD` | Contraseña del usuario | `********` |
 
 > Spring Boot mapea automáticamente `SPRING_DATASOURCE_URL` → `spring.datasource.url`, etc. No se requiere ninguna configuración extra.
 
-### Definir variables en Windows (sesión actual)
+### Archivo `.env-template`
 
-```powershell
-$env:SPRING_DATASOURCE_URL      = "jdbc:mysql://localhost:3306/unicornt_store?useSSL=false&serverTimezone=America/Santiago&characterEncoding=UTF-8&useUnicode=true"
-$env:SPRING_DATASOURCE_USERNAME = "tu_usuario"
-$env:SPRING_DATASOURCE_PASSWORD = "tu_password"
+El repositorio incluye un archivo `.env-template` con la estructura de variables necesarias. Para usarlo:
+
+```bash
+cp .env-template .env
+# Editar .env con los valores reales
 ```
 
-### Definir variables en Windows (persistente para el usuario)
-
-```powershell
-[System.Environment]::SetEnvironmentVariable("SPRING_DATASOURCE_URL",      "jdbc:mysql://...", "User")
-[System.Environment]::SetEnvironmentVariable("SPRING_DATASOURCE_USERNAME", "tu_usuario",       "User")
-[System.Environment]::SetEnvironmentVariable("SPRING_DATASOURCE_PASSWORD", "tu_password",      "User")
-```
-
-> **Nota:** Las variables de scope `User` no son heredadas automáticamente por procesos iniciados antes de que se definieran (p. ej. una terminal ya abierta). Si ves el error `claims to not accept jdbcUrl`, ejecuta los comandos de sesión actual en la terminal desde la que lanzas Maven o Tomcat.
+El archivo `.env` está en `.gitignore` y **nunca se sube al repositorio**. Docker Compose lo lee automáticamente con `--env-file .env`.
 
 ---
 
@@ -85,11 +86,33 @@ El archivo `src/main/resources/application.properties` centraliza la configuraci
 
 El datasource **no** contiene credenciales en código fuente. Spring Boot resuelve las propiedades automáticamente a partir de las variables de entorno `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD` (ver sección [Variables de entorno](#variables-de-entorno)).
 
-```properties
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+Las propiedades de conexión específicas de cada motor se definen en los perfiles (ver [Perfiles Spring](#perfiles-spring)).
+
+### Perfiles Spring
+
+La aplicación utiliza perfiles para separar la configuración por entorno:
+
+| Perfil | Archivo | BD | Uso |
+|--------|---------|----|---------|
+| `dev` | `application-dev.properties` | MySQL local | Desarrollo |
+| `prod` | `application-prod.properties` | PostgreSQL (Supabase) | Producción |
+
+El perfil activo se define con la variable `SPRING_PROFILES_ACTIVE`:
+
+```bash
+# Desarrollo (MySQL)
+SPRING_PROFILES_ACTIVE=dev
+
+# Producción (PostgreSQL / Supabase)
+SPRING_PROFILES_ACTIVE=prod
 ```
 
-El driver se declara explícitamente para MySQL. Si se usa PostgreSQL, debe cambiarse a `org.postgresql.Driver`.
+El perfil `prod` incluye configuración adicional para Supabase:
+
+```properties
+spring.datasource.hikari.connection-init-sql=SET search_path TO unicornt_store, public
+spring.jpa.properties.hibernate.default_schema=unicornt_store
+```
 
 ### JPA
 
@@ -121,23 +144,98 @@ spring.thymeleaf.cache=false
 mvn clean package -DskipTests
 ```
 
-El WAR generado se encuentra en:
+El JAR ejecutable se genera en:
 
 ```
-target/unicornt-store-admin.war
+target/unicornt-store.jar
 ```
+
+### Ejecución local (sin Docker)
+
+Requiere las variables de entorno definidas previamente:
+
+```bash
+java -jar target/unicornt-store.jar
+```
+
+O directamente con Maven:
+
+```bash
+mvn spring-boot:run
+```
+
+La aplicación estará disponible en `http://localhost:8080`.
 
 ---
 
-## Despliegue en Tomcat
+## Despliegue con Docker
 
-Copia el WAR al directorio `webapps` de Tomcat. Tomcat lo desplegará automáticamente:
+### 1. Crear el archivo `.env`
 
 ```bash
-cp target/unicornt-store-admin.war $CATALINA_HOME/webapps/
+cp .env-template .env
+# Editar .env con los valores reales de conexión a BD
 ```
 
-Las variables de entorno (`SPRING_DATASOURCE_*`) deben estar disponibles para el proceso de Tomcat antes de iniciarlo.
+Ejemplo de `.env` para desarrollo local (MySQL en el host):
+
+```env
+SPRING_PROFILES_ACTIVE=dev
+SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/unicornt_store?useSSL=false&serverTimezone=America/Santiago&characterEncoding=UTF-8&useUnicode=true
+SPRING_DATASOURCE_USERNAME=tu_usuario
+SPRING_DATASOURCE_PASSWORD=tu_password
+```
+
+> **Nota:** Desde Docker, `localhost` apunta al contenedor, no al host. Usa `host.docker.internal` para conectarte a servicios del host (MySQL, PostgreSQL).
+
+### 2. Compilar y levantar
+
+```bash
+mvn clean package -DskipTests
+docker compose --env-file .env up --build -d
+```
+
+La aplicación estará disponible en `http://localhost:8080`.
+
+### 3. Ver logs
+
+```bash
+docker compose logs -f
+```
+
+### 4. Detener
+
+```bash
+docker compose down
+```
+
+### Dockerfile
+
+```dockerfile
+FROM eclipse-temurin:21-jdk-alpine
+ARG JAR_FILE=target/unicornt-store.jar
+COPY ${JAR_FILE} app.jar
+EXPOSE 8080
+ENTRYPOINT ["java","-jar","/app.jar"]
+```
+
+### docker-compose.yml
+
+```yaml
+services:
+  unicornt-store:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+    restart: always
+```
+
+Las variables se inyectan desde el archivo `.env` y se pasan al contenedor como variables de entorno.
 
 ---
 
@@ -190,7 +288,10 @@ Al iniciar la aplicación, se crean automáticamente si no existen:
 
 ```
 unicornt-store-springboot/
-├── pom.xml                              # Spring Boot parent, packaging WAR
+├── pom.xml                              # Spring Boot parent, packaging JAR
+├── Dockerfile                           # Imagen Docker (eclipse-temurin:21)
+├── docker-compose.yml                   # Orquestación con Docker Compose
+├── .env-template                        # Plantilla de variables de entorno
 ├── src/
 │   └── main/
 │       ├── java/com/unicornt/store/
@@ -233,7 +334,9 @@ unicornt-store-springboot/
 │       │       ├── CustomErrorController.java
 │       │       └── HomeController.java
 │       ├── resources/
-│       │   ├── application.properties   # Datasource vía SPRING_DATASOURCE_*
+│       │   ├── application.properties           # Config base (JPA, Thymeleaf)
+│       │   ├── application-dev.properties       # Perfil dev (MySQL local)
+│       │   ├── application-prod.properties      # Perfil prod (PostgreSQL/Supabase)
 │       │   ├── templates/               # Thymeleaf
 │       │   │   ├── layout/
 │       │   │   │   ├── header.html      # Navbar con sec:authorize
@@ -250,8 +353,6 @@ unicornt-store-springboot/
 │       │   └── static/
 │       │       └── assets/css/
 │       │           └── admin.css
-│       └── webapp/
-│           └── (vacío — sin JSPs ni web.xml)
 │   └── test/
 │       ├── java/com/unicornt/store/
 │       │   ├── service/
@@ -261,7 +362,7 @@ unicornt-store-springboot/
 │       └── resources/
 │           └── application.properties            # H2 in-memory para tests
 └── target/
-    └── unicornt-store-admin.war
+    └── unicornt-store.jar
 ```
 
 ---
