@@ -19,7 +19,8 @@
             <!-- Marca -->
             <div class="col-12 col-md-6">
                 <h6 class="fw-bold d-flex align-items-center gap-2 mb-1">
-                    <i class="fa-solid fa-unicorn"></i> Unicorn't Store
+                    <img th:src="@{/assets/img/unicornt-logo.png}" alt="Unicorn't Store"
+                         style="height:24px;"> Unicorn't Store
                     <span sec:authorize="hasRole('ADMIN')"
                           class="badge bg-warning text-dark fw-semibold" style="font-size:.6rem">ADMIN</span>
                 </h6>

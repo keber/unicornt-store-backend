@@ -61,7 +61,15 @@
 
     <div th:unless="${#lists.isEmpty(products)}" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
         <div class="col" th:each="p : ${products}">
-            <div class="card h-100 shadow-sm border-0" style="border-radius:.75rem; overflow:hidden;">
+            <th:block th:with="inCart=${cartMap.containsKey(p.id)}, qty=${cartMap.getOrDefault(p.id, 0)}">
+            <div class="card h-100 shadow-sm" th:classappend="${inCart ? 'border-success' : 'border-0'}"
+                 style="border-radius:.75rem; overflow:hidden;" th:styleappend="${inCart ? 'border-width:2px;' : ''}">
+                <!-- Badge "En el carrito" -->
+                <span th:if="${inCart}"
+                      class="position-absolute top-0 end-0 badge bg-success m-2"
+                      style="font-size:.65rem; z-index:1;">
+                    <i class="fa-solid fa-check me-1"></i>En el carrito
+                </span>
                 <!-- Imagen -->
                 <div style="height:200px; background:#faf9ff; display:flex; align-items:center; justify-content:center;">
                     <img th:if="${p.imageBase != null and !p.imageBase.isEmpty()}"
@@ -80,16 +88,50 @@
                        th:text="${p.description != null and p.description.length() > 80 ? p.description.substring(0, 80) + '...' : p.description}"></p>
                     <div class="mt-auto d-flex justify-content-between align-items-center">
                         <span class="fw-bold fs-5" style="color:var(--brand)" th:text="${p.formattedPrice}"></span>
-                        <form th:action="@{/cart/add}" method="post" class="d-inline">
-                            <input type="hidden" name="productId" th:value="${p.id}">
-                            <input type="hidden" name="redirectTo" th:value="${'/catalog?search=' + (searchParam != null ? searchParam : '') + '&categoryId=' + (categoryFilter != null ? categoryFilter : '') + '&page=' + currentPage}">
-                            <button type="submit" class="btn btn-sm btn-primary" title="Agregar al carrito">
-                                <i class="fa-solid fa-cart-plus"></i>
-                            </button>
-                        </form>
+                        <div class="d-flex align-items-center gap-1">
+                            <!-- Controles −N+ cuando el producto está en el carrito -->
+                            <th:block th:if="${inCart}">
+                                <form th:action="@{/cart/update}" method="post" class="d-inline">
+                                    <input type="hidden" name="productId" th:value="${p.id}">
+                                    <input type="hidden" name="quantity" th:value="${qty - 1}">
+                                    <input type="hidden" name="redirectTo" th:value="${'/catalog?search=' + (searchParam != null ? searchParam : '') + '&categoryId=' + (categoryFilter != null ? categoryFilter : '') + '&page=' + currentPage}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" style="padding:2px 6px;">
+                                        <i class="fa-solid fa-minus" style="font-size:.7rem;"></i>
+                                    </button>
+                                </form>
+                                <span class="fw-semibold small" style="min-width:20px; text-align:center;" th:text="${qty}"></span>
+                                <form th:action="@{/cart/add}" method="post" class="d-inline">
+                                    <input type="hidden" name="productId" th:value="${p.id}">
+                                    <input type="hidden" name="quantity" value="1">
+                                    <input type="hidden" name="redirectTo" th:value="${'/catalog?search=' + (searchParam != null ? searchParam : '') + '&categoryId=' + (categoryFilter != null ? categoryFilter : '') + '&page=' + currentPage}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" style="padding:2px 6px;">
+                                        <i class="fa-solid fa-plus" style="font-size:.7rem;"></i>
+                                    </button>
+                                </form>
+                                <!-- Papelera: eliminar todo del carrito -->
+                                <form th:action="@{/cart/remove}" method="post" class="d-inline ms-1">
+                                    <input type="hidden" name="productId" th:value="${p.id}">
+                                    <input type="hidden" name="redirectTo" th:value="${'/catalog?search=' + (searchParam != null ? searchParam : '') + '&categoryId=' + (categoryFilter != null ? categoryFilter : '') + '&page=' + currentPage}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Quitar del carrito" style="padding:2px 6px;">
+                                        <i class="fa-solid fa-trash-can" style="font-size:.7rem;"></i>
+                                    </button>
+                                </form>
+                            </th:block>
+                            <!-- Botón agregar cuando NO está en el carrito -->
+                            <th:block th:unless="${inCart}">
+                                <form th:action="@{/cart/add}" method="post" class="d-inline">
+                                    <input type="hidden" name="productId" th:value="${p.id}">
+                                    <input type="hidden" name="redirectTo" th:value="${'/catalog?search=' + (searchParam != null ? searchParam : '') + '&categoryId=' + (categoryFilter != null ? categoryFilter : '') + '&page=' + currentPage}">
+                                    <button type="submit" class="btn btn-sm btn-primary" title="Agregar al carrito">
+                                        <i class="fa-solid fa-cart-plus"></i>
+                                    </button>
+                                </form>
+                            </th:block>
+                        </div>
                     </div>
                 </div>
             </div>
+            </th:block>
         </div>
     </div>
 

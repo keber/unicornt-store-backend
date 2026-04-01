@@ -53,15 +53,23 @@ public class CartController {
     @PostMapping("/update")
     public String updateQuantity(@RequestParam int productId,
                                  @RequestParam int quantity,
+                                 @RequestParam(required = false) String redirectTo,
                                  Principal principal) {
         cartService.updateQuantity(principal.getName(), productId, quantity);
+        if (redirectTo != null && !redirectTo.isBlank()) {
+            return "redirect:" + redirectTo;
+        }
         return "redirect:/cart";
     }
 
     @PostMapping("/remove")
     public String removeFromCart(@RequestParam int productId,
+                                 @RequestParam(required = false) String redirectTo,
                                  Principal principal) {
         cartService.removeFromCart(principal.getName(), productId);
+        if (redirectTo != null && !redirectTo.isBlank()) {
+            return "redirect:" + redirectTo;
+        }
         return "redirect:/cart";
     }
 

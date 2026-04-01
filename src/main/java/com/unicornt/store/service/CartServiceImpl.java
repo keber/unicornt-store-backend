@@ -87,7 +87,7 @@ public class CartServiceImpl implements CartService {
     @Override
     public int getCartCount(String userEmail) {
         Long userId = getUserId(userEmail);
-        return cartItemRepository.countByUserId(userId);
+        return cartItemRepository.sumQuantityByUserId(userId);
     }
 
     @Override

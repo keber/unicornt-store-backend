@@ -22,7 +22,8 @@
 
             <!-- Branding -->
             <div class="text-center mb-4">
-                <i class="fa-solid fa-unicorn fs-1" style="color:var(--brand)"></i>
+                <img th:src="@{/assets/img/unicornt-logo.png}" alt="Unicorn't Store"
+                     style="height:80px;" class="mb-2">
                 <h3 class="fw-bold mt-2" style="color:var(--text-dark)">Unicorn't Store</h3>
                 <p class="text-muted small">Inicia sesión para continuar</p>
             </div>
@@ -67,6 +68,25 @@
                     ¿No tienes cuenta?
                     <a th:href="@{/register}" class="fw-semibold">Crear cuenta</a>
                 </p>
+            </div>
+
+            <!-- Demo credentials -->
+            <div class="mt-3 p-3 rounded" style="background-color:#f0edf6; border:1px dashed #c4b5d9;">
+                <p class="text-center small fw-semibold mb-2" style="color:var(--brand)">
+                    <i class="fa-solid fa-circle-info me-1"></i>Credenciales de prueba
+                </p>
+                <div class="row g-2 text-center" style="font-size:.78rem;">
+                    <div class="col-6">
+                        <span class="badge bg-warning text-dark mb-1" style="font-size:.6rem;">ADMIN</span><br>
+                        <code>admin@unicornt.cl</code><br>
+                        <code>admin123</code>
+                    </div>
+                    <div class="col-6">
+                        <span class="badge bg-success mb-1" style="font-size:.6rem;">CLIENTE</span><br>
+                        <code>cliente@unicornt.cl</code><br>
+                        <code>cliente123</code>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
