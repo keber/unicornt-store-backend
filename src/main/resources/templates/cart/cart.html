@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head th:replace="~{layout/header :: head}"></head>
+
+<body>
+
+<header th:replace="~{layout/header :: navbar}"></header>
+
+<main class="container pb-5 mt-4">
+
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0 admin-page-title">
+            <i class="fa-solid fa-cart-shopping me-2"></i>Mi Carrito
+        </h2>
+        <a th:href="@{/catalog}" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Seguir comprando
+        </a>
+    </div>
+
+    <!-- Toast de mensaje -->
+    <div th:if="${cartMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fa-solid fa-check-circle me-1"></i>
+        <span th:text="${cartMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Carrito vacío -->
+    <div th:if="${#lists.isEmpty(cartItems)}" class="text-center admin-empty py-5">
+        <i class="fa-solid fa-box-open fa-3x mb-3" style="color:#ccc;"></i>
+        <p class="text-muted fs-5">El carrito está vacío.</p>
+        <a th:href="@{/catalog}" class="btn btn-primary mt-2">
+            <i class="fa-solid fa-store me-1"></i>Ir al catálogo
+        </a>
+    </div>
+
+    <!-- Contenido del carrito -->
+    <div th:unless="${#lists.isEmpty(cartItems)}">
+
+        <!-- Tabla de items -->
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:80px"></th>
+                        <th>Producto</th>
+                        <th class="text-end" style="width:120px">Precio</th>
+                        <th class="text-center" style="width:160px">Cantidad</th>
+                        <th class="text-end" style="width:120px">Subtotal</th>
+                        <th style="width:50px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="item : ${cartItems}">
+                        <!-- Imagen -->
+                        <td>
+                            <div style="width:60px; height:60px; background:#faf9ff; border-radius:.5rem; display:flex; align-items:center; justify-content:center;">
+                                <img th:if="${item.product.imageBase != null and !item.product.imageBase.isEmpty()}"
+                                     th:src="@{'https://unicornt-store.keber.cl/' + ${item.product.imageBase} + '-thumb.webp'}"
+                                     th:alt="${item.product.name}"
+                                     style="max-height:50px; max-width:50px; object-fit:contain;">
+                                <i th:unless="${item.product.imageBase != null and !item.product.imageBase.isEmpty()}"
+                                   class="fa-solid fa-image" style="color:#ddd;"></i>
+                            </div>
+                        </td>
+                        <!-- Nombre -->
+                        <td>
+                            <span class="fw-semibold" th:text="${item.product.name}"></span>
+                            <br>
+                            <small class="text-muted" th:text="${item.product.categoryName}"></small>
+                        </td>
+                        <!-- Precio unitario -->
+                        <td class="text-end" th:text="${item.product.formattedPrice}"></td>
+                        <!-- Cantidad -->
+                        <td class="text-center">
+                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                <form th:action="@{/cart/update}" method="post" class="d-inline">
+                                    <input type="hidden" name="productId" th:value="${item.productId}">
+                                    <input type="hidden" name="quantity" th:value="${item.quantity - 1}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                            th:disabled="${item.quantity <= 1}">
+                                        <i class="fa-solid fa-minus"></i>
+                                    </button>
+                                </form>
+                                <span class="fw-semibold mx-2" style="min-width:24px; text-align:center;"
+                                      th:text="${item.quantity}"></span>
+                                <form th:action="@{/cart/update}" method="post" class="d-inline">
+                                    <input type="hidden" name="productId" th:value="${item.productId}">
+                                    <input type="hidden" name="quantity" th:value="${item.quantity + 1}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                        <!-- Subtotal -->
+                        <td class="text-end fw-semibold" th:text="${item.formattedSubtotal}"></td>
+                        <!-- Eliminar -->
+                        <td class="text-center">
+                            <form th:action="@{/cart/remove}" method="post" class="d-inline">
+                                <input type="hidden" name="productId" th:value="${item.productId}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Resumen -->
+        <div class="row justify-content-end mt-3">
+            <div class="col-12 col-md-5 col-lg-4">
+                <div class="card shadow-sm border-0" style="border-radius:.75rem;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="fs-5 fw-semibold">Total</span>
+                            <span class="fs-4 fw-bold" style="color:var(--brand)" th:text="${formattedTotal}"></span>
+                        </div>
+                        <form th:action="@{/cart/clear}" method="post">
+                            <button type="submit" class="btn btn-outline-danger w-100 mb-2">
+                                <i class="fa-solid fa-trash me-1"></i>Vaciar carrito
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</main>
+
+<th:block th:replace="~{layout/footer :: footer}"></th:block>
+
+</body>
+</html>
