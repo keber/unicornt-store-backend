@@ -36,7 +36,8 @@
             <!-- Logo -->
             <a class="navbar-brand d-flex align-items-center gap-2"
                th:href="@{/}">
-                <i class="fa-solid fa-unicorn fs-4"></i>
+                <img th:src="@{/assets/img/unicornt-logo.png}" alt="Unicorn't Store"
+                     style="height:32px;" class="me-1">
                 <span class="fw-bold">Unicorn't Store</span>
                 <!-- Badge ADMIN solo para administradores -->
                 <span sec:authorize="hasRole('ADMIN')"
