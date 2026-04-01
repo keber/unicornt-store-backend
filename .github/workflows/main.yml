@@ -22,6 +22,18 @@ jobs:
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
           echo "version_tag=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build jar with Maven
+        run: mvn clean package -DskipTests
+
+      - name: Verify target contents
+        run: ls -lah target
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v4
         with:
