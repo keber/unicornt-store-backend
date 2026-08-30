@@ -5,7 +5,7 @@
 ```
 unicornt-store-springboot/
 ├── pom.xml                              # Spring Boot parent, packaging JAR
-├── Dockerfile                           # Imagen Docker (eclipse-temurin:21)
+├── Dockerfile                           # Imagen Docker (eclipse-temurin:25)
 ├── docker-compose.yml                   # Orquestación con Docker Compose
 ├── .env-template                        # Plantilla de variables de entorno
 ├── src/

@@ -12,7 +12,7 @@ Desplegada con Docker sobre VPS + PostgreSQL en Supabase.
 
 | Capa | Tecnología |
 |------|------------|
-| Lenguaje | Java 21 |
+| Lenguaje | Java 25 |
 | Framework | Spring Boot 4.0.3 |
 | Web | Spring MVC |
 | Vistas | Thymeleaf 3 |

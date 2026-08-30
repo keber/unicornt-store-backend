@@ -4,7 +4,7 @@
 
 **Ejecución local (sin Docker):**
 
-- JDK 21+
+- JDK 25+
 - Maven 3.8+
 - MySQL 8+ o PostgreSQL 15+
 
