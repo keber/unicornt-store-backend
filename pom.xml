@@ -45,7 +45,7 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- Tomcat embebido con scope provided (se despliega en Tomcat externo) -->
+        <!-- Embedded Tomcat with provided scope (deployed on an external Tomcat) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-tomcat</artifactId>
@@ -68,7 +68,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- DevTools (recarga automática en desarrollo) -->
+        <!-- DevTools (automatic reload in development) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -109,7 +109,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- H2 en memoria para tests (sin depender de MySQL) -->
+        <!-- In-memory H2 for tests (without depending on MySQL) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

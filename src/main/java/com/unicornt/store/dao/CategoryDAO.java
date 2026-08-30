@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-/** Acceso a datos para la tabla categories usando Spring JdbcTemplate. */
+/** Data access for the categories table using Spring JdbcTemplate. */
 @Repository
 public class CategoryDAO {
 
@@ -17,7 +17,7 @@ public class CategoryDAO {
         this.jdbc = jdbc;
     }
 
-    /** Lista todas las categorias ordenadas por nombre. */
+    /** Lists all categories ordered by name. */
     public List<Category> findAll() {
         return jdbc.query(
             "SELECT id, name, slug FROM categories ORDER BY name",

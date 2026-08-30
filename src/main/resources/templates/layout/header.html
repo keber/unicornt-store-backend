@@ -3,9 +3,9 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <!--
-  Fragmentos de cabecera reutilizables.
+  Reusable header fragments.
 
-  Uso en cada template de contenido:
+  Usage in each content template:
     <head th:replace="~{layout/header :: head}"></head>
     <header th:replace="~{layout/header :: navbar}"></header>
 -->
@@ -21,9 +21,9 @@
           crossorigin="anonymous">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Hoja principal compartida con el storefront público -->
+    <!-- Main stylesheet shared with the public storefront -->
     <link rel="stylesheet" href="https://unicornt-store.keber.cl/assets/css/main.css">
-    <!-- Estilos complementarios del panel de administración -->
+    <!-- Complementary styles for the admin panel -->
     <link rel="stylesheet" th:href="@{/assets/css/admin.css}">
 </head>
 
@@ -39,7 +39,7 @@
                 <img th:src="@{/assets/img/unicornt-logo.png}" alt="Unicorn't Store"
                      style="height:32px;" class="me-1">
                 <span class="fw-bold">Unicorn't Store</span>
-                <!-- Badge ADMIN solo para administradores -->
+                <!-- ADMIN badge only for administrators -->
                 <span sec:authorize="hasRole('ADMIN')"
                       class="badge bg-warning text-dark fw-semibold"
                       style="font-size:.6rem;letter-spacing:.05em">ADMIN</span>
@@ -55,13 +55,13 @@
             <!-- Nav links -->
             <div class="collapse navbar-collapse" id="navAdmin">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <!-- Catálogo — visible para todos los autenticados -->
+                    <!-- Catalog — visible to all authenticated users -->
                     <li class="nav-item" sec:authorize="isAuthenticated()">
                         <a class="nav-link" th:href="@{/catalog}">
                             <i class="fa-solid fa-store me-1"></i>Catálogo
                         </a>
                     </li>
-                    <!-- Productos (admin) — solo ADMIN -->
+                    <!-- Products (admin) — ADMIN only -->
                     <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                         <a class="nav-link" th:href="@{/admin/products}">
                             <i class="fa-solid fa-tshirt me-1"></i>Productos
@@ -69,9 +69,9 @@
                     </li>
                 </ul>
 
-                <!-- Zona derecha: carrito + usuario + logout -->
+                <!-- Right area: cart + user + logout -->
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0" sec:authorize="isAuthenticated()">
-                    <!-- Carrito — visible para CLIENT -->
+                    <!-- Cart — visible for CLIENT -->
                     <li class="nav-item" sec:authorize="hasRole('CLIENT')">
                         <a class="nav-link position-relative" th:href="@{/cart}">
                             <i class="fa-solid fa-cart-shopping"></i>

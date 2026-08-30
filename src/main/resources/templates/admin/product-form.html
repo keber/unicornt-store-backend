@@ -9,25 +9,25 @@
 
 <main class="container pb-5 mt-4">
 
-    <!-- ---- Encabezado ---- -->
+    <!-- ---- Header ---- -->
     <div class="d-flex align-items-center mb-4 gap-3">
         <a th:href="@{/admin/products}" class="btn btn-outline-secondary" title="Volver al listado">
             <i class="fa-solid fa-arrow-left"></i>
         </a>
         <h2 class="fw-bold mb-0 admin-page-title">
-            <!-- Modo edición -->
+            <!-- Edit mode -->
             <th:block th:if="${product.id != null and product.id > 0}">
                 <i class="fa-solid fa-pen me-2"></i>Editar Producto
                 <small class="text-muted fw-normal fs-6 ms-2" th:text="'#' + ${product.id}"></small>
             </th:block>
-            <!-- Modo creación -->
+            <!-- Create mode -->
             <th:block th:unless="${product.id != null and product.id > 0}">
                 <i class="fa-solid fa-plus me-2"></i>Nuevo Producto
             </th:block>
         </h2>
     </div>
 
-    <!-- ---- Errores de validación ---- -->
+    <!-- ---- Validation errors ---- -->
     <div th:if="${not #lists.isEmpty(errors)}" class="alert alert-danger" role="alert">
         <strong><i class="fa-solid fa-triangle-exclamation me-1"></i>Corrige los siguientes errores:</strong>
         <ul class="mb-0 mt-1">
@@ -35,7 +35,7 @@
         </ul>
     </div>
 
-    <!-- ---- Formulario ---- -->
+    <!-- ---- Form ---- -->
     <div class="admin-form-card">
         <div class="card-body">
             <form method="post" novalidate
@@ -43,13 +43,13 @@
                              ? @{/admin/products/update}
                              : @{/admin/products}">
 
-                <!-- Hidden id para edición -->
+                <!-- Hidden id for editing -->
                 <input th:if="${product.id != null and product.id > 0}"
                        type="hidden" name="id" th:value="${product.id}"/>
 
                 <div class="row g-3">
 
-                    <!-- Nombre -->
+                    <!-- Name -->
                     <div class="col-12">
                         <label for="name" class="form-label fw-semibold">
                             Nombre <span class="text-danger">*</span>
@@ -60,15 +60,15 @@
                                th:value="${product.name}">
                     </div>
 
-                    <!-- Columnas: campos (izq) + preview (der) -->
+                    <!-- Columns: fields (left) + preview (right) -->
                     <div class="col-12">
                         <div class="row g-3">
 
-                            <!-- Columna izquierda: campos -->
+                            <!-- Left column: fields -->
                             <div class="col-12 col-md-7">
                                 <div class="row g-3">
 
-                                    <!-- Tipo de Producto -->
+                                    <!-- Product type -->
                                     <div class="col-12">
                                         <label for="productTypeId" class="form-label fw-semibold">
                                             Tipo de Producto <span class="text-danger">*</span>
@@ -83,7 +83,7 @@
                                         </select>
                                     </div>
 
-                                    <!-- Categoría -->
+                                    <!-- Category -->
                                     <div class="col-12">
                                         <label for="categoryId" class="form-label fw-semibold">
                                             Categoría <span class="text-danger">*</span>
@@ -98,7 +98,7 @@
                                         </select>
                                     </div>
 
-                                    <!-- Precio -->
+                                    <!-- Price -->
                                     <div class="col-12">
                                         <label for="price" class="form-label fw-semibold">
                                             Precio (CLP) <span class="text-danger">*</span>
@@ -113,7 +113,7 @@
                                         <div class="form-text">Entero, en pesos chilenos (sin decimales).</div>
                                     </div>
 
-                                    <!-- Ruta de imagen -->
+                                    <!-- Image path -->
                                     <div class="col-12">
                                         <label for="imageBase" class="form-label fw-semibold">
                                             Ruta de imagen base
@@ -127,10 +127,10 @@
                                         </div>
                                     </div>
 
-                                </div><!-- /row interna -->
+                                </div><!-- /inner row -->
                             </div><!-- /col-md-7 -->
 
-                            <!-- Columna derecha: preview -->
+                            <!-- Right column: preview -->
                             <div class="col-12 col-md-5 d-flex flex-column">
                                 <label class="form-label fw-semibold">Vista previa</label>
                                 <div class="img-preview-wrap flex-grow-1">
@@ -143,10 +143,10 @@
                                 </div>
                             </div><!-- /col-md-5 -->
 
-                        </div><!-- /row exterior -->
+                        </div><!-- /outer row -->
                     </div><!-- /col-12 -->
 
-                    <!-- Descripción -->
+                    <!-- Description -->
                     <div class="col-12">
                         <label for="description" class="form-label fw-semibold">Descripción</label>
                         <textarea id="description" name="description"
@@ -155,7 +155,7 @@
                                   th:text="${product.description}"></textarea>
                     </div>
 
-                    <!-- Activo -->
+                    <!-- Active -->
                     <div class="col-12">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" role="switch"
@@ -170,7 +170,7 @@
                         </div>
                     </div>
 
-                    <!-- Acciones -->
+                    <!-- Actions -->
                     <div class="col-12 d-flex gap-2 pt-3 border-top mt-1">
                         <button type="submit" class="btn btn-brand">
                             <i class="fa-solid fa-floppy-disk me-1"></i>
@@ -218,7 +218,7 @@
             debounce = setTimeout(function () { updatePreview(input.value); }, 350);
         });
 
-        // Carga inicial al editar un producto existente
+        // Initial load when editing an existing product
         updatePreview(input.value);
     })();
 </script>

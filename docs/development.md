@@ -1,31 +1,31 @@
-# Desarrollo
+# Development
 
-## Estructura del proyecto
+## Project structure
 
 ```
 unicornt-store-springboot/
-├── pom.xml                              # Spring Boot parent, packaging JAR
-├── Dockerfile                           # Imagen Docker (eclipse-temurin:25)
-├── docker-compose.yml                   # Orquestación con Docker Compose
-├── .env-template                        # Plantilla de variables de entorno
+├── pom.xml                              # Spring Boot parent, JAR packaging
+├── Dockerfile                           # Docker image (eclipse-temurin:25)
+├── docker-compose.yml                   # Orchestration with Docker Compose
+├── .env-template                        # Environment variable template
 ├── src/
 │   └── main/
 │       ├── java/com/unicornt/store/
-│       │   ├── StoreApplication.java    # Punto de entrada + seed de datos
+│       │   ├── StoreApplication.java    # Entry point + data seed
 │       │   ├── config/
-│       │   │   ├── SecurityConfig.java   # Filtros, BCrypt, rutas protegidas
+│       │   │   ├── SecurityConfig.java   # Filters, BCrypt, protected routes
 │       │   │   └── CustomAuthSuccessHandler.java
 │       │   ├── model/
 │       │   │   ├── Product.java         # @Entity
 │       │   │   ├── Category.java        # @Entity
 │       │   │   ├── ProductType.java     # @Entity
-│       │   │   ├── User.java            # @Entity (autenticación)
+│       │   │   ├── User.java            # @Entity (authentication)
 │       │   │   └── Role.java            # @Entity (ROLE_ADMIN, ROLE_CLIENT)
 │       │   ├── mapper/
 │       │   │   ├── ProductRowMapper.java
 │       │   │   ├── CategoryRowMapper.java
 │       │   │   └── ProductTypeRowMapper.java
-│       │   ├── dao/                     # Acceso a datos con JdbcTemplate
+│       │   ├── dao/                     # Data access with JdbcTemplate
 │       │   │   ├── ProductDAO.java
 │       │   │   ├── CategoryDAO.java
 │       │   │   └── ProductTypeDAO.java
@@ -45,18 +45,18 @@ unicornt-store-springboot/
 │       │   │   └── CustomUserDetailsService.java
 │       │   └── controller/
 │       │       ├── AdminProductController.java  # @PreAuthorize(ADMIN)
-│       │       ├── CatalogController.java       # Catálogo público
-│       │       ├── AuthController.java          # Login + Registro
+│       │       ├── CatalogController.java       # Public catalog
+│       │       ├── AuthController.java          # Login + Registration
 │       │       ├── CustomErrorController.java
 │       │       └── HomeController.java
 │       ├── resources/
-│       │   ├── application.properties           # Config base (JPA, Thymeleaf)
-│       │   ├── application-dev.properties       # Perfil dev (MySQL local)
-│       │   ├── application-prod.properties      # Perfil prod (PostgreSQL/Supabase)
+│       │   ├── application.properties           # Base config (JPA, Thymeleaf)
+│       │   ├── application-dev.properties       # dev profile (local MySQL)
+│       │   ├── application-prod.properties      # prod profile (PostgreSQL/Supabase)
 │       │   ├── templates/               # Thymeleaf
 │       │   │   ├── layout/
-│       │   │   │   ├── header.html      # Navbar con sec:authorize
-│       │   │   │   └── footer.html      # Footer con sec:authorize
+│       │   │   │   ├── header.html      # Navbar with sec:authorize
+│       │   │   │   └── footer.html      # Footer with sec:authorize
 │       │   │   ├── login.html
 │       │   │   ├── register.html
 │       │   │   ├── error/
@@ -72,11 +72,11 @@ unicornt-store-springboot/
 │   └── test/
 │       ├── java/com/unicornt/store/
 │       │   ├── service/
-│       │   │   └── UserServiceTest.java         # Tests unitarios (Mockito)
+│       │   │   └── UserServiceTest.java         # Unit tests (Mockito)
 │       │   └── controller/
-│       │       └── SecurityIntegrationTest.java  # Tests de integración (MockMvc)
+│       │       └── SecurityIntegrationTest.java  # Integration tests (MockMvc)
 │       └── resources/
-│           └── application.properties            # H2 in-memory para tests
+│           └── application.properties            # In-memory H2 for tests
 └── target/
     └── unicornt-store.jar
 ```
@@ -89,11 +89,11 @@ unicornt-store-springboot/
 mvn clean test
 ```
 
-| Clase | Tipo | Tests | Cobertura |
+| Class | Type | Tests | Coverage |
 |-------|------|-------|-----------|
-| `UserServiceTest` | Unitario (Mockito) | 4 | Registro, rol no encontrado, email exists |
-| `SecurityIntegrationTest` | Integración (MockMvc + H2) | 11 | Acceso público, roles CLIENT/ADMIN, registro, validaciones |
+| `UserServiceTest` | Unit (Mockito) | 4 | Registration, role not found, email exists |
+| `SecurityIntegrationTest` | Integration (MockMvc + H2) | 11 | Public access, CLIENT/ADMIN roles, registration, validations |
 
-Los tests de integración usan **H2 en memoria** y no requieren MySQL.
+The integration tests use **in-memory H2** and do not require MySQL.
 
-> **Nota:** Los tests usan `@TestPropertySource` para forzar la conexión a H2. Esto es necesario porque las variables de entorno `SPRING_DATASOURCE_*` (usadas en producción/desarrollo) tienen prioridad sobre `application.properties` de test. Sin `@TestPropertySource`, si tienes esas variables definidas en tu terminal, los tests intentarían conectarse a MySQL en vez de H2.
+> **Note:** The tests use `@TestPropertySource` to force the connection to H2. This is necessary because the environment variables `SPRING_DATASOURCE_*` (used in production/development) take precedence over the test `application.properties`. Without `@TestPropertySource`, if you have those variables defined in your terminal, the tests would try to connect to MySQL instead of H2.

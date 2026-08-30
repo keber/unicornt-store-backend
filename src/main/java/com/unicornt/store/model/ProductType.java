@@ -3,8 +3,8 @@ package com.unicornt.store.model;
 import jakarta.persistence.*;
 
 /**
- * Modelo de dominio para tipos de producto (Polera, Tazon).
- * Refleja la tabla product_types.
+ * Domain model for product types (T-shirt, Mug).
+ * Mirrors the product_types table.
  */
 @Entity
 @Table(name = "product_types")

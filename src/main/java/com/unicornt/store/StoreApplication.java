@@ -16,9 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Set;
 
 /**
- * Punto de entrada de la aplicación Spring Boot.
- * Extiende SpringBootServletInitializer para permitir el despliegue como WAR
- * en un Tomcat externo (10.1+).
+ * Entry point of the Spring Boot application.
+ * Extends SpringBootServletInitializer to allow deployment as a WAR
+ * on an external Tomcat (10.1+).
  */
 @SpringBootApplication
 public class StoreApplication extends SpringBootServletInitializer {
@@ -38,13 +38,13 @@ public class StoreApplication extends SpringBootServletInitializer {
                                UserRepository userRepository,
                                PasswordEncoder passwordEncoder) {
         return args -> {
-            // Crear roles si no existen
+            // Create roles if they do not exist
             Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                     .orElseGet(() -> roleRepository.save(new Role("ROLE_ADMIN")));
             Role clientRole = roleRepository.findByName("ROLE_CLIENT")
                     .orElseGet(() -> roleRepository.save(new Role("ROLE_CLIENT")));
 
-            // Crear usuario admin si no existe
+            // Create the admin user if it does not exist
             if (userRepository.findByEmail("admin@unicornt.cl").isEmpty()) {
                 User admin = new User();
                 admin.setFirstName("Admin");
@@ -55,7 +55,7 @@ public class StoreApplication extends SpringBootServletInitializer {
                 userRepository.save(admin);
             }
 
-            // Crear usuario cliente de demostración si no existe
+            // Create the demo client user if it does not exist
             if (userRepository.findByEmail("cliente@unicornt.cl").isEmpty()) {
                 User client = new User();
                 client.setFirstName("Cliente");

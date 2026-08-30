@@ -1,20 +1,20 @@
 /* ============================================================
    Unicorn't Store — admin.css
-   Estilos complementarios del panel de administración.
-   Depende de: Bootstrap 5.3 + main.css (storefront)
-   Regla: solo definir aquí lo que NO esté en main.css.
+   Complementary styles for the admin panel.
+   Depends on: Bootstrap 5.3 + main.css (storefront)
+   Rule: only define here what is NOT in main.css.
    ============================================================ */
 
-/* ── Layout general ─────────────────────────────────────────── */
+/* ── General layout ────────────────────────────────────────── */
 body {
-    background-color: #faf9ff;   /* igual que storefront */
+    background-color: #faf9ff;   /* same as storefront */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 main { flex: 1; }
 
-/* ── Tabla de gestión de productos ──────────────────────────── */
+/* ── Product management table ──────────────────────────────── */
 .admin-table-wrapper {
     border-radius: 0.75rem;
     overflow: hidden;
@@ -49,7 +49,7 @@ main { flex: 1; }
     border-color: rgba(124, 58, 237, .07);
 }
 
-/* Estado vacío */
+/* Empty state */
 .admin-empty {
     padding-block: 4rem;
     color: var(--text-dark);
@@ -61,7 +61,7 @@ main { flex: 1; }
     display: block;
 }
 
-/* ── Filtros / barra de búsqueda ─────────────────────────────── */
+/* ── Filters / search bar ───────────────────────────────────── */
 .admin-filter-card {
     background: #fff;
     border: 1px solid rgba(124, 58, 237, .12);
@@ -69,7 +69,7 @@ main { flex: 1; }
     box-shadow: 0 1px 6px rgba(124, 58, 237, .06);
 }
 
-/* ── Tarjeta de formulario ───────────────────────────────────── */
+/* ── Form card ──────────────────────────────────────────────── */
 .admin-form-card {
     background: #fff;
     border: 1px solid rgba(124, 58, 237, .12);
@@ -81,7 +81,7 @@ main { flex: 1; }
     padding: 2rem;
 }
 
-/* ── Preview de imagen en formulario ────────────────────────── */
+/* ── Image preview in the form ─────────────────────────────── */
 .img-preview-wrap {
     flex: 1;
     min-height: 160px;
@@ -120,7 +120,7 @@ main { flex: 1; }
     font-size: 2rem;
 }
 
-/* ── Botones de acción en tabla ──────────────────────────────── */
+/* ── Action buttons in the table ───────────────────────────── */
 .btn-action {
     width: 32px;
     height: 32px;
@@ -132,7 +132,7 @@ main { flex: 1; }
     font-size: .8rem;
 }
 
-/* ── Badges de estado en tabla ───────────────────────────────── */
+/* ── Status badges in the table ────────────────────────────── */
 .badge-active {
     background-color: #d1fae5;
     color: #065f46;
@@ -150,7 +150,7 @@ main { flex: 1; }
     border-radius: 999px;
 }
 
-/* ── Badge de categoría (tabla) ──────────────────────────────── */
+/* ── Category badge (table) ────────────────────────────────── */
 .badge-category {
     background-color: var(--brand-light);
     color: var(--text-dark);
@@ -160,12 +160,12 @@ main { flex: 1; }
     border-radius: 999px;
 }
 
-/* ── Footer de admin ─────────────────────────────────────────── */
+/* ── Admin footer ──────────────────────────────────────────── */
 .admin-footer {
     background-color: var(--footer-bg);
 }
 
-/* ── Paginación/contador de resultados ───────────────────────── */
+/* ── Pagination / results counter ──────────────────────────── */
 .results-count {
     font-size: .8rem;
     color: #6b7280;
@@ -174,7 +174,7 @@ main { flex: 1; }
     background-color: #faf9ff;
 }
 
-/* Paginador — color activo con paleta brand */
+/* Paginator — active color using the brand palette */
 .results-count .pagination .page-link {
     color: var(--brand);
     border-color: #e5e7eb;
@@ -193,14 +193,14 @@ main { flex: 1; }
     color: #c4b5fd;
 }
 
-/* ── Modal de confirmación ───────────────────────────────────── */
+/* ── Confirmation modal ────────────────────────────────────── */
 .modal-content {
     border-radius: .75rem;
     border: none;
     box-shadow: 0 8px 32px rgba(0,0,0,.15);
 }
 
-/* ── Títulos de sección ──────────────────────────────────────── */
+/* ── Section titles ────────────────────────────────────────── */
 .admin-page-title {
     color: var(--text-dark);
     font-size: 1.5rem;
@@ -209,7 +209,7 @@ main { flex: 1; }
     color: var(--brand);
 }
 
-/* ── Input group – prefijo $ en precio ───────────────────────── */
+/* ── Input group – $ prefix on price ───────────────────────── */
 .input-group-text {
     background-color: var(--brand-light);
     border-color: #dee2e6;
@@ -217,7 +217,7 @@ main { flex: 1; }
     font-weight: 600;
 }
 
-/* ── Focus visible consistente con storefront ────────────────── */
+/* ── Focus visible consistent with the storefront ─────────── */
 .form-control:focus,
 .form-select:focus {
     border-color: var(--brand);

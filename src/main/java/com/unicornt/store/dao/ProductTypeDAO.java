@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-/** Acceso a datos para la tabla product_types usando Spring JdbcTemplate. */
+/** Data access for the product_types table using Spring JdbcTemplate. */
 @Repository
 public class ProductTypeDAO {
 
@@ -17,7 +17,7 @@ public class ProductTypeDAO {
         this.jdbc = jdbc;
     }
 
-    /** Lista todos los tipos de producto ordenados por id. */
+    /** Lists all product types ordered by id. */
     public List<ProductType> findAll() {
         return jdbc.query(
             "SELECT id, name, slug FROM product_types ORDER BY id",

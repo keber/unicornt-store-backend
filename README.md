@@ -1,79 +1,79 @@
 # Unicorn't Store
 
-Plataforma e-commerce con catálogo de productos, autenticación de usuarios y panel de administración.  
-Desplegada con Docker sobre VPS + PostgreSQL en Supabase.
+E-commerce platform with a product catalog, user authentication and an admin panel.
+Deployed with Docker on a VPS + PostgreSQL on Supabase.
 
-**Demo:** https://unicornt-store.keber.dev  
-**Repositorio:** https://github.com/keber/unicornt-store-springboot
+**Demo:** https://unicornt-store.keber.dev
+**Repository:** https://github.com/keber/unicornt-store-springboot
 
 ---
 
 ## Stack
 
-| Capa | Tecnología |
+| Layer | Technology |
 |------|------------|
-| Lenguaje | Java 25 |
+| Language | Java 25 |
 | Framework | Spring Boot 4.0.8 |
 | Web | Spring MVC |
-| Vistas | Thymeleaf 3 |
-| Seguridad | Spring Security 7 (roles ADMIN / CLIENT, BCrypt) |
-| Persistencia | Spring JdbcTemplate (CRUD) · Spring Data JPA (usuarios/roles) |
-| Build | Maven 3.x · JAR ejecutable |
-| Contenedores | Docker · Docker Compose |
-| Perfiles | `dev` (MySQL local) · `prod` (PostgreSQL / Supabase) |
-| BD soportadas | MySQL 8+ · PostgreSQL 15+ |
+| Views | Thymeleaf 3 |
+| Security | Spring Security 7 (ADMIN / CLIENT roles, BCrypt) |
+| Persistence | Spring JdbcTemplate (CRUD) · Spring Data JPA (users/roles) |
+| Build | Maven 3.x · executable JAR |
+| Containers | Docker · Docker Compose |
+| Profiles | `dev` (local MySQL) · `prod` (PostgreSQL / Supabase) |
+| Supported databases | MySQL 8+ · PostgreSQL 15+ |
 | Tests | JUnit 5 · Mockito · MockMvc · H2 (in-memory) |
 | UI | Bootstrap 5.3.8 · Font Awesome 6.5.1 |
 
 ---
 
-## Funcionalidades
+## Features
 
-- **Registro e inicio de sesión** — Formularios públicos con validación. Contraseñas hasheadas con BCrypt.
-- **Catálogo de productos** — Vista de grilla con búsqueda por nombre, filtro por categoría y paginación.
-- **Panel de administración** — CRUD completo de productos (crear, editar, eliminar) con vista previa de imagen.
-- **Roles y autorización** — `ADMIN` gestiona productos; `CLIENT` navega el catálogo. Redirección automática según rol.
-- **Seed automático** — Usuarios de prueba creados al iniciar (`app.seed.enabled` para desactivar en producción).
-- **Perfiles de entorno** — `dev` (MySQL local) y `prod` (PostgreSQL / Supabase) con un solo cambio de variable.
-- **Despliegue con Docker** — Imagen ligera (Alpine), Docker Compose con variables desde `.env`.
+- **Sign-up and sign-in** — Public forms with validation. Passwords hashed with BCrypt.
+- **Product catalog** — Grid view with search by name, filter by category and pagination.
+- **Admin panel** — Full product CRUD (create, edit, delete) with image preview.
+- **Roles and authorization** — `ADMIN` manages products; `CLIENT` browses the catalog. Automatic redirect based on role.
+- **Automatic seed** — Test users created on startup (`app.seed.enabled` to disable in production).
+- **Environment profiles** — `dev` (local MySQL) and `prod` (PostgreSQL / Supabase) with a single variable change.
+- **Docker deployment** — Lightweight image (Alpine), Docker Compose with variables from `.env`.
 
 ---
 
-## Inicio rápido
+## Quick start
 
 ```bash
-# 1. Compilar
+# 1. Build
 mvn clean package -DskipTests
 
-# 2. Configurar variables
+# 2. Configure variables
 cp .env-template .env
-# Editar .env con los datos de conexión a BD
+# Edit .env with the database connection details
 
-# 3. Levantar con Docker
+# 3. Start with Docker
 docker compose --env-file .env up --build -d
 
-# 4. Abrir en el navegador
+# 4. Open in the browser
 # http://localhost:8080
 ```
 
-Para ejecución local sin Docker, ver [docs/deployment.md](docs/deployment.md#ejecución-local-sin-docker).
+For local execution without Docker, see [docs/deployment.md](docs/deployment.md#local-execution-without-docker).
 
 ---
 
-## Rutas principales
+## Main routes
 
-| Método | URL | Acceso | Descripción |
+| Method | URL | Access | Description |
 |--------|-----|--------|-------------|
-| `GET` | `/` | Autenticado | Redirige según rol (ADMIN → `/admin/products`, CLIENT → `/catalog`) |
-| `GET` | `/login` | Público | Formulario de inicio de sesión |
-| `GET/POST` | `/register` | Público | Registro de nuevo usuario (rol CLIENT) |
-| `GET` | `/catalog` | Autenticado | Catálogo de productos (solo lectura) |
-| `GET` | `/admin/products` | ADMIN | Listado de productos (búsqueda + filtro) |
-| `GET` | `/admin/products/new` | ADMIN | Formulario de creación |
-| `GET` | `/admin/products/edit?id={id}` | ADMIN | Formulario de edición |
-| `POST` | `/admin/products` | ADMIN | Crear producto |
-| `POST` | `/admin/products/update` | ADMIN | Actualizar producto |
-| `POST` | `/admin/products/delete` | ADMIN | Eliminar producto |
+| `GET` | `/` | Authenticated | Redirects based on role (ADMIN → `/admin/products`, CLIENT → `/catalog`) |
+| `GET` | `/login` | Public | Sign-in form |
+| `GET/POST` | `/register` | Public | New user registration (CLIENT role) |
+| `GET` | `/catalog` | Authenticated | Product catalog (read-only) |
+| `GET` | `/admin/products` | ADMIN | Product list (search + filter) |
+| `GET` | `/admin/products/new` | ADMIN | Create form |
+| `GET` | `/admin/products/edit?id={id}` | ADMIN | Edit form |
+| `POST` | `/admin/products` | ADMIN | Create product |
+| `POST` | `/admin/products/update` | ADMIN | Update product |
+| `POST` | `/admin/products/delete` | ADMIN | Delete product |
 
 ---
 
@@ -83,27 +83,27 @@ Para ejecución local sin Docker, ver [docs/deployment.md](docs/deployment.md#ej
 mvn clean test
 ```
 
-| Clase | Tipo | Tests |
+| Class | Type | Tests |
 |-------|------|-------|
-| `UserServiceTest` | Unitario (Mockito) | 4 |
-| `SecurityIntegrationTest` | Integración (MockMvc + H2) | 11 |
+| `UserServiceTest` | Unit (Mockito) | 4 |
+| `SecurityIntegrationTest` | Integration (MockMvc + H2) | 11 |
 
 ---
 
-## Documentación
+## Documentation
 
-| Documento | Contenido |
+| Document | Contents |
 |-----------|-----------|
-| [docs/configuration.md](docs/configuration.md) | Requisitos previos, variables de entorno, perfiles Spring, datasource, JPA, Thymeleaf |
-| [docs/deployment.md](docs/deployment.md) | Compilación, ejecución local, Docker y Docker Compose |
-| [docs/security.md](docs/security.md) | Roles, usuarios de prueba, flujo de autenticación, registro |
-| [docs/development.md](docs/development.md) | Estructura del proyecto, tests |
+| [docs/configuration.md](docs/configuration.md) | Prerequisites, environment variables, Spring profiles, datasource, JPA, Thymeleaf |
+| [docs/deployment.md](docs/deployment.md) | Build, local execution, Docker and Docker Compose |
+| [docs/security.md](docs/security.md) | Roles, test users, authentication flow, registration |
+| [docs/development.md](docs/development.md) | Project structure, tests |
 
 ---
 
-## Proyectos relacionados
+## Related projects
 
-| Repositorio | Descripción |
+| Repository | Description |
 |-------------|-------------|
-| [unicornt-store-frontend](https://github.com/keber/unicornt-store-frontend) | Catálogo público (HTML/CSS/JS) |
-| [ecommerce-db-m3](https://github.com/keber/ecommerce-db-m3) | Scripts SQL (schema + seed) para MySQL y PostgreSQL |
+| [unicornt-store-frontend](https://github.com/keber/unicornt-store-frontend) | Public catalog (HTML/CSS/JS) |
+| [ecommerce-db-m3](https://github.com/keber/ecommerce-db-m3) | SQL scripts (schema + seed) for MySQL and PostgreSQL |

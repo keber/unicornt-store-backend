@@ -5,8 +5,8 @@ import java.text.NumberFormat;
 import java.util.Locale;
 
 /**
- * Modelo de dominio para productos del catalogo.
- * Refleja la tabla products + JOIN con categories y product_types.
+ * Domain model for catalog products.
+ * Mirrors the products table + JOIN with categories and product_types.
  */
 @Entity
 @Table(name = "products")
@@ -56,7 +56,7 @@ public class Product {
     public String getImageBase()       { return imageBase != null ? imageBase : ""; }
     public boolean isActive()          { return active; }
 
-    /** Precio formateado en CLP para mostrar en vistas. */
+    /** Price formatted in CLP for display in views. */
     public String getFormattedPrice() {
         NumberFormat nf = NumberFormat.getInstance(Locale.of("es", "CL"));
         return "$" + nf.format(price);

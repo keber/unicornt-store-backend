@@ -1,48 +1,48 @@
-# Seguridad
+# Security
 
-La aplicación usa **Spring Security** con autenticación por formulario y autorización basada en roles.
+The application uses **Spring Security** with form-based authentication and role-based authorization.
 
 ## Roles
 
-| Rol | Acceso |
+| Role | Access |
 |-----|--------|
-| `ADMIN` | Panel de administración (`/admin/**`) + Catálogo (`/catalog`) |
-| `CLIENT` | Catálogo público (`/catalog`) |
+| `ADMIN` | Admin panel (`/admin/**`) + Catalog (`/catalog`) |
+| `CLIENT` | Public catalog (`/catalog`) |
 
 ---
 
-## Usuarios de prueba (seed automático)
+## Test users (automatic seed)
 
-Al iniciar la aplicación, se crean automáticamente si no existen:
+On application startup, they are created automatically if they do not exist:
 
-| Email | Contraseña | Rol |
+| Email | Password | Role |
 |-------|------------|-----|
 | `admin@unicornt.cl` | `admin123` | ADMIN |
 | `cliente@unicornt.cl` | `cliente123` | CLIENT |
 
-> **Producción:** El seed está controlado por la propiedad `app.seed.enabled`. Por defecto es `true` (se ejecuta). Para desactivarlo en producción, define la variable de entorno `APP_SEED_ENABLED=false` o agrega `app.seed.enabled=false` en `application.properties`. Esto evita que existan usuarios con contraseñas conocidas en el servidor.
+> **Production:** The seed is controlled by the `app.seed.enabled` property. It defaults to `true` (it runs). To disable it in production, set the environment variable `APP_SEED_ENABLED=false` or add `app.seed.enabled=false` to `application.properties`. This prevents users with known passwords from existing on the server.
 
 ---
 
-## Páginas públicas
+## Public pages
 
-`/login` y `/register` son accesibles sin autenticación.
+`/login` and `/register` are accessible without authentication.
 
 ---
 
-## Flujo de autenticación
+## Authentication flow
 
-1. El usuario accede a cualquier ruta protegida → redirigido a `/login`.
-2. Spring Security valida credenciales contra la base de datos (BCrypt).
-3. Según el rol, `CustomAuthSuccessHandler` redirige:
+1. The user accesses any protected route → redirected to `/login`.
+2. Spring Security validates the credentials against the database (BCrypt).
+3. Based on the role, `CustomAuthSuccessHandler` redirects:
    - **ADMIN** → `/admin/products`
    - **CLIENT** → `/catalog`
-4. El navbar muestra opciones distintas según el rol (`sec:authorize`).
+4. The navbar shows different options based on the role (`sec:authorize`).
 
 ---
 
-## Registro
+## Registration
 
-- Cualquier visitante puede registrarse en `/register`.
-- Los nuevos usuarios reciben automáticamente el rol `CLIENT`.
-- Las contraseñas se almacenan hasheadas con BCrypt.
+- Any visitor can register at `/register`.
+- New users automatically receive the `CLIENT` role.
+- Passwords are stored hashed with BCrypt.

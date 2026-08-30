@@ -30,7 +30,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public String register(@ModelAttribute RegisterRequest registerRequest, Model model) {
-        // Validación básica de campos vacíos
+        // Basic validation of empty fields
         if (registerRequest.getFirstName() == null || registerRequest.getFirstName().isBlank()
                 || registerRequest.getLastName() == null || registerRequest.getLastName().isBlank()
                 || registerRequest.getEmail() == null || registerRequest.getEmail().isBlank()

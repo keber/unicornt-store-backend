@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Acceso a datos para la tabla products usando Spring JdbcTemplate.
+ * Data access for the products table using Spring JdbcTemplate.
  */
 @Repository
 public class ProductDAO {
@@ -30,7 +30,7 @@ public class ProductDAO {
     }
 
     // ----------------------------------------------------------------
-    // Consultas
+    // Queries
     // ----------------------------------------------------------------
 
     public List<Product> findAll(String nameFilter, Integer categoryId) {
@@ -66,7 +66,7 @@ public class ProductDAO {
     }
 
     // ----------------------------------------------------------------
-    // Mutaciones
+    // Mutations
     // ----------------------------------------------------------------
 
     public void insert(Product p) {

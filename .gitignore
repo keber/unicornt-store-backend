@@ -1,4 +1,4 @@
-# ── Compilación ──────────────────────────────────────────────────
+# ── Build ────────────────────────────────────────────────────────
 target/
 out/
 build/
@@ -32,13 +32,13 @@ nbproject/
 nbbuild/
 nbdist/
 
-# ── Sistema operativo ─────────────────────────────────────────────
+# ── Operating system ─────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ── Secretos y configuración local ───────────────────────────────
-# NUNCA subir credenciales - usar variables de entorno (ver pom.xml)
+# ── Secrets and local configuration ──────────────────────────────
+# NEVER commit credentials - use environment variables (see pom.xml)
 *.env
 .env
 .env.*

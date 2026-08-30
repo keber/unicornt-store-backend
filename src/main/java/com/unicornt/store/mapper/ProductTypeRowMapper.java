@@ -6,7 +6,7 @@ import org.springframework.jdbc.core.RowMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-/** Mapea una fila de la tabla product_types a un objeto ProductType. */
+/** Maps a row of the product_types table to a ProductType object. */
 public class ProductTypeRowMapper implements RowMapper<ProductType> {
 
     @Override

@@ -3,9 +3,9 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <!--
-  Fragmento de pie de página reutilizable.
+  Reusable footer fragment.
 
-  Uso en cada template de contenido:
+  Usage in each content template:
     <footer th:replace="~{layout/footer :: footer}"></footer>
 -->
 
@@ -16,7 +16,7 @@
 <footer class="site-footer admin-footer text-white mt-5 py-4">
     <div class="container">
         <div class="row gy-3 align-items-center">
-            <!-- Marca -->
+            <!-- Brand -->
             <div class="col-12 col-md-6">
                 <h6 class="fw-bold d-flex align-items-center gap-2 mb-1">
                     <img th:src="@{/assets/img/unicornt-logo.png}" alt="Unicorn't Store"
@@ -28,7 +28,7 @@
                     Tu tienda de poleras para gente de TI.
                 </p>
             </div>
-            <!-- Links rápidos -->
+            <!-- Quick links -->
             <div class="col-12 col-md-6 text-md-end">
                 <ul class="list-unstyled small mb-0 d-flex flex-wrap gap-3 justify-content-md-end">
                     <li sec:authorize="isAuthenticated()">

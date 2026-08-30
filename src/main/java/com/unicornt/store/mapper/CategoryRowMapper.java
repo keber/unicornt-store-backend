@@ -6,7 +6,7 @@ import org.springframework.jdbc.core.RowMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-/** Mapea una fila de la tabla categories a un objeto Category. */
+/** Maps a row of the categories table to a Category object. */
 public class CategoryRowMapper implements RowMapper<Category> {
 
     @Override

@@ -9,7 +9,7 @@
 
 <main class="container pb-5 mt-4">
 
-    <!-- ---- Encabezado de sección ---- -->
+    <!-- ---- Section header ---- -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold mb-0 admin-page-title">
             <i class="fa-solid fa-tshirt me-2"></i>Catálogo de Productos
@@ -19,7 +19,7 @@
         </a>
     </div>
 
-    <!-- ---- Mensajes de feedback (PRG) ---- -->
+    <!-- ---- Feedback messages (PRG) ---- -->
     <div th:if="${param.success != null}"
          class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="fa-solid fa-circle-check me-1"></i>
@@ -33,7 +33,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
     </div>
 
-    <!-- ---- Filtros ---- -->
+    <!-- ---- Filters ---- -->
     <div class="admin-filter-card p-3 mb-4">
         <form method="get" th:action="@{/admin/products}" class="row g-3 align-items-end">
             <div class="col-md-5">
@@ -71,7 +71,7 @@
         </form>
     </div>
 
-    <!-- ---- Tabla de resultados ---- -->
+    <!-- ---- Results table ---- -->
     <div class="admin-table-wrapper">
         <table class="table table-hover admin-table">
             <thead>
@@ -86,14 +86,14 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Estado vacío -->
+                <!-- Empty state -->
                 <tr th:if="${#lists.isEmpty(products)}">
                     <td colspan="7" class="text-center admin-empty">
                         <i class="fa-solid fa-box-open"></i>
                         No se encontraron productos con esos criterios.
                     </td>
                 </tr>
-                <!-- Filas de productos -->
+                <!-- Product rows -->
                 <tr th:each="p : ${products}">
                     <td class="ps-3 text-muted small" th:text="'#' + ${p.id}"></td>
                     <td class="fw-semibold" th:text="${p.name}"></td>
@@ -126,7 +126,7 @@
             </tbody>
         </table>
 
-        <!-- Conteo y paginación -->
+        <!-- Count and pagination -->
         <div th:if="${not #lists.isEmpty(products)}"
              class="results-count d-flex justify-content-between align-items-center flex-wrap gap-2">
 
@@ -134,12 +134,12 @@
 
             <nav th:if="${totalPages > 1}" aria-label="Paginación de productos">
                 <ul class="pagination pagination-sm mb-0">
-                    <!-- Anterior -->
+                    <!-- Previous -->
                     <li th:classappend="${currentPage == 1} ? 'disabled'" class="page-item">
                         <a class="page-link"
                            th:href="@{/admin/products(page=${currentPage - 1},search=${searchParam},categoryId=${categoryFilter})}">&laquo;</a>
                     </li>
-                    <!-- Primera página + elipsis izquierda -->
+                    <!-- First page + left ellipsis -->
                     <li th:if="${windowStart > 1}" class="page-item">
                         <a class="page-link"
                            th:href="@{/admin/products(page=1,search=${searchParam},categoryId=${categoryFilter})}">1</a>
@@ -147,7 +147,7 @@
                     <li th:if="${windowStart > 2}" class="page-item disabled">
                         <span class="page-link">&hellip;</span>
                     </li>
-                    <!-- Ventana de páginas -->
+                    <!-- Page window -->
                     <li th:each="i : ${#numbers.sequence(windowStart, windowEnd)}"
                         th:classappend="${i == currentPage} ? 'active'"
                         class="page-item">
@@ -155,7 +155,7 @@
                            th:href="@{/admin/products(page=${i},search=${searchParam},categoryId=${categoryFilter})}"
                            th:text="${i}"></a>
                     </li>
-                    <!-- Elipsis derecha + última página -->
+                    <!-- Right ellipsis + last page -->
                     <li th:if="${windowEnd < totalPages - 1}" class="page-item disabled">
                         <span class="page-link">&hellip;</span>
                     </li>
@@ -164,7 +164,7 @@
                            th:href="@{/admin/products(page=${totalPages},search=${searchParam},categoryId=${categoryFilter})}"
                            th:text="${totalPages}"></a>
                     </li>
-                    <!-- Siguiente -->
+                    <!-- Next -->
                     <li th:classappend="${currentPage == totalPages} ? 'disabled'" class="page-item">
                         <a class="page-link"
                            th:href="@{/admin/products(page=${currentPage + 1},search=${searchParam},categoryId=${categoryFilter})}">&raquo;</a>
@@ -174,7 +174,7 @@
         </div>
     </div>
 
-    <!-- ---- Modal confirmación eliminar ---- -->
+    <!-- ---- Delete confirmation modal ---- -->
     <div class="modal fade" id="deleteModal" tabindex="-1"
          aria-labelledby="deleteModalLabel" aria-hidden="true">
         <div class="modal-dialog">

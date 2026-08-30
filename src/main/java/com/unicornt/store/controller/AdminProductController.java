@@ -14,15 +14,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Controlador Spring MVC para la gestión de productos del admin.
+ * Spring MVC controller for admin product management.
  *
- * Rutas:
- *   GET  /admin/products         → listado + búsqueda/filtro
- *   GET  /admin/products/new     → formulario de creación
- *   POST /admin/products         → crear producto
- *   GET  /admin/products/edit    → formulario de edición (?id=X)
- *   POST /admin/products/update  → guardar edición
- *   POST /admin/products/delete  → eliminar
+ * Routes:
+ *   GET  /admin/products         → list + search/filter
+ *   GET  /admin/products/new     → create form
+ *   POST /admin/products         → create product
+ *   GET  /admin/products/edit    → edit form (?id=X)
+ *   POST /admin/products/update  → save edit
+ *   POST /admin/products/delete  → delete
  */
 @Controller
 @RequestMapping("/admin/products")
@@ -44,7 +44,7 @@ public class AdminProductController {
     }
 
     // ----------------------------------------------------------------
-    // GET — listado
+    // GET — list
     // ----------------------------------------------------------------
 
     @GetMapping
@@ -77,7 +77,7 @@ public class AdminProductController {
     }
 
     // ----------------------------------------------------------------
-    // GET — formulario nuevo
+    // GET — new form
     // ----------------------------------------------------------------
 
     @GetMapping("/new")
@@ -89,7 +89,7 @@ public class AdminProductController {
     }
 
     // ----------------------------------------------------------------
-    // GET — formulario edición
+    // GET — edit form
     // ----------------------------------------------------------------
 
     @GetMapping("/edit")
@@ -112,7 +112,7 @@ public class AdminProductController {
     }
 
     // ----------------------------------------------------------------
-    // POST — crear
+    // POST — create
     // ----------------------------------------------------------------
 
     @PostMapping
@@ -153,7 +153,7 @@ public class AdminProductController {
     }
 
     // ----------------------------------------------------------------
-    // POST — actualizar
+    // POST — update
     // ----------------------------------------------------------------
 
     @PostMapping("/update")
@@ -200,7 +200,7 @@ public class AdminProductController {
     }
 
     // ----------------------------------------------------------------
-    // POST — eliminar
+    // POST — delete
     // ----------------------------------------------------------------
 
     @PostMapping("/delete")

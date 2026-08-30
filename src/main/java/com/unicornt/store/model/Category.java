@@ -3,8 +3,8 @@ package com.unicornt.store.model;
 import jakarta.persistence.*;
 
 /**
- * Modelo de dominio para categorias de productos.
- * Refleja la tabla categories.
+ * Domain model for product categories.
+ * Mirrors the categories table.
  */
 @Entity
 @Table(name = "categories")

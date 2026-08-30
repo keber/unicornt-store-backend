@@ -64,16 +64,16 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          # printf preserva saltos de línea correctamente y el valor nunca
-          # aparece en logs porque GitHub Actions enmascara todos los secrets
+          # printf preserves newlines correctly and the value never
+          # appears in logs because GitHub Actions masks all secrets
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          # Agregar host a known_hosts para evitar prompt interactivo
+          # Add host to known_hosts to avoid an interactive prompt
           ssh-keyscan -p ${{ secrets.DEPLOY_PORT }} "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
           
       - name: Deploy to server via SSH
         run: |
-          # en el servidor, authorized_keys tiene command= para ejecutar script específico que hace docker-compose pull & docker-compose up -d
+          # on the server, authorized_keys has command= to run a specific script that does docker-compose pull & docker-compose up -d
           ssh -i ~/.ssh/deploy_key \
               -p ${{ secrets.DEPLOY_PORT }} \
               -o StrictHostKeyChecking=yes \

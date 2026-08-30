@@ -78,7 +78,7 @@ class SecurityIntegrationTest {
         userRepository.save(user);
     }
 
-    // ── Acceso público ──────────────────────────────────────────
+    // ── Public access ───────────────────────────────────────────
 
     @Test
     void loginPage_debeSerAccesibleSinAutenticacion() throws Exception {
@@ -98,7 +98,7 @@ class SecurityIntegrationTest {
                 .andExpect(status().is3xxRedirection());
     }
 
-    // ── Acceso con rol CLIENT ───────────────────────────────────
+    // ── Access with CLIENT role ─────────────────────────────────
 
     @Test
     void catalog_debeSerAccesibleParaClient() throws Exception {
@@ -114,7 +114,7 @@ class SecurityIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
-    // ── Acceso con rol ADMIN ────────────────────────────────────
+    // ── Access with ADMIN role ──────────────────────────────────
 
     @Test
     void adminProducts_debeSerAccesibleParaAdmin() throws Exception {
@@ -130,7 +130,7 @@ class SecurityIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    // ── Registro ────────────────────────────────────────────────
+    // ── Registration ────────────────────────────────────────────
 
     @Test
     void register_conDatosValidos_debeRedirigirALogin() throws Exception {
@@ -170,7 +170,7 @@ class SecurityIntegrationTest {
 
     @Test
     void register_conEmailDuplicado_debeMostrarError() throws Exception {
-        // Primer registro
+        // First registration
         mockMvc.perform(post("/register")
                 .with(csrf())
                 .param("firstName", "A")
@@ -178,7 +178,7 @@ class SecurityIntegrationTest {
                 .param("email", "duplicado@test.com")
                 .param("password", "password123"));
 
-        // Segundo registro con mismo email
+        // Second registration with the same email
         mockMvc.perform(post("/register")
                         .with(csrf())
                         .param("firstName", "C")

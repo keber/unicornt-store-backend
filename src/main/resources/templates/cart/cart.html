@@ -10,7 +10,7 @@
 
 <main class="container pb-5 mt-4">
 
-    <!-- Encabezado -->
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold mb-0 admin-page-title">
             <i class="fa-solid fa-cart-shopping me-2"></i>Mi Carrito
@@ -20,14 +20,14 @@
         </a>
     </div>
 
-    <!-- Toast de mensaje -->
+    <!-- Message toast -->
     <div th:if="${cartMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="fa-solid fa-check-circle me-1"></i>
         <span th:text="${cartMessage}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- Carrito vacío -->
+    <!-- Empty cart -->
     <div th:if="${#lists.isEmpty(cartItems)}" class="text-center admin-empty py-5">
         <i class="fa-solid fa-box-open fa-3x mb-3" style="color:#ccc;"></i>
         <p class="text-muted fs-5">El carrito está vacío.</p>
@@ -36,10 +36,10 @@
         </a>
     </div>
 
-    <!-- Contenido del carrito -->
+    <!-- Cart content -->
     <div th:unless="${#lists.isEmpty(cartItems)}">
 
-        <!-- Tabla de items -->
+        <!-- Items table -->
         <div class="table-responsive">
             <table class="table align-middle">
                 <thead class="table-light">
@@ -54,7 +54,7 @@
                 </thead>
                 <tbody>
                     <tr th:each="item : ${cartItems}">
-                        <!-- Imagen -->
+                        <!-- Image -->
                         <td>
                             <div style="width:60px; height:60px; background:#faf9ff; border-radius:.5rem; display:flex; align-items:center; justify-content:center;">
                                 <img th:if="${item.product.imageBase != null and !item.product.imageBase.isEmpty()}"
@@ -65,15 +65,15 @@
                                    class="fa-solid fa-image" style="color:#ddd;"></i>
                             </div>
                         </td>
-                        <!-- Nombre -->
+                        <!-- Name -->
                         <td>
                             <span class="fw-semibold" th:text="${item.product.name}"></span>
                             <br>
                             <small class="text-muted" th:text="${item.product.categoryName}"></small>
                         </td>
-                        <!-- Precio unitario -->
+                        <!-- Unit price -->
                         <td class="text-end" th:text="${item.product.formattedPrice}"></td>
-                        <!-- Cantidad -->
+                        <!-- Quantity -->
                         <td class="text-center">
                             <div class="d-flex align-items-center justify-content-center gap-1">
                                 <form th:action="@{/cart/update}" method="post" class="d-inline">
@@ -97,7 +97,7 @@
                         </td>
                         <!-- Subtotal -->
                         <td class="text-end fw-semibold" th:text="${item.formattedSubtotal}"></td>
-                        <!-- Eliminar -->
+                        <!-- Remove -->
                         <td class="text-center">
                             <form th:action="@{/cart/remove}" method="post" class="d-inline">
                                 <input type="hidden" name="productId" th:value="${item.productId}">
@@ -111,7 +111,7 @@
             </table>
         </div>
 
-        <!-- Resumen -->
+        <!-- Summary -->
         <div class="row justify-content-end mt-3">
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="card shadow-sm border-0" style="border-radius:.75rem;">
