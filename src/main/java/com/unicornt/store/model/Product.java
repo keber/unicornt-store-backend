@@ -1,12 +1,10 @@
 package com.unicornt.store.model;
 
 import jakarta.persistence.*;
-import java.text.NumberFormat;
-import java.util.Locale;
 
 /**
- * Domain model for catalog products.
- * Mirrors the products table + JOIN with categories and product_types.
+ * Catalog product row. The transient category and product type names are filled by
+ * the service layer; they are not columns of the products table.
  */
 @Entity
 @Table(name = "products")
@@ -55,12 +53,6 @@ public class Product {
     public String getDescription()     { return description != null ? description : ""; }
     public String getImageBase()       { return imageBase != null ? imageBase : ""; }
     public boolean isActive()          { return active; }
-
-    /** Price formatted in CLP for display in views. */
-    public String getFormattedPrice() {
-        NumberFormat nf = NumberFormat.getInstance(Locale.of("es", "CL"));
-        return "$" + nf.format(price);
-    }
 
     // ----------------------------------------------------------------
     // Setters

@@ -75,9 +75,4 @@ public class CartItem {
     public int getSubtotal() {
         return product != null ? product.getPrice() * quantity : 0;
     }
-
-    public String getFormattedSubtotal() {
-        java.text.NumberFormat nf = java.text.NumberFormat.getInstance(java.util.Locale.of("es", "CL"));
-        return "$" + nf.format(getSubtotal());
-    }
 }

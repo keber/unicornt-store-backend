@@ -2,10 +2,7 @@ package com.unicornt.store.model;
 
 import jakarta.persistence.*;
 
-/**
- * Domain model for product types (T-shirt, Mug).
- * Mirrors the product_types table.
- */
+/** Product type row (T-shirt, mug). */
 @Entity
 @Table(name = "product_types")
 public class ProductType {

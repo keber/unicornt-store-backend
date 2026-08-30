@@ -1,6 +1,7 @@
 package com.unicornt.store.service;
 
-import com.unicornt.store.dto.RegisterRequest;
+import com.unicornt.store.domain.exception.DuplicateResourceException;
+import com.unicornt.store.domain.exception.ResourceNotFoundException;
 import com.unicornt.store.model.Role;
 import com.unicornt.store.model.User;
 import com.unicornt.store.repository.RoleRepository;
@@ -15,10 +16,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -35,66 +41,81 @@ class UserServiceTest {
     @InjectMocks
     private UserServiceImpl userService;
 
-    private Role clientRole;
+    private Role userRole;
 
     @BeforeEach
     void setUp() {
-        clientRole = new Role();
-        clientRole.setId(1L);
-        clientRole.setName("ROLE_CLIENT");
+        userRole = new Role();
+        userRole.setId(1L);
+        userRole.setName(UserServiceImpl.DEFAULT_ROLE);
     }
 
     @Test
-    void register_debeCrearUsuarioConRolClient() {
-        RegisterRequest request = new RegisterRequest();
-        request.setFirstName("Juan");
-        request.setLastName("Pérez");
-        request.setEmail("juan@test.com");
-        request.setPassword("password123");
-
-        when(roleRepository.findByName("ROLE_CLIENT")).thenReturn(Optional.of(clientRole));
+    void registerCreatesAccountWithDefaultRole() {
+        when(userRepository.findByEmail("juan@test.com")).thenReturn(Optional.empty());
+        when(roleRepository.findByName(UserServiceImpl.DEFAULT_ROLE)).thenReturn(Optional.of(userRole));
         when(passwordEncoder.encode("password123")).thenReturn("$2a$encoded");
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
-            User u = inv.getArgument(0);
-            u.setId(1L);
-            return u;
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
         });
 
-        User result = userService.register(request);
+        User result = userService.register("Juan", "Perez", "juan@test.com", "password123");
 
         assertNotNull(result);
         assertEquals("Juan", result.getFirstName());
         assertEquals("juan@test.com", result.getEmail());
         assertEquals("$2a$encoded", result.getPassword());
-        assertTrue(result.getRoles().contains(clientRole));
+        assertTrue(result.getRoles().contains(userRole));
         verify(userRepository).save(any(User.class));
     }
 
     @Test
-    void register_debeLanzarExcepcionSiRolNoExiste() {
-        RegisterRequest request = new RegisterRequest();
-        request.setFirstName("Ana");
-        request.setLastName("López");
-        request.setEmail("ana@test.com");
-        request.setPassword("abc123");
+    void registerFailsWhenTheDefaultRoleIsMissing() {
+        when(userRepository.findByEmail("ana@test.com")).thenReturn(Optional.empty());
+        when(roleRepository.findByName(UserServiceImpl.DEFAULT_ROLE)).thenReturn(Optional.empty());
 
-        when(roleRepository.findByName("ROLE_CLIENT")).thenReturn(Optional.empty());
+        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
+                () -> userService.register("Ana", "Lopez", "ana@test.com", "abc123"));
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> userService.register(request));
-        assertTrue(ex.getMessage().contains("ROLE_CLIENT"));
+        assertTrue(ex.getMessage().contains(UserServiceImpl.DEFAULT_ROLE));
         verify(userRepository, never()).save(any());
     }
 
     @Test
-    void emailExists_debeRetornarTrueSiExiste() {
-        when(userRepository.findByEmail("existe@test.com")).thenReturn(Optional.of(new User()));
-        assertTrue(userService.emailExists("existe@test.com"));
+    void registerRejectsAnAlreadyUsedEmail() {
+        when(userRepository.findByEmail("taken@test.com")).thenReturn(Optional.of(new User()));
+
+        assertThrows(DuplicateResourceException.class,
+                () -> userService.register("Ana", "Lopez", "taken@test.com", "abc123"));
+
+        verify(userRepository, never()).save(any());
     }
 
     @Test
-    void emailExists_debeRetornarFalseSiNoExiste() {
-        when(userRepository.findByEmail("nuevo@test.com")).thenReturn(Optional.empty());
-        assertFalse(userService.emailExists("nuevo@test.com"));
+    void registerRejectsAShortPassword() {
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.register("Ana", "Lopez", "ana@test.com", "abc"));
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void emailExistsReturnsTrueForAKnownAccount() {
+        when(userRepository.findByEmail("known@test.com")).thenReturn(Optional.of(new User()));
+        assertTrue(userService.emailExists("known@test.com"));
+    }
+
+    @Test
+    void emailExistsReturnsFalseForAnUnknownAccount() {
+        when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        assertFalse(userService.emailExists("new@test.com"));
+    }
+
+    @Test
+    void findByEmailFailsForAnUnknownAccount() {
+        when(userRepository.findByEmail("ghost@test.com")).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class, () -> userService.findByEmail("ghost@test.com"));
     }
 }

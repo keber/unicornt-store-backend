@@ -8,6 +8,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
+/**
+ * Temporary stub that only lets the application start after the removal of the
+ * form login stack. The stateless JWT filter chain, CORS and the request matchers
+ * are introduced by the security task.
+ */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -18,28 +23,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http,
-                                           CustomAuthSuccessHandler successHandler) throws Exception {
-
-        http
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/login", "/register", "/assets/**", "/css/**", "/js/**").permitAll()
-                .requestMatchers("/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated()
-            )
-            .formLogin(form -> form
-                .loginPage("/login")
-                .successHandler(successHandler)
-                .permitAll()
-            )
-            .logout(logout -> logout
-                .logoutSuccessUrl("/login?logout")
-                .permitAll()
-            )
-            .exceptionHandling(ex -> ex
-                .accessDeniedPage("/access-denied")
-            );
-
+    SecurityFilterChain chain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
         return http.build();
     }
 }
