@@ -12,9 +12,11 @@
     </parent>
 
     <groupId>com.unicornt.store</groupId>
-    <artifactId>unicornt-store-springboot</artifactId>
+    <artifactId>unicornt-store-backend</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
+    <name>unicornt-store-backend</name>
+    <description>REST microservice for the Unicornt store: catalog, cart, checkout and JWT authentication</description>
 
     <properties>
         <java.version>25</java.version>
@@ -118,7 +120,7 @@
     </dependencies>
 
     <build>
-        <finalName>unicornt-store</finalName>
+        <finalName>app</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
