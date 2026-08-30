@@ -1,6 +1,7 @@
 package com.unicornt.store.controller;
 
 import com.unicornt.store.model.Role;
+import com.unicornt.store.model.User;
 import com.unicornt.store.repository.RoleRepository;
 import com.unicornt.store.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +12,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+
+import java.util.Set;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -54,6 +57,25 @@ class SecurityIntegrationTest {
         if (roleRepository.findByName("ROLE_ADMIN").isEmpty()) {
             roleRepository.save(new Role("ROLE_ADMIN"));
         }
+
+        Role clientRole = roleRepository.findByName("ROLE_CLIENT").orElseThrow();
+        Role adminRole = roleRepository.findByName("ROLE_ADMIN").orElseThrow();
+        createUserIfMissing("cliente@test.com", "Cliente", "Test", clientRole);
+        createUserIfMissing("admin@test.com", "Admin", "Test", adminRole);
+    }
+
+    private void createUserIfMissing(String email, String firstName, String lastName, Role role) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            return;
+        }
+
+        User user = new User();
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        user.setEmail(email);
+        user.setPassword("password123");
+        user.setRoles(Set.of(role));
+        userRepository.save(user);
     }
 
     // ── Acceso público ──────────────────────────────────────────
