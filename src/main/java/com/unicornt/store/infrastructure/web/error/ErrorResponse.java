@@ -10,7 +10,7 @@ import java.util.List;
 @Schema(name = "ErrorResponse", description = "Uniform error payload returned by the API")
 public record ErrorResponse(
 
-        @Schema(description = "Human readable error message", example = "Product not found: 42")
+        @Schema(description = "Human readable error message", example = "ProductEntity not found: 42")
         String message,
 
         @Schema(description = "Stable machine readable error code", example = "RESOURCE_NOT_FOUND")

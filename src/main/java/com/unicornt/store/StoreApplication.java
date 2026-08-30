@@ -1,9 +1,9 @@
 package com.unicornt.store;
 
-import com.unicornt.store.model.Role;
-import com.unicornt.store.model.User;
-import com.unicornt.store.repository.RoleRepository;
-import com.unicornt.store.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
+import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
+import com.unicornt.store.infrastructure.persistence.repository.RoleRepository;
+import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -39,14 +39,14 @@ public class StoreApplication extends SpringBootServletInitializer {
                                PasswordEncoder passwordEncoder) {
         return args -> {
             // Create roles if they do not exist
-            Role adminRole = roleRepository.findByName("ROLE_ADMIN")
-                    .orElseGet(() -> roleRepository.save(new Role("ROLE_ADMIN")));
-            Role clientRole = roleRepository.findByName("ROLE_CLIENT")
-                    .orElseGet(() -> roleRepository.save(new Role("ROLE_CLIENT")));
+            RoleEntity adminRole = roleRepository.findByName("ROLE_ADMIN")
+                    .orElseGet(() -> roleRepository.save(new RoleEntity("ROLE_ADMIN")));
+            RoleEntity clientRole = roleRepository.findByName("ROLE_CLIENT")
+                    .orElseGet(() -> roleRepository.save(new RoleEntity("ROLE_CLIENT")));
 
             // Create the admin user if it does not exist
             if (userRepository.findByEmail("admin@unicornt.cl").isEmpty()) {
-                User admin = new User();
+                UserEntity admin = new UserEntity();
                 admin.setFirstName("Admin");
                 admin.setLastName("Store");
                 admin.setEmail("admin@unicornt.cl");
@@ -57,7 +57,7 @@ public class StoreApplication extends SpringBootServletInitializer {
 
             // Create the demo client user if it does not exist
             if (userRepository.findByEmail("cliente@unicornt.cl").isEmpty()) {
-                User client = new User();
+                UserEntity client = new UserEntity();
                 client.setFirstName("Cliente");
                 client.setLastName("Demo");
                 client.setEmail("cliente@unicornt.cl");
