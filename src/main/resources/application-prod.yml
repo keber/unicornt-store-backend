@@ -1,0 +1,12 @@
+# Production profile: the schema is validated, never modified, and no API documentation is served.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

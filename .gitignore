@@ -42,9 +42,19 @@ desktop.ini
 *.env
 .env
 .env.*
+!.env.example
 secrets.properties
 local.properties
 
 # ── Logs ──────────────────────────────────────────────────────────
 *.log
 logs/
+
+# ── Refactor inputs (not deliverables) ───────────────────────────
+# Planning documents and the reference projects used while porting.
+# They stay on disk but are never part of the deliverable.
+/REFACTOR-UNICORNT-HITO4.md
+/REFACTOR-UNICORNT-HITO4.md.bak
+/INSTRUCCIONES-AGENTE-EVALUADOR-HITO4.md
+/actividad_m6_l5/
+/demoApiRest/
