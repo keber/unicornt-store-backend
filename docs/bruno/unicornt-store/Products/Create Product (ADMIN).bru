@@ -1,0 +1,27 @@
+meta {
+  name: Create Product (ADMIN)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "Unicorn Hoodie",
+    "description": "Cotton hoodie",
+    "imageBase": "hoodie-unicorn",
+    "price": 25990,
+    "categoryId": 1,
+    "productTypeId": 1,
+    "active": true
+  }
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Update Product (ADMIN)
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/products/1
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "Unicorn Hoodie",
+    "description": "Cotton hoodie, updated",
+    "imageBase": "hoodie-unicorn",
+    "price": 22990,
+    "categoryId": 1,
+    "productTypeId": 1,
+    "active": true
+  }
+}

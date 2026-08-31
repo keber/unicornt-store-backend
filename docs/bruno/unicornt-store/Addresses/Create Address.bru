@@ -1,0 +1,24 @@
+meta {
+  name: Create Address
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/addresses
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "street": "Main Street 123",
+    "city": "Santiago",
+    "region": "RM",
+    "zipCode": "1234567"
+  }
+}
