@@ -5,109 +5,69 @@
 **Local execution (without Docker):**
 
 - JDK 25+
-- Maven 3.8+
-- MySQL 8+ or PostgreSQL 15+
+- Maven 3.8+ (or the bundled `./mvnw`)
+- PostgreSQL 16, reachable from the app
 
 **Execution with Docker:**
 
 - Docker and Docker Compose
-- MySQL 8+ or PostgreSQL 15+ (may run on the host or on an external service)
-
----
 
 ## Environment variables
 
-Credentials are **never stored in the source code**. The application uses the standard Spring Boot naming convention so that the datasource is configured automatically from the operating system variables.
+Every credential comes from an environment variable; none is a literal in source
+control. `.env.example` documents every key with a `__CHANGE_ME__` placeholder;
+`.env` (the real file) is gitignored.
+
+```bash
+cp .env.example .env
+# edit .env with real values
+```
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `SPRING_PROFILES_ACTIVE` | Active profile | `dev` (MySQL) or `prod` (PostgreSQL) |
-| `SPRING_DATASOURCE_URL` | Full JDBC URL | `jdbc:mysql://localhost:3306/unicornt_store?...` |
-| `SPRING_DATASOURCE_USERNAME` | Database user | `unicornt-store-admin` |
-| `SPRING_DATASOURCE_PASSWORD` | User password | `********` |
+| `SERVER_PORT` | HTTP port | `8080` |
+| `SPRING_PROFILES_ACTIVE` | Active profile | `dev` or `prod` |
+| `POSTGRES_DB` | Database name used by the `db` compose service | `unicornt_db` |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Credentials for the `db` compose service | — |
+| `SPRING_DATASOURCE_URL` | Full JDBC URL used by the app | `jdbc:postgresql://localhost:5432/unicornt_db` |
+| `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | Credentials used by the app | — |
+| `APP_JWT_SECRET` | Base64, at least 32 bytes. Generate with `openssl rand -base64 32` | — |
+| `APP_JWT_EXPIRATION_MS` | Token lifetime in milliseconds | `3600000` |
+| `APP_CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed browser origins | `http://localhost:5173` |
 
-> Spring Boot automatically maps `SPRING_DATASOURCE_URL` → `spring.datasource.url`, etc. No extra configuration is required.
-
-### `.env-template` file
-
-The repository includes an `.env-template` file with the structure of the required variables. To use it:
-
-```bash
-cp .env-template .env
-# Edit .env with the real values
-```
-
-The `.env` file is in `.gitignore` and is **never pushed to the repository**. Docker Compose reads it automatically with `--env-file .env`.
-
----
+Spring Boot maps `SPRING_DATASOURCE_URL` to `spring.datasource.url` automatically
+(relaxed binding); no extra configuration is required.
 
 ## Spring profiles
 
-The application uses profiles to separate configuration per environment:
-
-| Profile | File | DB | Use |
-|--------|---------|----|---------|
-| `dev` | `application-dev.properties` | Local MySQL | Development |
-| `prod` | `application-prod.properties` | PostgreSQL (Supabase) | Production |
-
-The active profile is set with the `SPRING_PROFILES_ACTIVE` variable:
+| Profile | `ddl-auto` | Swagger UI / `/api-docs` | Use |
+|---------|-----------|---------------------------|-----|
+| *(none)* | `validate` | disabled | secure default, closed documentation |
+| `dev` | `update` | enabled | local development |
+| `prod` | `validate` | disabled | production |
 
 ```bash
-# Development (MySQL)
-SPRING_PROFILES_ACTIVE=dev
-
-# Production (PostgreSQL / Supabase)
-SPRING_PROFILES_ACTIVE=prod
+SPRING_PROFILES_ACTIVE=dev   # or prod
 ```
 
-The `prod` profile includes additional configuration for Supabase:
+## Schema
 
-```properties
-spring.datasource.hikari.connection-init-sql=SET search_path TO unicornt_store, public
-spring.jpa.properties.hibernate.default_schema=unicornt_store
-```
-
----
-
-## Datasource
-
-The datasource does **not** contain credentials in the source code. Spring Boot resolves the properties automatically from the environment variables `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and `SPRING_DATASOURCE_PASSWORD` (see the [Environment variables](#environment-variables) section).
-
-The engine-specific connection properties are defined in the profiles (see [Spring profiles](#spring-profiles)).
-
----
+The schema lives in versioned SQL scripts under
+`src/main/resources/db/migration/` (`V1__init.sql`, `V2__seed_reference_data.sql`).
+They run through Spring's SQL initializer on every startup — see the comment at
+the top of `application.yml` for why (Flyway's Spring Boot 4 autoconfiguration
+module is not yet on the classpath) and how to switch to real Flyway once it is.
+All statements are idempotent, so re-running them on an existing database is safe.
 
 ## JPA
 
-```properties
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=false
+```yaml
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}   # update in dev, validate in prod
+    open-in-view: false
 ```
 
-- `ddl-auto=update` lets Hibernate automatically create and update the security tables (`users`, `roles`, `users_roles`) without needing additional DDL scripts.
-- The product, category and type tables are created via the SQL scripts in the [ecommerce-db-m3](https://github.com/keber/ecommerce-db-m3) repository.
-
----
-
-## Views (Thymeleaf)
-
-```properties
-spring.thymeleaf.cache=false
-```
-
-- **Template engine:** Thymeleaf 3, integrated via `spring-boot-starter-thymeleaf`.
-- **Template location:** `src/main/resources/templates/` (Spring Boot default convention, no explicit configuration needed).
-- **Reusable fragments:** `layout/header.html` and `layout/footer.html` are inserted into every page with `th:replace`.
-- **Security in views:** The `thymeleaf-extras-springsecurity6` dependency enables attributes such as `sec:authorize="hasRole('ADMIN')"` and `sec:authentication="name"` to show or hide elements based on the authenticated user's role.
-- **Cache disabled** in development to see changes without restarting. In production, `spring.thymeleaf.cache=true` is recommended.
-
----
-
-## Database
-
-The SQL scripts live in the [ecommerce-db-m3](https://github.com/keber/ecommerce-db-m3) repository.
-
-```bash
-mysql -u root -p < ecommerce-db-m3/mysql/sql/schema.sql
-mysql -u root -p unicornt_store < ecommerce-db-m3/mysql/sql/seed.sql
-```
+`open-in-view` is disabled: every repository call happens inside the service
+layer, never lazily during view rendering — there is no view layer to begin with.

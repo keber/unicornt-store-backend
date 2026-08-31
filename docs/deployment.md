@@ -3,102 +3,69 @@
 ## Build and packaging
 
 ```bash
-mvn clean package -DskipTests
+./mvnw -DskipTests clean package
 ```
 
-The executable JAR is generated at:
-
-```
-target/unicornt-store.jar
-```
-
----
+The executable JAR is generated at `target/app.jar` (`<finalName>app</finalName>`
+in `pom.xml`, so the Dockerfile does not depend on the project version).
 
 ## Local execution (without Docker)
 
-Requires the environment variables defined in [Configuration](configuration.md#environment-variables):
+Requires a running PostgreSQL instance and the environment variables from
+[configuration.md](configuration.md#environment-variables):
 
 ```bash
-java -jar target/unicornt-store.jar
+java -jar target/app.jar
 ```
 
 Or directly with Maven:
 
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-The application will be available at `http://localhost:8080`.
+The application is available at `http://localhost:8080`.
 
----
-
-## Deployment with Docker
+## Deployment with Docker Compose
 
 ### 1. Create the `.env` file
 
 ```bash
-cp .env-template .env
-# Edit .env with the real DB connection values
+cp .env.example .env
+# edit .env with real values, including a generated APP_JWT_SECRET
 ```
 
-Example `.env` for local development (MySQL on the host):
-
-```env
-SPRING_PROFILES_ACTIVE=dev
-SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/unicornt_store?useSSL=false&serverTimezone=America/Santiago&characterEncoding=UTF-8&useUnicode=true
-SPRING_DATASOURCE_USERNAME=your_user
-SPRING_DATASOURCE_PASSWORD=your_password
-```
-
-> **Note:** From Docker, `localhost` points to the container, not the host. Use `host.docker.internal` to connect to host services (MySQL, PostgreSQL).
-
-### 2. Build and start
+### 2. Start the stack
 
 ```bash
-mvn clean package -DskipTests
-docker compose --env-file .env up --build -d
+docker compose up -d --build
 ```
 
-The application will be available at `http://localhost:8080`.
+This starts two services:
 
-### 3. View logs
+- `db` — `postgres:16-alpine`, with a named volume (`postgres_data`) so data
+  survives a container restart, and a `pg_isready` healthcheck.
+- `app` — built from the local multi-stage `Dockerfile`, waits for `db` to report
+  healthy before starting.
+
+The application is available at `http://localhost:8080`.
+
+### 3. Logs and shutdown
 
 ```bash
 docker compose logs -f
+docker compose down        # keeps the volume
+docker compose down -v     # also deletes the persisted database
 ```
-
-### 4. Stop
-
-```bash
-docker compose down
-```
-
----
 
 ## Dockerfile
 
-```dockerfile
-FROM eclipse-temurin:25-jdk-alpine
-ARG JAR_FILE=target/unicornt-store.jar
-COPY ${JAR_FILE} app.jar
-EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app.jar"]
-```
+Multi-stage build: the first stage compiles `target/app.jar` with the Maven
+wrapper on `eclipse-temurin:25-jdk`; the second stage copies only the jar into
+`eclipse-temurin:25-jre` and runs it as a non-root user (`unicornt`). See the
+[repository Dockerfile](../Dockerfile) for the exact steps.
 
 ## docker-compose.yml
 
-```yaml
-services:
-  unicornt-store:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-    restart: always
-```
-
-The variables are injected from the `.env` file and passed to the container as environment variables.
+See the [repository docker-compose.yml](../docker-compose.yml). Both services
+read every credential from `.env`; nothing is hardcoded.
