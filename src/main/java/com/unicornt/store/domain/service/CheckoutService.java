@@ -1,22 +1,30 @@
 package com.unicornt.store.domain.service;
 
-import com.unicornt.store.infrastructure.persistence.entity.CartItemEntity;
+import com.unicornt.store.infrastructure.persistence.entity.OrderEntity;
 
 import java.util.List;
 
-/** Checkout use cases extracted from the removed checkout controller. */
+/** Order use cases: confirming a cart into an order and reading the caller's own orders. */
 public interface CheckoutService {
 
     /**
-     * Confirms the checkout for a user against one of that user's addresses:
-     * validates the cart is not empty, computes the total and empties the cart.
+     * Confirms the cart of a user against one of that user's addresses: validates the cart is
+     * not empty, reserves stock for every line, stores the order and empties the cart. The whole
+     * sequence is one transaction, so a failed line never leaves stock decremented.
      *
-     * @throws com.unicornt.store.domain.exception.ResourceNotFoundException if the address does not
-     *                                                                       belong to the user
+     * @throws IllegalArgumentException                                       if the cart is empty
+     * @throws com.unicornt.store.domain.exception.ResourceNotFoundException  if the address is not the user's
+     * @throws com.unicornt.store.domain.exception.OutOfStockException        if a product has not enough stock
      */
-    OrderSummary confirm(String userEmail, Long addressId);
+    OrderEntity confirm(String userEmail, Long addressId);
 
-    /** Immutable result of a confirmed checkout. */
-    record OrderSummary(String shippingAddress, int total, int itemCount, List<CartItemEntity> items) {
-    }
+    /** Orders of the given user, most recent first. */
+    List<OrderEntity> findOrders(String userEmail);
+
+    /**
+     * One order, only if it belongs to the given user.
+     *
+     * @throws com.unicornt.store.domain.exception.ResourceNotFoundException otherwise
+     */
+    OrderEntity findOrder(String userEmail, Long orderId);
 }

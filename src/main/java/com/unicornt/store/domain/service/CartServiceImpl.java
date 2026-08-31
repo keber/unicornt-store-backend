@@ -10,6 +10,8 @@ import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,9 +31,23 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public CartView getCart(String userEmail) {
+        List<CartLine> lines = getCartItems(userEmail).stream()
+                .map(this::toLine)
+                .toList();
+        int itemCount = lines.stream().mapToInt(CartLine::quantity).sum();
+        BigDecimal total = lines.stream()
+                .map(CartLine::subtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new CartView(lines, itemCount, total);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<CartItemEntity> getCartItems(String userEmail) {
         Long userId = getUserId(userEmail);
-        List<CartItemEntity> items = cartItemRepository.findByUserId(userId);
+        List<CartItemEntity> items = new ArrayList<>(cartItemRepository.findByUserId(userId));
         items.forEach(item -> item.setProduct(productRepository.findById(item.getProductId()).orElse(null)));
         items.removeIf(item -> item.getProduct() == null);
         return items;
@@ -39,44 +55,45 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public void addToCart(String userEmail, int productId, int quantity) {
+    public CartLine addItem(String userEmail, int productId, int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than 0");
         }
         Long userId = getUserId(userEmail);
         ProductEntity product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("ProductEntity", productId));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
+
         Optional<CartItemEntity> existing = cartItemRepository.findByUserIdAndProductId(userId, product.getId());
-        if (existing.isPresent()) {
-            CartItemEntity item = existing.get();
-            item.setQuantity(item.getQuantity() + quantity);
-            cartItemRepository.save(item);
-        } else {
-            cartItemRepository.save(new CartItemEntity(userId, product.getId(), quantity));
-        }
+        CartItemEntity item = existing
+                .map(found -> {
+                    found.setQuantity(found.getQuantity() + quantity);
+                    return found;
+                })
+                .orElseGet(() -> new CartItemEntity(userId, product.getId(), quantity));
+
+        CartItemEntity saved = cartItemRepository.save(item);
+        saved.setProduct(product);
+        return toLine(saved);
     }
 
     @Override
     @Transactional
-    public void updateQuantity(String userEmail, int productId, int quantity) {
-        Long userId = getUserId(userEmail);
-        CartItemEntity item = cartItemRepository.findByUserIdAndProductId(userId, productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart item", productId));
+    public CartLine updateItemQuantity(String userEmail, Long cartItemId, int quantity) {
         if (quantity <= 0) {
-            cartItemRepository.delete(item);
-        } else {
-            item.setQuantity(quantity);
-            cartItemRepository.save(item);
+            throw new IllegalArgumentException("Quantity must be greater than 0");
         }
+        CartItemEntity item = requireOwnedItem(userEmail, cartItemId);
+        item.setQuantity(quantity);
+        CartItemEntity saved = cartItemRepository.save(item);
+        saved.setProduct(productRepository.findById(saved.getProductId())
+                .orElseThrow(() -> new ResourceNotFoundException("Product", saved.getProductId())));
+        return toLine(saved);
     }
 
     @Override
     @Transactional
-    public void removeFromCart(String userEmail, int productId) {
-        Long userId = getUserId(userEmail);
-        CartItemEntity item = cartItemRepository.findByUserIdAndProductId(userId, productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart item", productId));
-        cartItemRepository.delete(item);
+    public void removeItem(String userEmail, Long cartItemId) {
+        cartItemRepository.delete(requireOwnedItem(userEmail, cartItemId));
     }
 
     @Override
@@ -85,21 +102,25 @@ public class CartServiceImpl implements CartService {
         cartItemRepository.deleteByUserId(getUserId(userEmail));
     }
 
-    @Override
-    public int getCartCount(String userEmail) {
-        return cartItemRepository.sumQuantityByUserId(getUserId(userEmail));
+    /** A cart line of another user is reported as missing, never as forbidden. */
+    private CartItemEntity requireOwnedItem(String userEmail, Long cartItemId) {
+        Long userId = getUserId(userEmail);
+        return cartItemRepository.findById(cartItemId)
+                .filter(item -> userId.equals(item.getUserId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item", cartItemId));
     }
 
-    @Override
-    public int getCartTotal(String userEmail) {
-        return getCartItems(userEmail).stream()
-                .mapToInt(CartItemEntity::getSubtotal)
-                .sum();
+    private CartLine toLine(CartItemEntity item) {
+        ProductEntity product = item.getProduct();
+        BigDecimal unitPrice = BigDecimal.valueOf(product.getPrice());
+        BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
+        return new CartLine(item.getId(), product.getId(), product.getName(), product.getImageBase(),
+                unitPrice, item.getQuantity(), subtotal);
     }
 
     private Long getUserId(String email) {
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("UserEntity", email));
+                .orElseThrow(() -> new ResourceNotFoundException("User", email));
         return user.getId();
     }
 }
