@@ -1,13 +1,33 @@
-name: Build, Push and Deploy Docker
+name: CI
 
 on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Build and test
+        run: ./mvnw -B verify
+
   build-and-push:
     runs-on: ubuntu-latest
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     outputs:
       image_tag: ${{ steps.meta.outputs.version_tag }}
@@ -27,9 +47,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+          cache: maven
 
       - name: Build jar with Maven
-        run: mvn clean package -DskipTests
+        run: ./mvnw -B -DskipTests clean package
 
       - name: Verify target contents
         run: ls -lah target
@@ -70,14 +91,14 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           # Add host to known_hosts to avoid an interactive prompt
           ssh-keyscan -p ${{ secrets.DEPLOY_PORT }} "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
-          
+
       - name: Deploy to server via SSH
         run: |
           # on the server, authorized_keys has command= to run a specific script that does docker-compose pull & docker-compose up -d
           ssh -i ~/.ssh/deploy_key \
               -p ${{ secrets.DEPLOY_PORT }} \
               -o StrictHostKeyChecking=yes \
-              "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" 
+              "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
 
       - name: Cleanup SSH key
         if: always()
