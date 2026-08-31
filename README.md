@@ -46,16 +46,57 @@ exposed over HTTP.
 
 ## Getting started
 
+There are two ways to run the app: everything in containers (recommended — no
+local environment wiring needed), or the database in a container with the app
+run on the host for a faster edit/compile/run loop.
+
+### Option A — fully containerized (app + db)
+
 ```bash
 cp .env.example .env      # fill in the placeholders, see below
-docker compose up -d      # starts PostgreSQL 16 with a persistent named volume
+docker compose up -d      # builds the app image, starts app + PostgreSQL 16
+```
+
+Docker Compose reads `.env` itself (`env_file: .env` in `docker-compose.yml`),
+so no extra step is needed here. The app is reachable at `http://localhost:8080`
+once `docker compose ps` shows both `unicornt-postgres` and
+`unicornt-store-app` healthy/running.
+
+### Option B — app on the host, database in a container
+
+```bash
+cp .env.example .env      # fill in the placeholders, see below
+docker compose up -d db   # starts PostgreSQL 16 with a persistent named volume
+```
+
+`mvnw`/`java -jar` do **not** read `.env` automatically — only `docker compose`
+does. Load it into your shell before starting the app:
+
+```bash
+# bash / Git Bash
+set -a; source .env; set +a
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-The `dev` profile keeps the schema in sync automatically (`ddl-auto: update`) and
-exposes the API documentation. The application also applies the versioned SQL
-migrations under `src/main/resources/db/migration` on every startup, seeding the
-reference catalog data and the `ROLE_USER`/`ROLE_ADMIN` roles.
+```powershell
+# PowerShell
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^\s*#' -or $_ -notmatch '=') { return }
+  $k, $v = $_.Split('=', 2)
+  [System.Environment]::SetEnvironmentVariable($k.Trim(), $v.Trim(), 'Process')
+}
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+```
+
+Skipping this step fails fast with `Unsatisfied dependency ... jwtService`,
+because `APP_JWT_SECRET` is unset. The loaded variables only apply to that
+shell session — a new terminal window needs the same step again.
+
+Either option: the `dev` profile keeps the schema in sync automatically
+(`ddl-auto: update`) and exposes the API documentation. The application also
+applies the versioned SQL migrations under `src/main/resources/db/migration`
+on every startup, seeding the reference catalog data and the
+`ROLE_USER`/`ROLE_ADMIN` roles.
 
 Generate a JWT signing key for `APP_JWT_SECRET` in `.env`:
 
@@ -63,11 +104,12 @@ Generate a JWT signing key for `APP_JWT_SECRET` in `.env`:
 openssl rand -base64 32
 ```
 
-### Running against the container stack end to end
-
-```bash
-docker compose up -d          # app + db, built from the local Dockerfile
-```
+> **Reusing an existing database volume with different credentials?**
+> PostgreSQL only applies `POSTGRES_USER`/`POSTGRES_PASSWORD` the first time it
+> initializes an empty volume. If you change those values in `.env` after the
+> volume already exists, the app will fail to authenticate. Reset with
+> `docker compose down -v` (drops the volume — local data only) before
+> bringing the stack back up.
 
 ## API documentation
 

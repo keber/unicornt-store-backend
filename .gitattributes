@@ -1,0 +1,20 @@
+# Auto-detect text files and normalize line endings to LF in the repository.
+* text=auto eol=lf
+
+# Shell scripts must keep LF endings regardless of the checkout platform:
+# they run inside Linux Docker build stages, where a CRLF shebang line
+# ("#!/bin/sh\r") is not recognized and the script fails with "not found".
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Windows-specific scripts keep their native CRLF endings.
+mvnw.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files: never touch line endings.
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

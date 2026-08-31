@@ -6,7 +6,10 @@ COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 COPY src/ src/
 
-RUN chmod +x mvnw && ./mvnw -B -q -DskipTests clean package
+# Normalize line endings before executing: a checkout with core.autocrlf=true
+# (the common Windows default) rewrites mvnw's LF endings to CRLF, which
+# breaks its "#!/bin/sh" shebang inside this Linux build stage.
+RUN sed -i 's/\r$//' mvnw && chmod +x mvnw && ./mvnw -B -q -DskipTests clean package
 
 # ---------- Stage 2: runtime ----------
 FROM eclipse-temurin:25-jre
