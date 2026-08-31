@@ -4,13 +4,18 @@
 
 **Local execution (without Docker):**
 
-- JDK 25+
+- JDK 21+ (the project targets Java 25)
 - Maven 3.8+ (or the bundled `./mvnw`)
 - PostgreSQL 16, reachable from the app
 
 **Execution with Docker:**
 
-- Docker and Docker Compose
+- Docker and Docker Compose v2
+
+Run `bash scripts/check-env.sh` (Linux/macOS/Git Bash) or
+`.\scripts\check-env.ps1` (PowerShell) to verify these are all present and that
+`.env` is filled in correctly — see the root [README](../README.md#prerequisites)
+for details.
 
 ## Environment variables
 
@@ -31,7 +36,7 @@ cp .env.example .env
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` | Credentials for the `db` compose service | — |
 | `SPRING_DATASOURCE_URL` | Full JDBC URL used by the app | `jdbc:postgresql://localhost:5432/unicornt_db` |
 | `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | Credentials used by the app | — |
-| `APP_JWT_SECRET` | Base64, at least 32 bytes. Generate with `openssl rand -base64 32` | — |
+| `APP_JWT_SECRET` | Base64, at least 32 bytes. Generate with `openssl rand -base64 32` (Windows install steps in the [README](../README.md#getting-started)) | — |
 | `APP_JWT_EXPIRATION_MS` | Token lifetime in milliseconds | `3600000` |
 | `APP_CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed browser origins | `http://localhost:5173` |
 

@@ -12,7 +12,10 @@ in `pom.xml`, so the Dockerfile does not depend on the project version).
 ## Local execution (without Docker)
 
 Requires a running PostgreSQL instance and the environment variables from
-[configuration.md](configuration.md#environment-variables):
+[configuration.md](configuration.md#environment-variables). Neither `java -jar`
+nor `./mvnw` reads `.env` automatically — load it into the shell first (see the
+root [README](../README.md#option-b--app-on-the-host-database-in-a-container)
+for the bash and PowerShell snippets), then:
 
 ```bash
 java -jar target/app.jar

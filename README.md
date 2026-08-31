@@ -44,6 +44,29 @@ com.unicornt.store
 `org.springframework.web`: business rules do not know they are backed by JPA or
 exposed over HTTP.
 
+## Prerequisites
+
+| Tool | Needed for | Notes |
+|------|------------|-------|
+| JDK 21+ | building/running outside a container | [Temurin](https://adoptium.net) recommended; the project targets Java 25 |
+| Docker + Docker Compose v2 | either running option below | [Docker Desktop](https://www.docker.com/products/docker-desktop/) on Windows/macOS |
+| OpenSSL | generating `APP_JWT_SECRET` once | see below — any other way to produce 32+ random base64 bytes works too |
+
+Run the check script to verify your machine has what it needs before going
+further — it also validates `.env` once you've created one:
+
+```bash
+bash scripts/check-env.sh          # Linux / macOS / Git Bash
+```
+
+```powershell
+.\scripts\check-env.ps1            # Windows PowerShell
+```
+
+Each `[FAIL]` line names a real blocker and how to fix it; `[WARN]` lines
+(e.g. port 8080 already in use) don't stop the app from running but are
+worth reading. Exit code is `1` if anything required is missing.
+
 ## Getting started
 
 There are two ways to run the app: everything in containers (recommended — no
@@ -104,12 +127,64 @@ Generate a JWT signing key for `APP_JWT_SECRET` in `.env`:
 openssl rand -base64 32
 ```
 
+`openssl` ships preinstalled on most Linux distributions and macOS. If it's
+missing:
+
+```bash
+sudo apt install openssl     # Debian / Ubuntu
+sudo yum install openssl     # RHEL / Fedora / CentOS
+brew install openssl         # macOS (Homebrew)
+```
+
+Windows doesn't ship `openssl`. Install it, then run it by its full path
+(it isn't added to `PATH` automatically):
+
+```powershell
+winget install -e --id ShiningLight.OpenSSL.Light
+& 'C:\Program Files\OpenSSL-Win64\bin\openssl' rand -base64 32
+```
+
+If that path doesn't exist on your system, find where winget put it:
+
+```powershell
+winget list --id ShiningLight.OpenSSL.Light
+```
+
+Any other way to produce 32+ random bytes, base64-encoded, works just as
+well — `openssl` is a convenience, not a hard dependency of the app itself.
+
 > **Reusing an existing database volume with different credentials?**
 > PostgreSQL only applies `POSTGRES_USER`/`POSTGRES_PASSWORD` the first time it
 > initializes an empty volume. If you change those values in `.env` after the
 > volume already exists, the app will fail to authenticate. Reset with
 > `docker compose down -v` (drops the volume — local data only) before
 > bringing the stack back up.
+
+### Running outside a local shell (CI/CD, other environments)
+
+`.env` is a local-development convenience — nothing in the app reads a
+`.env` file directly. Every value it holds is a plain environment variable
+that any deploy target sets its own way. `docker compose`'s `env_file: .env`
+is one such way, and manually loading it into a shell (Option B above) is
+another; neither applies to a pipeline or hosting platform, which must set
+the equivalent variables through its own mechanism instead.
+
+For GitHub Actions specifically: define the values under the repository's
+**Settings → Secrets and variables → Actions**, then reference them in the
+workflow YAML, e.g.:
+
+```yaml
+env:
+  SPRING_PROFILES_ACTIVE: prod
+  SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+  SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+  SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+  APP_JWT_SECRET: ${{ secrets.APP_JWT_SECRET }}
+```
+
+The `verify` job in [.github/workflows/main.yml](.github/workflows/main.yml)
+needs none of this — its tests run against an in-memory H2 database, not a
+real Postgres, so no `.env`/secrets are required just to build and test.
 
 ## API documentation
 
