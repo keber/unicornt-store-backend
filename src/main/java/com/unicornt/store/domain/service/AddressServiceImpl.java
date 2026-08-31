@@ -31,7 +31,7 @@ public class AddressServiceImpl implements AddressService {
         Long userId = getUserId(userEmail);
         return addressRepository.findById(addressId)
                 .filter(address -> userId.equals(address.getUserId()))
-                .orElseThrow(() -> new ResourceNotFoundException("AddressEntity", addressId));
+                .orElseThrow(() -> new ResourceNotFoundException("Address", addressId));
     }
 
     @Override
@@ -65,7 +65,7 @@ public class AddressServiceImpl implements AddressService {
 
     private Long getUserId(String email) {
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("UserEntity", email));
+                .orElseThrow(() -> new ResourceNotFoundException("User", email));
         return user.getId();
     }
 }
