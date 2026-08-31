@@ -41,8 +41,8 @@ public class StoreApplication extends SpringBootServletInitializer {
             // Create roles if they do not exist
             RoleEntity adminRole = roleRepository.findByName("ROLE_ADMIN")
                     .orElseGet(() -> roleRepository.save(new RoleEntity("ROLE_ADMIN")));
-            RoleEntity clientRole = roleRepository.findByName("ROLE_CLIENT")
-                    .orElseGet(() -> roleRepository.save(new RoleEntity("ROLE_CLIENT")));
+            RoleEntity userRole = roleRepository.findByName("ROLE_USER")
+                    .orElseGet(() -> roleRepository.save(new RoleEntity("ROLE_USER")));
 
             // Create the admin user if it does not exist
             if (userRepository.findByEmail("admin@unicornt.cl").isEmpty()) {
@@ -62,7 +62,7 @@ public class StoreApplication extends SpringBootServletInitializer {
                 client.setLastName("Demo");
                 client.setEmail("cliente@unicornt.cl");
                 client.setPassword(passwordEncoder.encode("cliente123"));
-                client.setRoles(Set.of(clientRole));
+                client.setRoles(Set.of(userRole));
                 userRepository.save(client);
             }
         };
