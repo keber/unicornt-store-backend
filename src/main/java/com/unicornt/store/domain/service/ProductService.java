@@ -2,6 +2,8 @@ package com.unicornt.store.domain.service;
 
 import com.unicornt.store.infrastructure.persistence.entity.ProductEntity;
 import com.unicornt.store.infrastructure.persistence.entity.ProductTypeEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -13,6 +15,15 @@ public interface ProductService {
     List<ProductEntity> findAll(String nameFilter, Integer categoryId, int limit, int offset);
 
     long countAll(String nameFilter, Integer categoryId);
+
+    /**
+     * Paginated catalog search. Both filters are optional: a null or blank value disables it.
+     *
+     * @param category category slug or category name, matched case insensitively
+     * @param q        free text matched against the product name and description
+     * @param pageable page number, page size and sort order
+     */
+    Page<ProductEntity> search(String category, String q, Pageable pageable);
 
     /**
      * Returns the product with the given id.
