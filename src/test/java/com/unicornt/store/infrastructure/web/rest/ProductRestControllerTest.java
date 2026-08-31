@@ -70,6 +70,14 @@ class ProductRestControllerTest {
     @MockitoBean
     private ProductService productService;
 
+    // SecurityConfig (T2) is picked up by @WebMvcTest's security auto-configuration and needs
+    // these beans to construct its filter chain; mocked here so this slice stays narrow.
+    @MockitoBean
+    private com.unicornt.store.infrastructure.security.JwtService jwtService;
+
+    @MockitoBean
+    private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+
     @Test
     @DisplayName("GET /api/v1/products returns a page of products")
     void listReturnsPage() throws Exception {
