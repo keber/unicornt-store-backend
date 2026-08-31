@@ -7,7 +7,9 @@ import com.unicornt.store.infrastructure.persistence.entity.ProductTypeEntity;
 import com.unicornt.store.infrastructure.persistence.repository.CategoryRepository;
 import com.unicornt.store.infrastructure.persistence.repository.ProductRepository;
 import com.unicornt.store.infrastructure.persistence.repository.ProductTypeRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,9 +73,19 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public Page<ProductEntity> search(String category, String q, Pageable pageable) {
+        Pageable effective = pageable.getSort().isSorted()
+                ? pageable
+                : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), BY_ID);
+        Page<ProductEntity> page = productRepository.search(normalize(category), normalize(q), effective);
+        enrich(page.getContent());
+        return page;
+    }
+
+    @Override
     public ProductEntity findById(int id) {
         ProductEntity product = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ProductEntity", id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", id));
         return enrich(List.of(product)).get(0);
     }
 
@@ -89,7 +101,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductEntity update(int id, ProductEntity product) {
         ProductEntity existing = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("ProductEntity", id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", id));
         validate(product);
         existing.setName(product.getName());
         existing.setDescription(product.getDescription());
@@ -105,7 +117,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public void delete(int id) {
         if (!productRepository.existsById(id)) {
-            throw new ResourceNotFoundException("ProductEntity", id);
+            throw new ResourceNotFoundException("Product", id);
         }
         productRepository.deleteById(id);
     }
@@ -122,10 +134,10 @@ public class ProductServiceImpl implements ProductService {
     private void validate(ProductEntity product) {
         String name = product.getName();
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("ProductEntity name is required");
+            throw new IllegalArgumentException("Product name is required");
         }
         if (name.length() > MAX_NAME_LENGTH) {
-            throw new IllegalArgumentException("ProductEntity name must not exceed " + MAX_NAME_LENGTH + " characters");
+            throw new IllegalArgumentException("Product name must not exceed " + MAX_NAME_LENGTH + " characters");
         }
         if (product.getPrice() <= 0) {
             throw new IllegalArgumentException("Price must be an integer greater than 0");
@@ -134,13 +146,13 @@ public class ProductServiceImpl implements ProductService {
             throw new IllegalArgumentException("A category must be selected");
         }
         if (!categoryRepository.existsById(product.getCategoryId())) {
-            throw new ResourceNotFoundException("CategoryEntity", product.getCategoryId());
+            throw new ResourceNotFoundException("Category", product.getCategoryId());
         }
         if (product.getProductTypeId() <= 0) {
             throw new IllegalArgumentException("A product type must be selected");
         }
         if (!productTypeRepository.existsById(product.getProductTypeId())) {
-            throw new ResourceNotFoundException("ProductTypeEntity", product.getProductTypeId());
+            throw new ResourceNotFoundException("Product type", product.getProductTypeId());
         }
     }
 
