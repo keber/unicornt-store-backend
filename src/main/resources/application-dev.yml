@@ -1,4 +1,5 @@
-# Development profile: schema kept in sync automatically and API documentation exposed.
+# Development profile: Flyway still owns the schema; ddl-auto stays on "update" as a
+# safety net while entities evolve. API documentation is exposed.
 spring:
   jpa:
     hibernate:

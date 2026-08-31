@@ -16,6 +16,20 @@ spring:
     open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
+  # Schema management. The versioned scripts live in classpath:db/migration.
+  # Spring Boot 4.0 moved Flyway autoconfiguration to org.springframework.boot:spring-boot-flyway,
+  # which is not on the classpath yet, so the same scripts are applied by Spring's SQL
+  # initializer. Once that dependency lands, set FLYWAY_ENABLED=true and SQL_INIT_MODE=never.
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE:always}
+      schema-locations: classpath:db/migration/V1__init.sql
+      data-locations: classpath:db/migration/V2__seed_reference_data.sql
+      continue-on-error: false
   mvc:
     throw-exception-if-no-handler-found: true
   web:

@@ -1,9 +1,15 @@
-# Production profile: the schema is validated, never modified, and no API documentation is served.
+# Production profile: Flyway applies the migrations, Hibernate only validates the
+# resulting schema and never modifies it. No API documentation is served.
 spring:
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
+
+app:
+  seed:
+    # Never create demo accounts in production.
+    enabled: false
 
 springdoc:
   api-docs:
