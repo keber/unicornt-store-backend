@@ -2,10 +2,37 @@
 target/
 out/
 build/
+.gradle/
 *.class
 *.jar
 *.war
 *.ear
+
+# Node / JavaScript
+node_modules/
+jspm_packages/
+.pnpm-store/
+
+# Python
+venv/
+.venv/
+env/
+ENV/
+bin/
+lib/
+develop-eggs/
+dist/
+build/
+*.egg-info/
+
+# PHP (Composer)
+vendor/
+
+# Ruby
+bin/
+.bundle/
+vendor/bundle/
+
 
 # ── Maven ─────────────────────────────────────────────────────────
 .mvn/timing.properties
@@ -26,6 +53,8 @@ build/
 
 # VS Code
 .vscode/
+!.vscode/extensions.json
+!.vscode/launch.json.default
 
 # NetBeans
 nbproject/
@@ -33,8 +62,20 @@ nbbuild/
 nbdist/
 
 # ── Operating system ─────────────────────────────────────────────
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon_
+._*
+
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.lnk
+*.cab
 desktop.ini
 
 # ── Secrets and local configuration ──────────────────────────────
@@ -43,6 +84,7 @@ desktop.ini
 .env
 .env.*
 !.env.example
+!.env.template
 secrets.properties
 local.properties
 
@@ -58,3 +100,4 @@ logs/
 /INSTRUCCIONES-AGENTE-EVALUADOR-HITO4.md
 /actividad_m6_l5/
 /demoApiRest/
+/docs/refactor/
