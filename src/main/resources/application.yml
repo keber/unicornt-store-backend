@@ -30,8 +30,6 @@ spring:
       schema-locations: classpath:db/migration/V1__init.sql
       data-locations: classpath:db/migration/V2__seed_reference_data.sql
       continue-on-error: false
-  mvc:
-    throw-exception-if-no-handler-found: true
   web:
     resources:
       add-mappings: false

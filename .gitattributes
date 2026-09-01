@@ -1,20 +1,44 @@
-# Auto-detect text files and normalize line endings to LF in the repository.
+# Normalize all text files to LF in the repository. Git auto-detects text vs
+# binary; `eol=lf` makes the checkout LF for everyone regardless of each
+# developer's core.autocrlf setting.
 * text=auto eol=lf
 
-# Shell scripts must keep LF endings regardless of the checkout platform:
-# they run inside Linux Docker build stages, where a CRLF shebang line
-# ("#!/bin/sh\r") is not recognized and the script fails with "not found".
-mvnw text eol=lf
-*.sh text eol=lf
+# --- Explicit text types (clarity + safety) ---
+*.java        text eol=lf
+*.js          text eol=lf
+*.jsx         text eol=lf
+*.ts          text eol=lf
+*.tsx         text eol=lf
+*.json        text eol=lf
+*.css         text eol=lf
+*.scss        text eol=lf
+*.html        text eol=lf
+*.svg         text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.xml         text eol=lf
+*.sql         text eol=lf
+*.properties  text eol=lf
+*.md          text eol=lf
+*.txt         text eol=lf
+*.sh          text eol=lf
+*.gitignore   text eol=lf
+*.gitkeep     text eol=lf
+*.gitlint     text eol=lf
 
-# Windows-specific scripts keep their native CRLF endings.
-mvnw.cmd text eol=crlf
-*.bat text eol=crlf
+# --- Windows-only scripts keep CRLF ---
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+*.ps1         text eol=crlf
 
-# Binary files: never touch line endings.
-*.jar binary
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.ico binary
+# --- Binary: never touch ---
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.ico         binary
+*.jar         binary
+*.woff        binary
+*.woff2       binary
+*.ttf         binary
+*.eot         binary
