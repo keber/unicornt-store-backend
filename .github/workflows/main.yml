@@ -25,12 +25,12 @@ jobs:
 
       - name: Build and test
         id: run-tests
-        run: mvn test
+        run: mvn -B test
 
       - name: Generate JaCoCo and Surefire reports
         if: always()
         run: |
-          mvn jacoco:report surefire-report:report-only
+          mvn -B jacoco:report surefire-report:report-only
           test -f target/site/jacoco/jacoco.xml
           test -f target/site/surefire-report/surefire-report.html
         
@@ -77,7 +77,7 @@ jobs:
         java-version: '25'
         
     - name: Compile for Sonar
-      run: mvn compile
+      run: mvn -B compile
 
     - name: Download reports
       uses: actions/download-artifact@v4
@@ -88,7 +88,7 @@ jobs:
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: mvn sonar:sonar
+      run: mvn -B sonar:sonar
 
     - name: Upload coverage to Codecov
       if: success() || failure()
