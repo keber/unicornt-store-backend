@@ -29,7 +29,7 @@
         <surefire.version>3.5.6</surefire.version>
         <jacoco.version>0.8.15</jacoco.version>
         <archunit.version>1.4.1</archunit.version>
-		<sonar.projectKey>keber_otf-sisacad</sonar.projectKey>
+		<sonar.projectKey>keber_unicornt-store-backend</sonar.projectKey>
 		<sonar.organization>keber</sonar.organization>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
