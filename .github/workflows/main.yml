@@ -23,7 +23,97 @@ jobs:
           cache: maven
 
       - name: Build and test
+        id: run-tests
         run: ./mvnw -B verify
+
+      - name: Generate JaCoCo and Surefire reports
+        if: always()
+        run: |
+          mvn jacoco:report surefire-report:report-only
+          test -f target/site/jacoco/jacoco.xml
+          test -f target/site/surefire-report/surefire-report.html
+        
+      - name: Generate Test badge
+        if: success() || failure()
+        uses: gaelgirodon/ci-badges-action@v1
+        with:
+          gist-id: ${{ secrets.GIST_ID }} 
+          token: ${{ secrets.GIST_TOKEN }}
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-test-reports
+          path: |
+            target/site/jacoco/
+            target/site/surefire-report/
+            target/surefire-reports/
+          if-no-files-found: error
+
+      - name: Fail job if tests failed
+        if: always() && steps.run-tests.outcome == 'failure'
+        run: |
+          echo "::error::One or more Maven tests failed."
+          exit 1
+
+  publish-reports:
+    name: Upload Coverage and Publish Reports to GitHub Pages
+    needs: verify
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+        
+    - name: Compile for Sonar
+      run: mvn compile
+
+    - name: Download reports
+      uses: actions/download-artifact@v4
+      with:
+        name: maven-test-reports
+        path: target/
+
+    - name: Run SonarCloud analysis
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: mvn sonar:sonar
+
+    - name: Upload coverage to Codecov
+      if: success() || failure()
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./target/site/jacoco/jacoco.xml
+        flags: unittests
+        name: codecov-coverage
+        fail_ci_if_error: true
+        disable_search: true
+
+    - name: Combine JaCoCo and Surefire reports
+      if: success() || failure()
+      run: |
+        mkdir -p target/site/combined
+        cp -r target/site/jacoco target/site/combined/coverage
+        cp -r target/site/surefire-report target/site/combined/tests
+        cp target/site/surefire-report/surefire-report.html target/site/combined/tests/index.html
+
+    - name: Deploy reports to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./target/site/combined
+        force_orphan: true
 
   build-and-push:
     runs-on: ubuntu-latest
