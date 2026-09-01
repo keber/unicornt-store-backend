@@ -30,7 +30,7 @@
 # ----------------------------------------------------------------------------
 
 set -euf
-[ "${MVNW_VERBOSE-}" != debug ] || set -x
+[ "${MVNW_VERBOSE-}" != debug ] || set -x 
 
 # OS specific support.
 native_path() { printf %s\\n "$1"; }
