@@ -24,7 +24,7 @@ jobs:
 
       - name: Build and test
         id: run-tests
-        run: ./mvnw -B verify
+        run: mvn -B verify
 
       - name: Generate JaCoCo and Surefire reports
         if: always()
@@ -141,7 +141,7 @@ jobs:
           cache: maven
 
       - name: Build jar with Maven
-        run: ./mvnw -B -DskipTests clean package
+        run: mvn -B -DskipTests clean package
 
       - name: Verify target contents
         run: ls -lah target
