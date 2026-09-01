@@ -1,113 +1,80 @@
-# Configuración
+# Configuration
 
-## Requisitos previos
+## Prerequisites
 
-**Ejecución local (sin Docker):**
+**Local execution (without Docker):**
 
-- JDK 21+
-- Maven 3.8+
-- MySQL 8+ o PostgreSQL 15+
+- JDK 21+ (the project targets Java 25)
+- Maven 3.8+ (or the bundled `./mvnw`)
+- PostgreSQL 16, reachable from the app
 
-**Ejecución con Docker:**
+**Execution with Docker:**
 
-- Docker y Docker Compose
-- MySQL 8+ o PostgreSQL 15+ (puede estar en el host o en un servicio externo)
+- Docker and Docker Compose v2
 
----
+Run `bash scripts/check-env.sh` (Linux/macOS/Git Bash) or
+`.\scripts\check-env.ps1` (PowerShell) to verify these are all present and that
+`.env` is filled in correctly — see the root [README](../README.md#prerequisites)
+for details.
 
-## Variables de entorno
+## Environment variables
 
-Las credenciales **nunca se almacenan en el código fuente**. La aplicación usa la nomenclatura estándar de Spring Boot para que el datasource se configure automáticamente a partir de las variables del sistema operativo.
+Every credential comes from an environment variable; none is a literal in source
+control. `.env.example` documents every key with a `__CHANGE_ME__` placeholder;
+`.env` (the real file) is gitignored.
 
-| Variable | Descripción | Ejemplo |
+```bash
+cp .env.example .env
+# edit .env with real values
+```
+
+| Variable | Description | Example |
 |----------|-------------|---------|
-| `SPRING_PROFILES_ACTIVE` | Perfil activo | `dev` (MySQL) o `prod` (PostgreSQL) |
-| `SPRING_DATASOURCE_URL` | JDBC URL completa | `jdbc:mysql://localhost:3306/unicornt_store?...` |
-| `SPRING_DATASOURCE_USERNAME` | Usuario de la base de datos | `unicornt-store-admin` |
-| `SPRING_DATASOURCE_PASSWORD` | Contraseña del usuario | `********` |
+| `SERVER_PORT` | HTTP port | `8080` |
+| `SPRING_PROFILES_ACTIVE` | Active profile | `dev` or `prod` |
+| `POSTGRES_DB` | Database name used by the `db` compose service | `unicornt_db` |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Credentials for the `db` compose service | — |
+| `SPRING_DATASOURCE_URL` | Full JDBC URL used by the app | `jdbc:postgresql://localhost:5432/unicornt_db` |
+| `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` | Credentials used by the app | — |
+| `APP_JWT_SECRET` | Base64, at least 32 bytes. Generate with `openssl rand -base64 32` (Windows install steps in the [README](../README.md#getting-started)) | — |
+| `APP_JWT_EXPIRATION_MS` | Token lifetime in milliseconds | `3600000` |
+| `APP_CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed browser origins | `http://localhost:5173` |
+| `APP_BOOTSTRAP_ADMIN_EMAIL` | Optional. When set, a single `ROLE_ADMIN` account is created on startup if it does not already exist. Unset by default — no account is created | `admin@example.com` |
+| `APP_BOOTSTRAP_ADMIN_PASSWORD` | Optional companion to the above. Leave blank to have a strong password generated and logged once on startup; set it to supply your own | — |
 
-> Spring Boot mapea automáticamente `SPRING_DATASOURCE_URL` → `spring.datasource.url`, etc. No se requiere ninguna configuración extra.
+Spring Boot maps `SPRING_DATASOURCE_URL` to `spring.datasource.url` automatically
+(relaxed binding); no extra configuration is required.
 
-### Archivo `.env-template`
+## Spring profiles
 
-El repositorio incluye un archivo `.env-template` con la estructura de variables necesarias. Para usarlo:
-
-```bash
-cp .env-template .env
-# Editar .env con los valores reales
-```
-
-El archivo `.env` está en `.gitignore` y **nunca se sube al repositorio**. Docker Compose lo lee automáticamente con `--env-file .env`.
-
----
-
-## Perfiles Spring
-
-La aplicación utiliza perfiles para separar la configuración por entorno:
-
-| Perfil | Archivo | BD | Uso |
-|--------|---------|----|---------|
-| `dev` | `application-dev.properties` | MySQL local | Desarrollo |
-| `prod` | `application-prod.properties` | PostgreSQL (Supabase) | Producción |
-
-El perfil activo se define con la variable `SPRING_PROFILES_ACTIVE`:
+| Profile | `ddl-auto` | Swagger UI / `/api-docs` | Use |
+|---------|-----------|---------------------------|-----|
+| *(none)* | `validate` | disabled | secure default, closed documentation |
+| `dev` | `update` | enabled | local development |
+| `prod` | `validate` | disabled | production |
 
 ```bash
-# Desarrollo (MySQL)
-SPRING_PROFILES_ACTIVE=dev
-
-# Producción (PostgreSQL / Supabase)
-SPRING_PROFILES_ACTIVE=prod
+SPRING_PROFILES_ACTIVE=dev   # or prod
 ```
 
-El perfil `prod` incluye configuración adicional para Supabase:
+## Schema
 
-```properties
-spring.datasource.hikari.connection-init-sql=SET search_path TO unicornt_store, public
-spring.jpa.properties.hibernate.default_schema=unicornt_store
-```
-
----
-
-## Datasource
-
-El datasource **no** contiene credenciales en código fuente. Spring Boot resuelve las propiedades automáticamente a partir de las variables de entorno `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD` (ver sección [Variables de entorno](#variables-de-entorno)).
-
-Las propiedades de conexión específicas de cada motor se definen en los perfiles (ver [Perfiles Spring](#perfiles-spring)).
-
----
+The schema lives in versioned SQL scripts under
+`src/main/resources/db/migration/` (`V1__init.sql`, `V2__seed_reference_data.sql`).
+They run through Spring's SQL initializer on every startup — see the comment at
+the top of `application.yml` for why (Flyway's Spring Boot 4 autoconfiguration
+module is not yet on the classpath) and how to switch to real Flyway once it is.
+All statements are idempotent, so re-running them on an existing database is safe.
 
 ## JPA
 
-```properties
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=false
+```yaml
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}   # update in dev, validate in prod
+    open-in-view: false
 ```
 
-- `ddl-auto=update` permite que Hibernate cree y actualice automáticamente las tablas de seguridad (`users`, `roles`, `users_roles`) sin necesidad de scripts DDL adicionales.
-- Las tablas de productos, categorías y tipos se crean mediante los scripts SQL del repositorio [ecommerce-db-m3](https://github.com/keber/ecommerce-db-m3).
-
----
-
-## Vistas (Thymeleaf)
-
-```properties
-spring.thymeleaf.cache=false
-```
-
-- **Motor de plantillas:** Thymeleaf 3, integrado vía `spring-boot-starter-thymeleaf`.
-- **Ubicación de templates:** `src/main/resources/templates/` (convención por defecto de Spring Boot, no requiere configuración explícita).
-- **Fragmentos reutilizables:** `layout/header.html` y `layout/footer.html` se insertan en cada página con `th:replace`.
-- **Seguridad en vistas:** La dependencia `thymeleaf-extras-springsecurity6` habilita atributos como `sec:authorize="hasRole('ADMIN')"` y `sec:authentication="name"` para mostrar u ocultar elementos según el rol del usuario autenticado.
-- **Cache desactivado** en desarrollo para ver cambios sin reiniciar. En producción se recomienda `spring.thymeleaf.cache=true`.
-
----
-
-## Base de datos
-
-Los scripts SQL se encuentran en el repositorio [ecommerce-db-m3](https://github.com/keber/ecommerce-db-m3).
-
-```bash
-mysql -u root -p < ecommerce-db-m3/mysql/sql/schema.sql
-mysql -u root -p unicornt_store < ecommerce-db-m3/mysql/sql/seed.sql
-```
+`open-in-view` is disabled: every repository call happens inside the service
+layer, never lazily during view rendering — there is no view layer to begin with.

@@ -1,99 +1,68 @@
-# Desarrollo
+# Development
 
-## Estructura del proyecto
+## Project structure
 
 ```
-unicornt-store-springboot/
-├── pom.xml                              # Spring Boot parent, packaging JAR
-├── Dockerfile                           # Imagen Docker (eclipse-temurin:21)
-├── docker-compose.yml                   # Orquestación con Docker Compose
-├── .env-template                        # Plantilla de variables de entorno
+unicornt-store-backend/
+├── pom.xml                     # Spring Boot 4.0.8, Java 25, dependencies frozen after T0
+├── Dockerfile                  # multi-stage build, eclipse-temurin:25
+├── docker-compose.yml          # app + PostgreSQL 16, persistent volume
+├── .env.example                # placeholder environment variables
+├── mvnw / mvnw.cmd              # Maven Wrapper
 ├── src/
-│   └── main/
-│       ├── java/com/unicornt/store/
-│       │   ├── StoreApplication.java    # Punto de entrada + seed de datos
-│       │   ├── config/
-│       │   │   ├── SecurityConfig.java   # Filtros, BCrypt, rutas protegidas
-│       │   │   └── CustomAuthSuccessHandler.java
-│       │   ├── model/
-│       │   │   ├── Product.java         # @Entity
-│       │   │   ├── Category.java        # @Entity
-│       │   │   ├── ProductType.java     # @Entity
-│       │   │   ├── User.java            # @Entity (autenticación)
-│       │   │   └── Role.java            # @Entity (ROLE_ADMIN, ROLE_CLIENT)
-│       │   ├── mapper/
-│       │   │   ├── ProductRowMapper.java
-│       │   │   ├── CategoryRowMapper.java
-│       │   │   └── ProductTypeRowMapper.java
-│       │   ├── dao/                     # Acceso a datos con JdbcTemplate
-│       │   │   ├── ProductDAO.java
-│       │   │   ├── CategoryDAO.java
-│       │   │   └── ProductTypeDAO.java
-│       │   ├── repository/              # Spring Data JPA
-│       │   │   ├── UserRepository.java
-│       │   │   ├── RoleRepository.java
-│       │   │   ├── ProductRepository.java
-│       │   │   ├── CategoryRepository.java
-│       │   │   └── ProductTypeRepository.java
-│       │   ├── dto/
-│       │   │   └── RegisterRequest.java
-│       │   ├── service/
-│       │   │   ├── ProductService.java
-│       │   │   ├── ProductServiceImpl.java
-│       │   │   ├── UserService.java
-│       │   │   ├── UserServiceImpl.java
-│       │   │   └── CustomUserDetailsService.java
-│       │   └── controller/
-│       │       ├── AdminProductController.java  # @PreAuthorize(ADMIN)
-│       │       ├── CatalogController.java       # Catálogo público
-│       │       ├── AuthController.java          # Login + Registro
-│       │       ├── CustomErrorController.java
-│       │       └── HomeController.java
-│       ├── resources/
-│       │   ├── application.properties           # Config base (JPA, Thymeleaf)
-│       │   ├── application-dev.properties       # Perfil dev (MySQL local)
-│       │   ├── application-prod.properties      # Perfil prod (PostgreSQL/Supabase)
-│       │   ├── templates/               # Thymeleaf
-│       │   │   ├── layout/
-│       │   │   │   ├── header.html      # Navbar con sec:authorize
-│       │   │   │   └── footer.html      # Footer con sec:authorize
-│       │   │   ├── login.html
-│       │   │   ├── register.html
-│       │   │   ├── error/
-│       │   │   │   └── access-denied.html
-│       │   │   ├── catalog/
-│       │   │   │   └── product-list.html
-│       │   │   └── admin/
-│       │   │       ├── product-list.html
-│       │   │       └── product-form.html
-│       │   └── static/
-│       │       └── assets/css/
-│       │           └── admin.css
+│   ├── main/
+│   │   ├── java/com/unicornt/store/
+│   │   │   ├── StoreApplication.java
+│   │   │   ├── domain/
+│   │   │   │   ├── service/         business use cases
+│   │   │   │   └── exception/       ResourceNotFoundException, OutOfStockException, ...
+│   │   │   └── infrastructure/
+│   │   │       ├── persistence/entity/       @Entity classes
+│   │   │       ├── persistence/repository/   Spring Data JpaRepository interfaces
+│   │   │       ├── security/                 JWT filter, SecurityConfig
+│   │   │       ├── config/                   OpenApiConfig
+│   │   │       └── web/
+│   │   │           ├── rest/        @RestController classes
+│   │   │           ├── dto/         request/response records
+│   │   │           ├── mapper/      entity <-> DTO translation
+│   │   │           └── error/       ErrorResponse, GlobalExceptionHandler
+│   │   └── resources/
+│   │       ├── application.yml           base profile, secure by default
+│   │       ├── application-dev.yml       schema auto-sync, Swagger enabled
+│   │       ├── application-prod.yml      schema validated only, Swagger disabled
+│   │       └── db/migration/             versioned SQL schema and seed data
 │   └── test/
-│       ├── java/com/unicornt/store/
-│       │   ├── service/
-│       │   │   └── UserServiceTest.java         # Tests unitarios (Mockito)
-│       │   └── controller/
-│       │       └── SecurityIntegrationTest.java  # Tests de integración (MockMvc)
-│       └── resources/
-│           └── application.properties            # H2 in-memory para tests
-└── target/
-    └── unicornt-store.jar
+│       ├── java/com/unicornt/store/      unit tests, MockMvc slices, security tests
+│       └── resources/application.properties   H2 datasource for tests
+└── docs/
+    ├── bruno/unicornt-store/    Bruno API collection
+    └── refactor/                Milestone 4 refactor task files (not part of the deliverable)
 ```
 
----
+`domain` has no dependency on Spring MVC, `jakarta.servlet` or `jakarta.persistence`
+annotations — business rules do not know they run behind HTTP or JPA.
 
-## Tests
+## Running the tests
 
 ```bash
-mvn clean test
+./mvnw test       # unit tests and MockMvc slices, no external services required
+./mvnw verify      # same, plus the packaging step CI runs
 ```
 
-| Clase | Tipo | Tests | Cobertura |
-|-------|------|-------|-----------|
-| `UserServiceTest` | Unitario (Mockito) | 4 | Registro, rol no encontrado, email exists |
-| `SecurityIntegrationTest` | Integración (MockMvc + H2) | 11 | Acceso público, roles CLIENT/ADMIN, registro, validaciones |
+Tests run against in-memory H2 in PostgreSQL compatibility mode
+(`src/test/resources/application.properties`), so they do not require Docker or a
+running PostgreSQL instance. A few worker branches used Testcontainers-backed
+tests during the refactor to validate JPQL and startup against a real
+PostgreSQL container; `org.testcontainers:postgresql` is on the test classpath
+for that purpose.
 
-Los tests de integración usan **H2 en memoria** y no requieren MySQL.
+## Local development loop
 
-> **Nota:** Los tests usan `@TestPropertySource` para forzar la conexión a H2. Esto es necesario porque las variables de entorno `SPRING_DATASOURCE_*` (usadas en producción/desarrollo) tienen prioridad sobre `application.properties` de test. Sin `@TestPropertySource`, si tienes esas variables definidas en tu terminal, los tests intentarían conectarse a MySQL en vez de H2.
+```bash
+cp .env.example .env
+docker compose up -d db          # PostgreSQL only, app runs from the IDE/Maven
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+`dev` keeps the schema in sync with `ddl-auto: update` and exposes Swagger UI at
+`http://localhost:8080/swagger-ui.html`.

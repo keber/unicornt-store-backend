@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Unicornt Store API",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

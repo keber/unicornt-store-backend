@@ -1,104 +1,74 @@
-# Despliegue
+# Deployment
 
-## Compilación y empaquetado
-
-```bash
-mvn clean package -DskipTests
-```
-
-El JAR ejecutable se genera en:
-
-```
-target/unicornt-store.jar
-```
-
----
-
-## Ejecución local (sin Docker)
-
-Requiere las variables de entorno definidas en [Configuración](configuration.md#variables-de-entorno):
+## Build and packaging
 
 ```bash
-java -jar target/unicornt-store.jar
+./mvnw -DskipTests clean package
 ```
 
-O directamente con Maven:
+The executable JAR is generated at `target/app.jar` (`<finalName>app</finalName>`
+in `pom.xml`, so the Dockerfile does not depend on the project version).
+
+## Local execution (without Docker)
+
+Requires a running PostgreSQL instance and the environment variables from
+[configuration.md](configuration.md#environment-variables). Neither `java -jar`
+nor `./mvnw` reads `.env` automatically — load it into the shell first (see the
+root [README](../README.md#option-b--app-on-the-host-database-in-a-container)
+for the bash and PowerShell snippets), then:
 
 ```bash
-mvn spring-boot:run
+java -jar target/app.jar
 ```
 
-La aplicación estará disponible en `http://localhost:8080`.
-
----
-
-## Despliegue con Docker
-
-### 1. Crear el archivo `.env`
+Or directly with Maven:
 
 ```bash
-cp .env-template .env
-# Editar .env con los valores reales de conexión a BD
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Ejemplo de `.env` para desarrollo local (MySQL en el host):
+The application is available at `http://localhost:8080`.
 
-```env
-SPRING_PROFILES_ACTIVE=dev
-SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/unicornt_store?useSSL=false&serverTimezone=America/Santiago&characterEncoding=UTF-8&useUnicode=true
-SPRING_DATASOURCE_USERNAME=tu_usuario
-SPRING_DATASOURCE_PASSWORD=tu_password
-```
+## Deployment with Docker Compose
 
-> **Nota:** Desde Docker, `localhost` apunta al contenedor, no al host. Usa `host.docker.internal` para conectarte a servicios del host (MySQL, PostgreSQL).
-
-### 2. Compilar y levantar
+### 1. Create the `.env` file
 
 ```bash
-mvn clean package -DskipTests
-docker compose --env-file .env up --build -d
+cp .env.example .env
+# edit .env with real values, including a generated APP_JWT_SECRET
 ```
 
-La aplicación estará disponible en `http://localhost:8080`.
+### 2. Start the stack
 
-### 3. Ver logs
+```bash
+docker compose up -d --build
+```
+
+This starts two services:
+
+- `db` — `postgres:16-alpine`, with a named volume (`postgres_data`) so data
+  survives a container restart, and a `pg_isready` healthcheck.
+- `app` — built from the local multi-stage `Dockerfile`, waits for `db` to report
+  healthy before starting.
+
+The application is available at `http://localhost:8080`.
+
+### 3. Logs and shutdown
 
 ```bash
 docker compose logs -f
+docker compose down        # keeps the volume
+docker compose down -v     # also deletes the persisted database
 ```
-
-### 4. Detener
-
-```bash
-docker compose down
-```
-
----
 
 ## Dockerfile
 
-```dockerfile
-FROM eclipse-temurin:21-jdk-alpine
-ARG JAR_FILE=target/unicornt-store.jar
-COPY ${JAR_FILE} app.jar
-EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app.jar"]
-```
+Multi-stage build: the first stage compiles `target/app.jar` with the Maven
+wrapper on `eclipse-temurin:25-jdk`; the second stage copies only the jar into
+`eclipse-temurin:25-jre` and runs it as a non-root user (`unicornt`). See the
+[repository Dockerfile](../Dockerfile) for the exact steps.
 
 ## docker-compose.yml
 
-```yaml
-services:
-  unicornt-store:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-    restart: always
-```
-
-Las variables se inyectan desde el archivo `.env` y se pasan al contenedor como variables de entorno.
+See the [repository docker-compose.yml](../docker-compose.yml). Both services
+read every credential from `.env`; nothing is hardcoded.

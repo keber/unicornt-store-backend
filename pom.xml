@@ -7,18 +7,44 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.3</version>
+        <version>4.0.8</version>
         <relativePath/>
     </parent>
 
     <groupId>com.unicornt.store</groupId>
-    <artifactId>unicornt-store-springboot</artifactId>
+    <artifactId>unicornt-store-backend</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
+    <name>unicornt-store-backend</name>
+    <description>REST microservice for the Unicornt store: catalog, cart, checkout and JWT authentication</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
+        <jjwt.version>0.12.7</jjwt.version>
+        <springdoc.version>3.0.3</springdoc.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
+
+        <mockito.version>5.23.0</mockito.version>
+        <flyway.version>13.4.0</flyway.version>
+        <surefire.version>3.5.6</surefire.version>
+        <jacoco.version>0.8.15</jacoco.version>
+        <archunit.version>1.4.1</archunit.version>
+		<sonar.projectKey>keber_unicornt-store-backend</sonar.projectKey>
+		<sonar.organization>keber</sonar.organization>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Spring MVC -->
@@ -27,16 +53,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Thymeleaf -->
+        <!-- Bean Validation on request DTOs -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
-        </dependency>
-
-        <!-- JDBC Template -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
         <!-- Spring Data JPA -->
@@ -45,18 +65,14 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- Tomcat embebido con scope provided (se despliega en Tomcat externo) -->
+        <!-- Flyway: versioned schema migrations, required because prod runs ddl-auto=validate -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-tomcat</artifactId>
-            <scope>provided</scope>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
         </dependency>
-
-        <!-- MySQL driver -->
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <scope>runtime</scope>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
         <!-- PostgreSQL driver -->
@@ -66,30 +82,62 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- DevTools (recarga automática en desarrollo) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-
         <!-- Spring Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- Thymeleaf + Spring Security (sec:authorize, sec:authentication) -->
+        <!-- JJWT: stateless JWT issuing and verification -->
         <dependency>
-            <groupId>org.thymeleaf.extras</groupId>
-            <artifactId>thymeleaf-extras-springsecurity6</artifactId>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- OpenAPI 3 / Swagger UI. 3.0.x is the line built against Spring Boot 4.0. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
         </dependency>
 
         <!-- Tests -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Mockito -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -107,20 +155,88 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- H2 en memoria para tests (sin depender de MySQL) -->
+        <!-- In-memory H2, kept for lightweight slice tests (pom is frozen after T0) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Testcontainers: integration tests against a real PostgreSQL -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
-        <finalName>unicornt-store</finalName>
+        <finalName>app</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Surefire plugin for JUnit -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.version}</version>
+            </plugin>
+
+            <!-- JaCoCo plugin -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+	        </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-report-plugin</artifactId>
+                <version>${surefire.version}</version>
+                <configuration>
+                        <outputDirectory>${project.build.directory}/site/surefire-report</outputDirectory>
+                        <outputName>surefire-report</outputName>
+                        <linkXRef>false</linkXRef>
+                </configuration>
+                <executions>
+                        <execution>
+                    <id>generate-surefire-report</id>
+                    <phase>verify</phase>
+                        <goals>
+                            <goal>report-only</goal>
+                        </goals>
+                        </execution>
+                </executions>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>3.11.0.3922</version>
             </plugin>
         </plugins>
     </build>

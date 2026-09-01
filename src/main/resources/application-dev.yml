@@ -1,0 +1,16 @@
+# Development profile: Flyway still owns the schema; ddl-auto stays on "update" as a
+# safety net while entities evolve. API documentation is exposed.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    try-it-out-enabled: true
