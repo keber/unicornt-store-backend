@@ -17,6 +17,11 @@ PORT="${ACCEPTANCE_PORT:-8082}"
 BASE="http://localhost:${PORT}"
 APP_PID=""
 
+# The application ships no accounts. Bootstrap a throwaway admin for this run
+# through the operator env vars the app reads on startup.
+ADMIN_EMAIL="acceptance-admin@example.com"
+ADMIN_PASSWORD="acceptance-$(date +%s)-$RANDOM"
+
 cleanup() {
   if [ -n "$APP_PID" ]; then
     kill "$APP_PID" >/dev/null 2>&1 || true
@@ -53,6 +58,8 @@ SPRING_DATASOURCE_USERNAME="$SPRING_DATASOURCE_USERNAME" \
 SPRING_DATASOURCE_PASSWORD="$SPRING_DATASOURCE_PASSWORD" \
 APP_JWT_SECRET="$APP_JWT_SECRET" \
 APP_CORS_ALLOWED_ORIGINS="${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173}" \
+APP_BOOTSTRAP_ADMIN_EMAIL="$ADMIN_EMAIL" \
+APP_BOOTSTRAP_ADMIN_PASSWORD="$ADMIN_PASSWORD" \
 SPRING_PROFILES_ACTIVE=dev \
 java -jar target/app.jar > /tmp/acceptance-app.log 2>&1 &
 APP_PID=$!
@@ -92,7 +99,7 @@ assert_status "create without token" 401 "$code"
 echo "== 8. Obtain an ADMIN token =="
 admin_response=$(curl -s -X POST "$BASE/api/v1/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@unicornt.cl","password":"admin123"}')
+  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}")
 admin_token=$(echo "$admin_response" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 if [ -z "$admin_token" ]; then
   echo "FAIL: could not obtain an ADMIN token — response was: $admin_response" >&2

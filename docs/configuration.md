@@ -39,6 +39,8 @@ cp .env.example .env
 | `APP_JWT_SECRET` | Base64, at least 32 bytes. Generate with `openssl rand -base64 32` (Windows install steps in the [README](../README.md#getting-started)) | — |
 | `APP_JWT_EXPIRATION_MS` | Token lifetime in milliseconds | `3600000` |
 | `APP_CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed browser origins | `http://localhost:5173` |
+| `APP_BOOTSTRAP_ADMIN_EMAIL` | Optional. When set, a single `ROLE_ADMIN` account is created on startup if it does not already exist. Unset by default — no account is created | `admin@example.com` |
+| `APP_BOOTSTRAP_ADMIN_PASSWORD` | Optional companion to the above. Leave blank to have a strong password generated and logged once on startup; set it to supply your own | — |
 
 Spring Boot maps `SPRING_DATASOURCE_URL` to `spring.datasource.url` automatically
 (relaxed binding); no extra configuration is required.

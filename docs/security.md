@@ -44,16 +44,32 @@ caller's identity from `Authentication.getName()` and never from a path or body
 parameter, and raises `ResourceNotFoundException` (`404`, never `403`) when a
 resource id does not belong to the caller.
 
-## Demo accounts
+## Accounts
 
-`StoreApplication.initData` seeds two accounts on startup, controlled by
-`app.seed.enabled` (`true` by default, forced to `false` in the `prod` profile so
-no account with a known password ever exists outside development):
+The application ships no accounts and no credentials. Reference data — the
+`ROLE_USER` and `ROLE_ADMIN` rows, product types, categories and sample
+products — is seeded by the versioned migration `V2__seed_reference_data.sql`.
 
-| Email | Password | Role |
-|-------|----------|------|
-| `admin@unicornt.cl` | `admin123` | `ROLE_ADMIN` |
-| `cliente@unicornt.cl` | `cliente123` | `ROLE_USER` |
+Regular accounts are created through `POST /api/v1/auth/register`, which always
+grants `ROLE_USER`. There is no public way to obtain `ROLE_ADMIN`.
+
+### Bootstrap admin
+
+The first administrator is created by `StoreApplication.bootstrapAdmin`, a
+`CommandLineRunner` that exists only when `app.bootstrap-admin.email`
+(`APP_BOOTSTRAP_ADMIN_EMAIL`) is set. A default deployment defines neither
+variable and creates no account.
+
+| `APP_BOOTSTRAP_ADMIN_EMAIL` | `APP_BOOTSTRAP_ADMIN_PASSWORD` | Result |
+|---|---|---|
+| unset | — | no account created |
+| set | unset / blank | account created; a strong random password is generated and logged **once** on startup for the operator to record and rotate |
+| set | set | account created with the supplied password; nothing is logged |
+
+The runner is idempotent: if the address already exists it does nothing, so it
+is safe to leave the variables in place across restarts. Once the admin exists,
+unset `APP_BOOTSTRAP_ADMIN_PASSWORD` (or remove both variables) so no credential
+lingers in the environment.
 
 ## Secrets
 

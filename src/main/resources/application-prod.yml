@@ -6,11 +6,6 @@ spring:
       ddl-auto: validate
     show-sql: false
 
-app:
-  seed:
-    # Never create demo accounts in production.
-    enabled: false
-
 springdoc:
   api-docs:
     enabled: false

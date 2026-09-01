@@ -70,8 +70,6 @@ class SecurityChainTest {
         registry.add("app.jwt.secret", () -> encoded);
         registry.add("app.jwt.expiration-ms", () -> 3_600_000L);
         registry.add("app.cors.allowed-origins", () -> FRONTEND_ORIGIN);
-        // The data seed needs JPA repositories, which this web slice does not load.
-        registry.add("app.seed.enabled", () -> false);
     }
 
     @Autowired

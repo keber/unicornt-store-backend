@@ -55,10 +55,12 @@ exposed over HTTP.
 Run the check script to verify your machine has what it needs before going
 further — it also validates `.env` once you've created one:
 
+=== "Bash"
 ```bash
 bash scripts/check-env.sh          # Linux / macOS / Git Bash
 ```
 
+=== "Powershell"
 ```powershell
 .\scripts\check-env.ps1            # Windows PowerShell
 ```
@@ -95,12 +97,14 @@ docker compose up -d db   # starts PostgreSQL 16 with a persistent named volume
 `mvnw`/`java -jar` do **not** read `.env` automatically — only `docker compose`
 does. Load it into your shell before starting the app:
 
+=== "Bash"
 ```bash
 # bash / Git Bash
 set -a; source .env; set +a
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+=== "Powershell"
 ```powershell
 # PowerShell
 Get-Content .env | ForEach-Object {
