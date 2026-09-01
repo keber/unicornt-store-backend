@@ -8,7 +8,8 @@ on:
     branches: [main]
 
 jobs:
-  verify:
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -24,7 +25,7 @@ jobs:
 
       - name: Build and test
         id: run-tests
-        run: mvn -B verify
+        run: mvn test
 
       - name: Generate JaCoCo and Surefire reports
         if: always()
@@ -59,7 +60,7 @@ jobs:
 
   publish-reports:
     name: Upload Coverage and Publish Reports to GitHub Pages
-    needs: verify
+    needs: test
     if: always()
     runs-on: ubuntu-latest
 
@@ -117,7 +118,7 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     outputs:
