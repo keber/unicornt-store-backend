@@ -34,9 +34,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /** Endpoints reachable without a token. */
+    /** Non-auth endpoints reachable without a token (API docs). */
     private static final String[] PUBLIC_PATHS = {
-            "/api/v1/auth/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",
@@ -68,9 +67,10 @@ public class SecurityConfig {
                 .logout(logout -> logout.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // AUTHENTICATED, declared before the public auth prefix below
+                        // AUTHENTICATED, declared before the public auth matchers below
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
                         // PUBLIC
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_CATALOG_PATHS).permitAll()
                         // ADMIN
