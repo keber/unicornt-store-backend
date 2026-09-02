@@ -1,17 +1,16 @@
 package com.unicornt.store.infrastructure.security;
 
-import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
-import org.springframework.security.core.GrantedAuthority;
+import com.unicornt.store.domain.model.User;
+import com.unicornt.store.domain.repository.UserRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.List;
 
+/** Bridges the {@link UserRepository} domain port to Spring Security's {@link UserDetailsService}. */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
@@ -23,17 +22,16 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        UserEntity user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        Set<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
-                .collect(Collectors.toSet());
+        List<SimpleGrantedAuthority> authorities = user.roles().stream()
+                .map(SimpleGrantedAuthority::new)
+                .toList();
 
         return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                authorities
-        );
+                user.email(),
+                user.passwordHash(),
+                authorities);
     }
 }

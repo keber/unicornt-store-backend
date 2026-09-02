@@ -1,8 +1,7 @@
 package com.unicornt.store.infrastructure.security;
 
-import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
-import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
+import com.unicornt.store.domain.model.User;
+import com.unicornt.store.domain.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,7 +13,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 
@@ -23,9 +22,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 /**
- * Behaviour of {@link CustomUserDetailsService}: it looks an account up by email, rejects an
- * unknown one, and maps the persisted roles onto Spring Security authorities while propagating
- * the credentials verbatim.
+ * Behaviour of {@link CustomUserDetailsService}: it looks an account up through the
+ * {@link UserRepository} domain port, rejects an unknown one, and maps the account roles
+ * onto Spring Security authorities while propagating the password hash verbatim.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CustomUserDetailsService")
@@ -41,19 +40,12 @@ class CustomUserDetailsServiceTest {
         service = new CustomUserDetailsService(userRepository);
     }
 
-    private static UserEntity aUser(String email, String password, String... roleNames) {
-        UserEntity user = new UserEntity();
-        user.setId(1L);
-        user.setFirstName("Ada");
-        user.setLastName("Lovelace");
-        user.setEmail(email);
-        user.setPassword(password);
-        Set<RoleEntity> roles = new HashSet<>();
-        for (String name : roleNames) {
-            roles.add(new RoleEntity(name));
+    private static User aUser(String email, String passwordHash, String... roleNames) {
+        Set<String> roles = new LinkedHashSet<>(Set.of(roleNames));
+        if (roles.isEmpty()) {
+            roles.add(User.ROLE_USER);
         }
-        user.setRoles(roles);
-        return user;
+        return new User(1L, "Ada", "Lovelace", email, passwordHash, roles);
     }
 
     @Nested
@@ -76,7 +68,7 @@ class CustomUserDetailsServiceTest {
     class KnownEmail {
 
         @Test
-        @DisplayName("uses the email as the username and propagates the stored password")
+        @DisplayName("uses the email as the username and propagates the stored password hash")
         void propagatesCredentials() {
             when(userRepository.findByEmail("ada@example.com"))
                     .thenReturn(Optional.of(aUser("ada@example.com", "hashed-secret", "ROLE_USER")));
@@ -98,17 +90,6 @@ class CustomUserDetailsServiceTest {
             assertThat(details.getAuthorities())
                     .extracting(GrantedAuthority::getAuthority)
                     .containsExactlyInAnyOrder("ROLE_USER", "ROLE_ADMIN");
-        }
-
-        @Test
-        @DisplayName("returns no authorities when the account has no roles")
-        void mapsEmptyRoles() {
-            when(userRepository.findByEmail("ada@example.com"))
-                    .thenReturn(Optional.of(aUser("ada@example.com", "hashed-secret")));
-
-            UserDetails details = service.loadUserByUsername("ada@example.com");
-
-            assertThat(details.getAuthorities()).isEmpty();
         }
     }
 }
