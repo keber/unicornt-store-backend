@@ -2,14 +2,31 @@
 
 Rama de trabajo: `test/coverage-boost` (desde `dev`).
 
-## Baseline (post-exclusiones JaCoCo, 2026-09-01)
+## Resultado (post-exclusiones JaCoCo, 2026-09-01)
 
-| Métrica | Cubierto | Objetivo |
-|---|---|---|
-| Instrucciones | 51.2 % | ≥ 80 % (BUNDLE, `jacoco:check`) |
-| Ramas | 31.4 % | ≥ 70 % (BUNDLE, `jacoco:check`) |
+| Métrica | Baseline | Final | Umbral `jacoco:check` |
+|---|---|---|---|
+| Instrucciones | 51.2 % | **96.1 %** | ≥ 92 % |
+| Ramas | 31.4 % | **93.2 %** | ≥ 88 % |
+| Líneas | 53.6 % | 96.0 % | — |
+| Métodos | 52.8 % | 93.2 % | — |
 
-CSV completo: `docs/testing/coverage-baseline.csv`.
+- Tests: 53 → **198** (+145). `mvn verify` completo en ~80 s.
+- Sin ningún `@SpringBootTest` nuevo; solo unit tests y los slices `@WebMvcTest` preexistentes.
+- CSVs: `docs/testing/coverage-baseline.csv`, `docs/testing/coverage-after.csv`.
+
+### Archivos de test añadidos / modificados
+| Archivo | Tests |
+|---|---|
+| `domain/service/CartServiceImplTest` (nuevo) | 22 |
+| `domain/service/CheckoutServiceImplTest` (nuevo) | 10 |
+| `domain/service/AddressServiceImplTest` (nuevo) | 20 |
+| `domain/service/ProductServiceImplTest` (nuevo) | 30 |
+| `domain/service/CategoryServiceImplTest` (ampliado) | 3 → 9 |
+| `infrastructure/web/mapper/*MapperTest` (5 nuevos) | 33 |
+| `infrastructure/security/CustomUserDetailsServiceTest` (nuevo) | 4 |
+| `infrastructure/security/JwtAuthFilterTest` (nuevo) | 9 |
+| `infrastructure/web/error/GlobalExceptionHandlerTest` (nuevo) | 12 |
 
 ### Exclusiones de cobertura (en `pom.xml`, plugin jacoco)
 - `StoreApplication`
