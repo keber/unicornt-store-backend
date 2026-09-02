@@ -22,7 +22,7 @@ Cycle detected: Slice domain -> \
     - Field <com.unicornt.store.domain.service.CartServiceImpl.productRepository> has type <com.unicornt.store.infrastructure.persistence.repository.ProductRepository> in (CartServiceImpl.java:0)\
     - Field <com.unicornt.store.domain.service.CartServiceImpl.userRepository> has type <com.unicornt.store.infrastructure.persistence.repository.UserRepository> in (CartServiceImpl.java:0)\
     - Field <com.unicornt.store.domain.service.CategoryServiceImpl.categoryRepository> has type <com.unicornt.store.infrastructure.persistence.repository.CategoryRepository> in (CategoryServiceImpl.java:0)\
-    (211 further dependencies have been omitted...)\
+    (201 further dependencies have been omitted...)\
   2. Dependencies of Slice infrastructure\
     - Constructor <com.unicornt.store.infrastructure.web.rest.AddressRestController.<init>(com.unicornt.store.domain.service.AddressService)> has parameter of type <com.unicornt.store.domain.service.AddressService> in (AddressRestController.java:0)\
     - Constructor <com.unicornt.store.infrastructure.web.rest.AuthRestController.<init>(com.unicornt.store.domain.service.UserService, org.springframework.security.authentication.AuthenticationManager, com.unicornt.store.infrastructure.security.JwtService)> has parameter of type <com.unicornt.store.domain.service.UserService> in (AuthRestController.java:0)\

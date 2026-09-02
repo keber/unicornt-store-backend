@@ -109,13 +109,13 @@ Recorded at P0 close; the count is the refactor progress meter. It only ever dro
 | domain -X-> org.springframework.. | 73 |
 | domain -X-> jakarta.persistence.. | 0 |
 | domain -X-> jakarta.validation.. | 0 |
-| domain -X-> ..infrastructure.. | 235 |
+| domain -X-> ..infrastructure.. | 225 |
 | domain -X-> ..application.. | 0 |
 | application -X-> ..infrastructure.. | 0 |
 | application -X-> org.springframework.data.. | 0 |
 | no package cycles between the top-level slices | 47 |
-| LayeredArchitecture (web->application->domain; persistence->application; domain depends on no layer) | 309 |
-| **Total violation lines frozen** | **664** |
+| LayeredArchitecture (web->application->domain; persistence->application; domain depends on no layer) | 299 |
+| **Total violation lines frozen** | **644** |
 
 Counts are the actual `FreezingArchViolationStore` line counts from the first
 `mvn test` on `final-delivery` after the ArchUnit dependency was added. The
