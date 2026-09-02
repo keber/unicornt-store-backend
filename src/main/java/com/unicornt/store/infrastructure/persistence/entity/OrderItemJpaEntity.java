@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 /** One line of a confirmed order, with the product name and unit price frozen at purchase time. */
 @Entity
 @Table(name = "order_items")
-public class OrderItemEntity {
+public class OrderItemJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,7 +15,7 @@ public class OrderItemEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "order_id", nullable = false)
-    private OrderEntity order;
+    private OrderJpaEntity order;
 
     @Column(name = "product_id", nullable = false)
     private int productId;
@@ -32,10 +32,10 @@ public class OrderItemEntity {
     @Column(name = "subtotal", nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal = BigDecimal.ZERO;
 
-    public OrderItemEntity() {
+    public OrderItemJpaEntity() {
     }
 
-    public OrderItemEntity(int productId, String productName, BigDecimal unitPrice, int quantity, BigDecimal subtotal) {
+    public OrderItemJpaEntity(int productId, String productName, BigDecimal unitPrice, int quantity, BigDecimal subtotal) {
         this.productId = productId;
         this.productName = productName;
         this.unitPrice = unitPrice;
@@ -46,8 +46,8 @@ public class OrderItemEntity {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public OrderEntity getOrder() { return order; }
-    public void setOrder(OrderEntity order) { this.order = order; }
+    public OrderJpaEntity getOrder() { return order; }
+    public void setOrder(OrderJpaEntity order) { this.order = order; }
 
     public int getProductId() { return productId; }
     public void setProductId(int productId) { this.productId = productId; }

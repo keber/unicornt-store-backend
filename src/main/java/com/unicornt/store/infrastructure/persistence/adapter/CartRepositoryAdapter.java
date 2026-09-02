@@ -3,9 +3,9 @@ package com.unicornt.store.infrastructure.persistence.adapter;
 import com.unicornt.store.domain.model.Cart;
 import com.unicornt.store.domain.model.CartItem;
 import com.unicornt.store.domain.repository.CartRepository;
-import com.unicornt.store.infrastructure.persistence.entity.CartItemEntity;
+import com.unicornt.store.infrastructure.persistence.entity.CartItemJpaEntity;
 import com.unicornt.store.infrastructure.persistence.mapper.CartPersistenceMapper;
-import com.unicornt.store.infrastructure.persistence.repository.CartItemRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataCartItemRepository;
 import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
 import org.springframework.stereotype.Component;
 
@@ -24,10 +24,10 @@ import java.util.Map;
 @Component
 public class CartRepositoryAdapter implements CartRepository {
 
-    private final CartItemRepository rows;
+    private final SpringDataCartItemRepository rows;
     private final UserRepository users;
 
-    public CartRepositoryAdapter(CartItemRepository rows, UserRepository users) {
+    public CartRepositoryAdapter(SpringDataCartItemRepository rows, UserRepository users) {
         this.rows = rows;
         this.users = users;
     }
@@ -48,15 +48,15 @@ public class CartRepositoryAdapter implements CartRepository {
             throw new IllegalStateException("Cannot persist a cart for an unknown user: " + cart.userId());
         }
 
-        Map<Integer, CartItemEntity> current = new HashMap<>();
-        for (CartItemEntity row : rows.findByUserId(numericId)) {
+        Map<Integer, CartItemJpaEntity> current = new HashMap<>();
+        for (CartItemJpaEntity row : rows.findByUserId(numericId)) {
             current.put(row.getProductId(), row);
         }
 
         for (CartItem item : cart.items()) {
             int productId = (int) item.productId();
             int quantity = item.quantity().value();
-            CartItemEntity existing = current.remove(productId);
+            CartItemJpaEntity existing = current.remove(productId);
             if (existing == null) {
                 rows.save(CartPersistenceMapper.toEntity(numericId, item));
             } else if (existing.getQuantity() != quantity) {

@@ -2,7 +2,7 @@ package com.unicornt.store.infrastructure.persistence.mapper;
 
 import com.unicornt.store.domain.model.Cart;
 import com.unicornt.store.domain.model.CartItem;
-import com.unicornt.store.infrastructure.persistence.entity.CartItemEntity;
+import com.unicornt.store.infrastructure.persistence.entity.CartItemJpaEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +18,7 @@ class CartPersistenceMapperTest {
     @Test
     @DisplayName("maps a single row to a cart line")
     void rowToItem() {
-        CartItem item = CartPersistenceMapper.toDomain(new CartItemEntity(7L, 10, 3));
+        CartItem item = CartPersistenceMapper.toDomain(new CartItemJpaEntity(7L, 10, 3));
 
         assertThat(item.productId()).isEqualTo(10L);
         assertThat(item.quantity().value()).isEqualTo(3);
@@ -28,7 +28,7 @@ class CartPersistenceMapperTest {
     @DisplayName("assembles the aggregate from the row list")
     void rowsToCart() {
         Cart cart = CartPersistenceMapper.toDomain(USER,
-                List.of(new CartItemEntity(7L, 10, 2), new CartItemEntity(7L, 20, 1)));
+                List.of(new CartItemJpaEntity(7L, 10, 2), new CartItemJpaEntity(7L, 20, 1)));
 
         assertThat(cart.userId()).isEqualTo(USER);
         assertThat(cart.items()).containsExactly(CartItem.of(10, 2), CartItem.of(20, 1));
@@ -43,7 +43,7 @@ class CartPersistenceMapperTest {
     @Test
     @DisplayName("maps a cart line to a new row owned by the numeric user id")
     void itemToRow() {
-        CartItemEntity row = CartPersistenceMapper.toEntity(7L, CartItem.of(10, 4));
+        CartItemJpaEntity row = CartPersistenceMapper.toEntity(7L, CartItem.of(10, 4));
 
         assertThat(row.getUserId()).isEqualTo(7L);
         assertThat(row.getProductId()).isEqualTo(10);

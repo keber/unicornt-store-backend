@@ -13,7 +13,7 @@ import java.util.Optional;
  * column with native SQL so the catalog entity and repository, owned by the catalog slice,
  * stay untouched.
  */
-public interface OrderStockRepository extends Repository<ProductJpaEntity, Integer> {
+public interface SpringDataStockRepository extends Repository<ProductJpaEntity, Integer> {
 
     @Query(value = "SELECT stock FROM products WHERE id = :productId", nativeQuery = true)
     Optional<Integer> findStock(@Param("productId") int productId);

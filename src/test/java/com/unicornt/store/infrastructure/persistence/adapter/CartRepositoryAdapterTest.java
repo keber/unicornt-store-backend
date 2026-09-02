@@ -2,9 +2,9 @@ package com.unicornt.store.infrastructure.persistence.adapter;
 
 import com.unicornt.store.domain.model.Cart;
 import com.unicornt.store.domain.model.CartItem;
-import com.unicornt.store.infrastructure.persistence.entity.CartItemEntity;
+import com.unicornt.store.infrastructure.persistence.entity.CartItemJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
-import com.unicornt.store.infrastructure.persistence.repository.CartItemRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataCartItemRepository;
 import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,14 +31,14 @@ class CartRepositoryAdapterTest {
     private static final long USER_ID = 7L;
 
     @Mock
-    private CartItemRepository rows;
+    private SpringDataCartItemRepository rows;
     @Mock
     private UserRepository users;
     @InjectMocks
     private CartRepositoryAdapter adapter;
 
-    private static CartItemEntity row(long id, int productId, int quantity) {
-        CartItemEntity entity = new CartItemEntity(USER_ID, productId, quantity);
+    private static CartItemJpaEntity row(long id, int productId, int quantity) {
+        CartItemJpaEntity entity = new CartItemJpaEntity(USER_ID, productId, quantity);
         entity.setId(id);
         return entity;
     }
@@ -77,9 +77,9 @@ class CartRepositoryAdapterTest {
     @DisplayName("save inserts new lines, updates changed ones and deletes the rest")
     void saveDiffsRows() {
         userExists();
-        CartItemEntity keep = row(1, 10, 2);
-        CartItemEntity change = row(2, 20, 1);
-        CartItemEntity drop = row(3, 30, 5);
+        CartItemJpaEntity keep = row(1, 10, 2);
+        CartItemJpaEntity change = row(2, 20, 1);
+        CartItemJpaEntity drop = row(3, 30, 5);
         when(rows.findByUserId(USER_ID))
                 .thenReturn(List.of(keep, change, drop))
                 .thenReturn(List.of(row(1, 10, 2), row(2, 20, 4), row(4, 40, 1)));
@@ -89,7 +89,7 @@ class CartRepositoryAdapterTest {
         assertThat(change.getQuantity()).isEqualTo(4);
         verify(rows).delete(drop);
 
-        ArgumentCaptor<CartItemEntity> inserted = ArgumentCaptor.forClass(CartItemEntity.class);
+        ArgumentCaptor<CartItemJpaEntity> inserted = ArgumentCaptor.forClass(CartItemJpaEntity.class);
         verify(rows, org.mockito.Mockito.atLeastOnce()).save(inserted.capture());
         assertThat(inserted.getAllValues()).anySatisfy(saved -> {
             assertThat(saved.getProductId()).isEqualTo(40);
@@ -107,7 +107,7 @@ class CartRepositoryAdapterTest {
         org.assertj.core.api.Assertions.assertThatIllegalStateException()
                 .isThrownBy(() -> adapter.save(Cart.empty(USER)));
 
-        verify(rows, never()).save(any(CartItemEntity.class));
+        verify(rows, never()).save(any(CartItemJpaEntity.class));
     }
 
     @Test

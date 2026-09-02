@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "cart_items",
        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "product_id"}))
-public class CartItemEntity {
+public class CartItemJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,10 +23,10 @@ public class CartItemEntity {
     @Transient
     private ProductJpaEntity product;
 
-    public CartItemEntity() {
+    public CartItemJpaEntity() {
     }
 
-    public CartItemEntity(Long userId, int productId, int quantity) {
+    public CartItemJpaEntity(Long userId, int productId, int quantity) {
         this.userId = userId;
         this.productId = productId;
         this.quantity = quantity;
