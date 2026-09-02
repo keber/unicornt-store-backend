@@ -1,8 +1,9 @@
 package com.unicornt.store.infrastructure.web.rest;
 
+import com.unicornt.store.application.usecase.catalog.CreateCategoryUseCase;
+import com.unicornt.store.application.usecase.catalog.ListCategoriesUseCase;
 import com.unicornt.store.domain.exception.DuplicateResourceException;
-import com.unicornt.store.domain.service.CategoryService;
-import com.unicornt.store.infrastructure.persistence.entity.CategoryEntity;
+import com.unicornt.store.domain.model.Category;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -31,20 +33,21 @@ class CategoryRestControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private CategoryService categoryService;
+    private ListCategoriesUseCase listCategories;
+    @MockitoBean
+    private CreateCategoryUseCase createCategory;
 
-    // SecurityConfig (T2) is picked up by @WebMvcTest's security auto-configuration and needs
+    // SecurityConfig is picked up by @WebMvcTest security auto-configuration and needs
     // these beans to construct its filter chain; mocked here so this slice stays narrow.
     @MockitoBean
     private com.unicornt.store.infrastructure.security.JwtService jwtService;
-
     @MockitoBean
     private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
 
     @Test
     @DisplayName("GET /api/v1/categories returns every category")
     void listReturnsCategories() throws Exception {
-        when(categoryService.findAll()).thenReturn(List.of(sampleEntity()));
+        when(listCategories.execute()).thenReturn(List.of(new Category(3L, "Hoodies", "hoodies")));
 
         mockMvc.perform(get("/api/v1/categories"))
                 .andExpect(status().isOk())
@@ -56,7 +59,8 @@ class CategoryRestControllerTest {
     @Test
     @DisplayName("POST /api/v1/categories returns 201 and a Location header")
     void createReturnsCreated() throws Exception {
-        when(categoryService.create(any(CategoryEntity.class))).thenReturn(sampleEntity());
+        when(createCategory.execute(eq("Hoodies"), any()))
+                .thenReturn(new Category(3L, "Hoodies", "hoodies"));
 
         mockMvc.perform(post("/api/v1/categories")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -80,7 +84,7 @@ class CategoryRestControllerTest {
     @Test
     @DisplayName("POST /api/v1/categories with a taken slug returns 409")
     void createDuplicateReturnsConflict() throws Exception {
-        when(categoryService.create(any(CategoryEntity.class)))
+        when(createCategory.execute(any(), any()))
                 .thenThrow(new DuplicateResourceException("Category", "slug", "hoodies"));
 
         mockMvc.perform(post("/api/v1/categories")
@@ -88,13 +92,5 @@ class CategoryRestControllerTest {
                         .content("{\"name\": \"Hoodies\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("RESOURCE_CONFLICT"));
-    }
-
-    private CategoryEntity sampleEntity() {
-        CategoryEntity entity = new CategoryEntity();
-        entity.setId(3);
-        entity.setName("Hoodies");
-        entity.setSlug("hoodies");
-        return entity;
     }
 }

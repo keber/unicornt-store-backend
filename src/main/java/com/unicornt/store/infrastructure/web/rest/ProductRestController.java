@@ -1,12 +1,17 @@
 package com.unicornt.store.infrastructure.web.rest;
 
-import com.unicornt.store.domain.service.ProductService;
-import com.unicornt.store.infrastructure.persistence.entity.ProductEntity;
+import com.unicornt.store.application.usecase.catalog.CreateProductUseCase;
+import com.unicornt.store.application.usecase.catalog.DeleteProductUseCase;
+import com.unicornt.store.application.usecase.catalog.GetProductUseCase;
+import com.unicornt.store.application.usecase.catalog.ListProductsUseCase;
+import com.unicornt.store.application.usecase.catalog.UpdateProductUseCase;
+import com.unicornt.store.domain.model.Product;
 import com.unicornt.store.infrastructure.web.dto.ProductDtos.ProductCreateRequest;
+import com.unicornt.store.infrastructure.web.dto.ProductDtos.ProductPageResponse;
 import com.unicornt.store.infrastructure.web.dto.ProductDtos.ProductResponse;
 import com.unicornt.store.infrastructure.web.dto.ProductDtos.ProductUpdateRequest;
 import com.unicornt.store.infrastructure.web.error.ErrorResponse;
-import com.unicornt.store.infrastructure.web.mapper.ProductMapper;
+import com.unicornt.store.infrastructure.web.mapper.ProductRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,11 +21,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -37,34 +37,47 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 
-/** Catalog product resource. Reads are public; writes require the administrator role. */
+/**
+ * Catalog product resource. Thin: every method reads the request, calls one use case
+ * and maps the result. Reads are public; writes require the administrator role.
+ */
 @RestController
 @RequestMapping("/api/v1/products")
 @Tag(name = "Products", description = "Catalog product management")
 public class ProductRestController {
 
-    private final ProductService productService;
+    private final ListProductsUseCase listProducts;
+    private final GetProductUseCase getProduct;
+    private final CreateProductUseCase createProduct;
+    private final UpdateProductUseCase updateProduct;
+    private final DeleteProductUseCase deleteProduct;
 
-    public ProductRestController(ProductService productService) {
-        this.productService = productService;
+    public ProductRestController(ListProductsUseCase listProducts,
+                                GetProductUseCase getProduct,
+                                CreateProductUseCase createProduct,
+                                UpdateProductUseCase updateProduct,
+                                DeleteProductUseCase deleteProduct) {
+        this.listProducts = listProducts;
+        this.getProduct = getProduct;
+        this.createProduct = createProduct;
+        this.updateProduct = updateProduct;
+        this.deleteProduct = deleteProduct;
     }
 
     @GetMapping
     @Operation(summary = "List products",
             description = "Returns a page of catalog products, optionally filtered by category and free text")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Page of products"),
-            @ApiResponse(responseCode = "400", description = "Invalid pagination or filter parameters",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    public Page<ProductResponse> list(
-            @Parameter(description = "Category slug or category name", example = "hoodies")
+    @ApiResponses(@ApiResponse(responseCode = "200", description = "Page of products"))
+    public ProductPageResponse list(
+            @Parameter(description = "Category slug or category name", example = "unicorns")
             @RequestParam(required = false) String category,
             @Parameter(description = "Free text matched against name and description", example = "unicorn")
             @RequestParam(required = false) String q,
-            @ParameterObject @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC)
-            Pageable pageable) {
-        return productService.search(category, q, pageable).map(ProductMapper::toResponse);
+            @Parameter(description = "Zero-based page number", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size (1-100)", example = "20")
+            @RequestParam(defaultValue = "20") int size) {
+        return ProductRestMapper.toPageResponse(listProducts.execute(category, q, page, size));
     }
 
     @GetMapping("/{id}")
@@ -75,8 +88,8 @@ public class ProductRestController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ProductResponse getById(
-            @Parameter(description = "Product identifier", example = "42") @PathVariable int id) {
-        return ProductMapper.toResponse(productService.findById(id));
+            @Parameter(description = "Product identifier", example = "42") @PathVariable long id) {
+        return ProductRestMapper.toResponse(getProduct.execute(id));
     }
 
     @PostMapping
@@ -95,10 +108,10 @@ public class ProductRestController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody ProductCreateRequest request) {
-        ProductEntity created = productService.create(ProductMapper.toEntity(request));
+        Product created = createProduct.execute(ProductRestMapper.toCommand(request));
         return ResponseEntity
-                .created(URI.create("/api/v1/products/" + created.getId()))
-                .body(ProductMapper.toResponse(created));
+                .created(URI.create("/api/v1/products/" + created.id()))
+                .body(ProductRestMapper.toResponse(created));
     }
 
     @PutMapping("/{id}")
@@ -117,9 +130,9 @@ public class ProductRestController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ProductResponse update(
-            @Parameter(description = "Product identifier", example = "42") @PathVariable int id,
+            @Parameter(description = "Product identifier", example = "42") @PathVariable long id,
             @Valid @RequestBody ProductUpdateRequest request) {
-        return ProductMapper.toResponse(productService.update(id, ProductMapper.toEntity(request)));
+        return ProductRestMapper.toResponse(updateProduct.execute(id, ProductRestMapper.toCommand(request)));
     }
 
     @DeleteMapping("/{id}")
@@ -137,7 +150,7 @@ public class ProductRestController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public void delete(
-            @Parameter(description = "Product identifier", example = "42") @PathVariable int id) {
-        productService.delete(id);
+            @Parameter(description = "Product identifier", example = "42") @PathVariable long id) {
+        deleteProduct.execute(id);
     }
 }

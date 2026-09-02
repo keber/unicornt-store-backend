@@ -1,11 +1,12 @@
 package com.unicornt.store.infrastructure.web.rest;
 
-import com.unicornt.store.domain.service.CategoryService;
-import com.unicornt.store.infrastructure.persistence.entity.CategoryEntity;
+import com.unicornt.store.application.usecase.catalog.CreateCategoryUseCase;
+import com.unicornt.store.application.usecase.catalog.ListCategoriesUseCase;
+import com.unicornt.store.domain.model.Category;
 import com.unicornt.store.infrastructure.web.dto.CategoryDtos.CategoryCreateRequest;
 import com.unicornt.store.infrastructure.web.dto.CategoryDtos.CategoryResponse;
 import com.unicornt.store.infrastructure.web.error.ErrorResponse;
-import com.unicornt.store.infrastructure.web.mapper.CategoryMapper;
+import com.unicornt.store.infrastructure.web.mapper.CategoryRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -25,26 +26,26 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.List;
 
-/** Product category resource. Reads are public; writes require the administrator role. */
+/** Product category resource. Reads are public; creation requires the administrator role. */
 @RestController
 @RequestMapping("/api/v1/categories")
 @Tag(name = "Categories", description = "Product category management")
 public class CategoryRestController {
 
-    private final CategoryService categoryService;
+    private final ListCategoriesUseCase listCategories;
+    private final CreateCategoryUseCase createCategory;
 
-    public CategoryRestController(CategoryService categoryService) {
-        this.categoryService = categoryService;
+    public CategoryRestController(ListCategoriesUseCase listCategories,
+                                 CreateCategoryUseCase createCategory) {
+        this.listCategories = listCategories;
+        this.createCategory = createCategory;
     }
 
     @GetMapping
-    @Operation(summary = "List categories",
-            description = "Returns every product category ordered by name")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "All categories")
-    })
+    @Operation(summary = "List categories", description = "Returns every product category ordered by name")
+    @ApiResponses(@ApiResponse(responseCode = "200", description = "All categories"))
     public List<CategoryResponse> list() {
-        return categoryService.findAll().stream().map(CategoryMapper::toResponse).toList();
+        return listCategories.execute().stream().map(CategoryRestMapper::toResponse).toList();
     }
 
     @PostMapping
@@ -63,9 +64,9 @@ public class CategoryRestController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryCreateRequest request) {
-        CategoryEntity created = categoryService.create(CategoryMapper.toEntity(request));
+        Category created = createCategory.execute(request.name(), request.slug());
         return ResponseEntity
-                .created(URI.create("/api/v1/categories/" + created.getId()))
-                .body(CategoryMapper.toResponse(created));
+                .created(URI.create("/api/v1/categories/" + created.id()))
+                .body(CategoryRestMapper.toResponse(created));
     }
 }
