@@ -6,7 +6,7 @@ import com.unicornt.store.infrastructure.persistence.entity.AddressEntity;
 import com.unicornt.store.infrastructure.persistence.entity.CartItemEntity;
 import com.unicornt.store.infrastructure.persistence.entity.OrderEntity;
 import com.unicornt.store.infrastructure.persistence.entity.OrderItemEntity;
-import com.unicornt.store.infrastructure.persistence.entity.ProductEntity;
+import com.unicornt.store.infrastructure.persistence.entity.ProductJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
 import com.unicornt.store.infrastructure.persistence.repository.OrderRepository;
 import com.unicornt.store.infrastructure.persistence.repository.OrderStockRepository;
@@ -56,7 +56,7 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         BigDecimal total = BigDecimal.ZERO;
         for (CartItemEntity item : items) {
-            ProductEntity product = item.getProduct();
+            ProductJpaEntity product = item.getProduct();
             reserveStock(product.getId(), item.getQuantity());
 
             BigDecimal unitPrice = BigDecimal.valueOf(product.getPrice());

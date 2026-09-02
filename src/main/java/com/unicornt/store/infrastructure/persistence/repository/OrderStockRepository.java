@@ -1,6 +1,6 @@
 package com.unicornt.store.infrastructure.persistence.repository;
 
-import com.unicornt.store.infrastructure.persistence.entity.ProductEntity;
+import com.unicornt.store.infrastructure.persistence.entity.ProductJpaEntity;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -13,7 +13,7 @@ import java.util.Optional;
  * column with native SQL so the catalog entity and repository, owned by the catalog slice,
  * stay untouched.
  */
-public interface OrderStockRepository extends Repository<ProductEntity, Integer> {
+public interface OrderStockRepository extends Repository<ProductJpaEntity, Integer> {
 
     @Query(value = "SELECT stock FROM products WHERE id = :productId", nativeQuery = true)
     Optional<Integer> findStock(@Param("productId") int productId);

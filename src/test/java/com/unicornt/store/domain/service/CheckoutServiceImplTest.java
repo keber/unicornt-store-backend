@@ -6,7 +6,7 @@ import com.unicornt.store.infrastructure.persistence.entity.AddressEntity;
 import com.unicornt.store.infrastructure.persistence.entity.CartItemEntity;
 import com.unicornt.store.infrastructure.persistence.entity.OrderEntity;
 import com.unicornt.store.infrastructure.persistence.entity.OrderItemEntity;
-import com.unicornt.store.infrastructure.persistence.entity.ProductEntity;
+import com.unicornt.store.infrastructure.persistence.entity.ProductJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
 import com.unicornt.store.infrastructure.persistence.repository.OrderRepository;
 import com.unicornt.store.infrastructure.persistence.repository.OrderStockRepository;
@@ -81,15 +81,15 @@ class CheckoutServiceImplTest {
         return address;
     }
 
-    private static ProductEntity aProduct(int id, String name, int price) {
-        ProductEntity product = new ProductEntity();
+    private static ProductJpaEntity aProduct(int id, String name, int price) {
+        ProductJpaEntity product = new ProductJpaEntity();
         product.setId(id);
         product.setName(name);
         product.setPrice(price);
         return product;
     }
 
-    private static CartItemEntity aCartItem(ProductEntity product, int quantity) {
+    private static CartItemEntity aCartItem(ProductJpaEntity product, int quantity) {
         CartItemEntity item = new CartItemEntity(USER_ID, product.getId(), quantity);
         item.setProduct(product);
         return item;
@@ -115,7 +115,7 @@ class CheckoutServiceImplTest {
         @Test
         @DisplayName("A line without enough stock raises OutOfStockException and never clears the cart or saves the order")
         void insufficientStockThrows() {
-            ProductEntity product = aProduct(3, "Hoodie", 5000);
+            ProductJpaEntity product = aProduct(3, "Hoodie", 5000);
             when(cartService.getCartItems(EMAIL)).thenReturn(List.of(aCartItem(product, 2)));
             when(addressService.findByUserAndId(EMAIL, ADDRESS_ID)).thenReturn(anAddress());
             when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(aUser()));
@@ -132,8 +132,8 @@ class CheckoutServiceImplTest {
         @Test
         @DisplayName("The happy path prices every line, persists the order, then clears the cart")
         void happyPathBuildsAndSavesOrder() {
-            ProductEntity hoodie = aProduct(3, "Hoodie", 5000);
-            ProductEntity mug = aProduct(9, "Mug", 1200);
+            ProductJpaEntity hoodie = aProduct(3, "Hoodie", 5000);
+            ProductJpaEntity mug = aProduct(9, "Mug", 1200);
             when(cartService.getCartItems(EMAIL))
                     .thenReturn(List.of(aCartItem(hoodie, 2), aCartItem(mug, 3)));
             when(addressService.findByUserAndId(EMAIL, ADDRESS_ID)).thenReturn(anAddress());
@@ -176,7 +176,7 @@ class CheckoutServiceImplTest {
         @Test
         @DisplayName("The order is saved before the cart is cleared")
         void savesOrderBeforeClearingCart() {
-            ProductEntity product = aProduct(3, "Hoodie", 5000);
+            ProductJpaEntity product = aProduct(3, "Hoodie", 5000);
             when(cartService.getCartItems(EMAIL)).thenReturn(List.of(aCartItem(product, 1)));
             when(addressService.findByUserAndId(EMAIL, ADDRESS_ID)).thenReturn(anAddress());
             when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(aUser()));
@@ -193,7 +193,7 @@ class CheckoutServiceImplTest {
         @Test
         @DisplayName("An unknown user raises ResourceNotFoundException and never saves the order")
         void unknownUserThrows() {
-            ProductEntity product = aProduct(3, "Hoodie", 5000);
+            ProductJpaEntity product = aProduct(3, "Hoodie", 5000);
             when(cartService.getCartItems(EMAIL)).thenReturn(List.of(aCartItem(product, 1)));
             when(addressService.findByUserAndId(EMAIL, ADDRESS_ID)).thenReturn(anAddress());
             when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());

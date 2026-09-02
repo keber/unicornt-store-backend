@@ -2,10 +2,10 @@ package com.unicornt.store.domain.service;
 
 import com.unicornt.store.domain.exception.ResourceNotFoundException;
 import com.unicornt.store.infrastructure.persistence.entity.CartItemEntity;
-import com.unicornt.store.infrastructure.persistence.entity.ProductEntity;
+import com.unicornt.store.infrastructure.persistence.entity.ProductJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
 import com.unicornt.store.infrastructure.persistence.repository.CartItemRepository;
-import com.unicornt.store.infrastructure.persistence.repository.ProductRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataProductRepository;
 import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +20,11 @@ public class CartServiceImpl implements CartService {
 
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
-    private final ProductRepository productRepository;
+    private final SpringDataProductRepository productRepository;
 
     public CartServiceImpl(CartItemRepository cartItemRepository,
                            UserRepository userRepository,
-                           ProductRepository productRepository) {
+                           SpringDataProductRepository productRepository) {
         this.cartItemRepository = cartItemRepository;
         this.userRepository = userRepository;
         this.productRepository = productRepository;
@@ -60,7 +60,7 @@ public class CartServiceImpl implements CartService {
             throw new IllegalArgumentException("Quantity must be greater than 0");
         }
         Long userId = getUserId(userEmail);
-        ProductEntity product = productRepository.findById(productId)
+        ProductJpaEntity product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
 
         Optional<CartItemEntity> existing = cartItemRepository.findByUserIdAndProductId(userId, product.getId());
@@ -111,7 +111,7 @@ public class CartServiceImpl implements CartService {
     }
 
     private CartLine toLine(CartItemEntity item) {
-        ProductEntity product = item.getProduct();
+        ProductJpaEntity product = item.getProduct();
         BigDecimal unitPrice = BigDecimal.valueOf(product.getPrice());
         BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
         return new CartLine(item.getId(), product.getId(), product.getName(), product.getImageBase(),

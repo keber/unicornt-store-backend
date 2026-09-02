@@ -4,10 +4,10 @@ import com.unicornt.store.domain.exception.ResourceNotFoundException;
 import com.unicornt.store.domain.service.CartService.CartLine;
 import com.unicornt.store.domain.service.CartService.CartView;
 import com.unicornt.store.infrastructure.persistence.entity.CartItemEntity;
-import com.unicornt.store.infrastructure.persistence.entity.ProductEntity;
+import com.unicornt.store.infrastructure.persistence.entity.ProductJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
 import com.unicornt.store.infrastructure.persistence.repository.CartItemRepository;
-import com.unicornt.store.infrastructure.persistence.repository.ProductRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataProductRepository;
 import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,7 +41,7 @@ class CartServiceImplTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    private ProductRepository productRepository;
+    private SpringDataProductRepository productRepository;
 
     private CartServiceImpl cartService;
 
@@ -61,8 +61,8 @@ class CartServiceImplTest {
         return user;
     }
 
-    private static ProductEntity aProduct(int id, String name, int price) {
-        ProductEntity product = new ProductEntity();
+    private static ProductJpaEntity aProduct(int id, String name, int price) {
+        ProductJpaEntity product = new ProductJpaEntity();
         product.setId(id);
         product.setName(name);
         product.setPrice(price);
@@ -161,7 +161,7 @@ class CartServiceImplTest {
         void resolvesProducts() {
             userExists();
             CartItemEntity item = aCartItem(1L, USER_ID, 10, 2);
-            ProductEntity product = aProduct(10, "Apples", 150);
+            ProductJpaEntity product = aProduct(10, "Apples", 150);
             when(cartItemRepository.findByUserId(USER_ID)).thenReturn(List.of(item));
             when(productRepository.findById(10)).thenReturn(Optional.of(product));
 
@@ -205,7 +205,7 @@ class CartServiceImplTest {
         @DisplayName("creates a new line when the product is not yet in the cart")
         void createsNewLine() {
             userExists();
-            ProductEntity product = aProduct(10, "Apples", 150);
+            ProductJpaEntity product = aProduct(10, "Apples", 150);
             when(productRepository.findById(10)).thenReturn(Optional.of(product));
             when(cartItemRepository.findByUserIdAndProductId(USER_ID, 10)).thenReturn(Optional.empty());
             when(cartItemRepository.save(any(CartItemEntity.class))).thenAnswer(call -> {
@@ -226,7 +226,7 @@ class CartServiceImplTest {
         @DisplayName("merges the quantity into an existing line")
         void mergesQuantity() {
             userExists();
-            ProductEntity product = aProduct(10, "Apples", 150);
+            ProductJpaEntity product = aProduct(10, "Apples", 150);
             CartItemEntity existing = aCartItem(55L, USER_ID, 10, 2);
             when(productRepository.findById(10)).thenReturn(Optional.of(product));
             when(cartItemRepository.findByUserIdAndProductId(USER_ID, 10)).thenReturn(Optional.of(existing));

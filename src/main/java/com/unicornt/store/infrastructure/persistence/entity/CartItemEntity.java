@@ -21,7 +21,7 @@ public class CartItemEntity {
     private int quantity;
 
     @Transient
-    private ProductEntity product;
+    private ProductJpaEntity product;
 
     public CartItemEntity() {
     }
@@ -64,11 +64,11 @@ public class CartItemEntity {
         this.quantity = quantity;
     }
 
-    public ProductEntity getProduct() {
+    public ProductJpaEntity getProduct() {
         return product;
     }
 
-    public void setProduct(ProductEntity product) {
+    public void setProduct(ProductJpaEntity product) {
         this.product = product;
     }
 
