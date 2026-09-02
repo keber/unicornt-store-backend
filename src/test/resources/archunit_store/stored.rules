@@ -1,0 +1,11 @@
+#
+#Wed Sep 02 11:56:43 GMT-04:00 2026
+no\ classes\ in\ application\ should\ depend\ on\ ..infrastructure..=429f93db-bbbb-4146-a72f-9157ca7520d1
+no\ classes\ in\ application\ should\ depend\ on\ org.springframework.data..=5e75f4c5-a12d-4971-b60b-70073bc2d6b7
+no\ classes\ in\ domain\ should\ depend\ on\ ..application..=05df2a21-e376-4ba8-8ac8-ad4a1ae8bf61
+no\ classes\ in\ domain\ should\ depend\ on\ ..infrastructure..=c1a765ac-1d31-4983-81ad-068bbc1d822b
+no\ classes\ in\ domain\ should\ depend\ on\ jakarta.persistence..=f68198e9-6d36-4dc3-a438-7f455d9eace3
+no\ classes\ in\ domain\ should\ depend\ on\ jakarta.validation..=898b1634-24ea-4295-aa9f-47e553294e2e
+no\ classes\ in\ domain\ should\ depend\ on\ org.springframework..=5d3f5609-6921-4686-bc89-0fb11d745964
+no\ package\ cycles\ between\ the\ top-level\ slices=a6ba06ab-41ee-48a3-b482-379b7d3702b6
+web\ ->\ application\ ->\ domain;\ persistence\ ->\ application;\ domain\ depends\ on\ no\ layer=f197ad2d-53a7-4299-82b5-a45064d4ad03
