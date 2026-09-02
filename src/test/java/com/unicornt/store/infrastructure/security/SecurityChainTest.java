@@ -51,7 +51,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = AuthRestController.class)
 @ImportAutoConfiguration({SecurityAutoConfiguration.class, ServletWebSecurityAutoConfiguration.class,
         SecurityFilterAutoConfiguration.class})
-@Import({SecurityConfig.class, JwtAuthFilter.class, JwtService.class,
+@Import({SecurityConfig.class, com.unicornt.store.infrastructure.config.CorsConfig.class,
+        JwtAuthFilter.class, JwtService.class,
         RestAuthEntryPoint.class, RestAccessDeniedHandler.class,
         SecurityChainTest.AdminOnlyEndpointConfig.class})
 class SecurityChainTest {
@@ -224,6 +225,25 @@ class SecurityChainTest {
                 .andExpect(header().string("Access-Control-Allow-Origin", FRONTEND_ORIGIN))
                 .andExpect(header().string("Access-Control-Allow-Methods",
                         org.hamcrest.Matchers.containsString("POST")));
+    }
+
+    @Test
+    void getProductsPreflightFromTheViteOriginIsAllowed() throws Exception {
+        mockMvc.perform(options("/api/v1/products")
+                        .header("Origin", FRONTEND_ORIGIN)
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", FRONTEND_ORIGIN))
+                .andExpect(header().string("Access-Control-Allow-Methods",
+                        org.hamcrest.Matchers.containsString("GET")));
+    }
+
+    @Test
+    void preflightFromAnUnknownOriginIsRejected() throws Exception {
+        mockMvc.perform(options("/api/v1/products")
+                        .header("Origin", "http://evil.example")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
     }
 
     private void stubAccount(String email, String role) {
