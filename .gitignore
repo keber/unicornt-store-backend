@@ -2,6 +2,7 @@
 target/
 out/
 build/
+.gradle/
 *.class
 *.jar
 *.war
@@ -26,6 +27,8 @@ build/
 
 # VS Code
 .vscode/
+!.vscode/extensions.json
+!.vscode/launch.json.default
 
 # NetBeans
 nbproject/
@@ -33,13 +36,19 @@ nbbuild/
 nbdist/
 
 # ── Operating system ─────────────────────────────────────────────
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
 Thumbs.db
+ehthumbs.db
 desktop.ini
 
 # ── Secrets and local configuration ──────────────────────────────
-# NEVER commit credentials - use environment variables (see pom.xml)
-*.env
+# NEVER commit credentials - all secrets come from environment variables.
 .env
 .env.*
 !.env.example
@@ -58,3 +67,4 @@ logs/
 /INSTRUCCIONES-AGENTE-EVALUADOR-HITO4.md
 /actividad_m6_l5/
 /demoApiRest/
+/docs/refactor/
