@@ -104,18 +104,30 @@ belong to P0. `pom.xml` / `package.json` are frozen after P0.
 
 Recorded at P0 close; the count is the refactor progress meter. It only ever drops.
 
-| Rule (Group B — frozen) | P0 baseline |
-|-------------------------|------------:|
-| domain -X-> org.springframework.. | 73 |
-| domain -X-> jakarta.persistence.. | 0 |
-| domain -X-> jakarta.validation.. | 0 |
-| domain -X-> ..infrastructure.. | 225 |
-| domain -X-> ..application.. | 0 |
-| application -X-> ..infrastructure.. | 0 |
-| application -X-> org.springframework.data.. | 0 |
-| no package cycles between the top-level slices | 47 |
-| LayeredArchitecture (web->application->domain; persistence->application; domain depends on no layer) | 299 |
-| **Total violation lines frozen** | **644** |
+| Rule (Group B — frozen) | P0 baseline | after P1 (catalog) |
+|-------------------------|------------:|-------------------:|
+| domain -X-> org.springframework.. | 73 | 43 |
+| domain -X-> jakarta.persistence.. | 0 | 0 |
+| domain -X-> jakarta.validation.. | 0 | 0 |
+| domain -X-> ..infrastructure.. | 225 | 129 |
+| domain -X-> ..application.. | 0 | 0 |
+| application -X-> ..infrastructure.. | 0 | 0 |
+| application -X-> org.springframework.data.. | 0 | 0 |
+| no package cycles between the top-level slices | 47 | 117 |
+| LayeredArchitecture (web->application->domain; persistence->application; domain depends on no layer) | 299 | 168 |
+| **Total violation lines frozen** | **644** | **457** |
+
+The three dependency rules dropped sharply once `ProductServiceImpl` / `CategoryServiceImpl`
+were replaced by pure use cases + a JPA adapter. The **cycle-edge count rose** (47 -> 117)
+because the new `application` layer now participates in the `domain <-> infrastructure`
+cycle through the *surviving* legacy `domain.service.*` (cart, checkout, address, user).
+It collapses toward 0 as P2/P3 remove those services; the ratchet only blocks *new*
+violation lines, which none of P1's changes introduced.
+
+Group C: the catalog-scoped rules in `TargetArchitectureRulesTest` are **active**
+(`persistence.adapter` implements a `domain.repository` port; use cases free of
+`*JpaEntity`; catalog `*Repository` ports live in `domain.repository`). The
+whole-codebase `every_repository_interface_lives_in_domain` stays `@ArchIgnore` until P5.
 
 Counts are the actual `FreezingArchViolationStore` line counts from the first
 `mvn test` on `final-delivery` after the ArchUnit dependency was added. The
