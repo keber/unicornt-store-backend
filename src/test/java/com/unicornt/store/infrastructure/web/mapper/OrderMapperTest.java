@@ -1,19 +1,18 @@
 package com.unicornt.store.infrastructure.web.mapper;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
 import com.unicornt.store.infrastructure.persistence.entity.OrderEntity;
 import com.unicornt.store.infrastructure.persistence.entity.OrderEntity.OrderStatus;
 import com.unicornt.store.infrastructure.persistence.entity.OrderItemEntity;
 import com.unicornt.store.infrastructure.web.dto.OrderDtos.OrderLineResponse;
 import com.unicornt.store.infrastructure.web.dto.OrderDtos.OrderResponse;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /** Unit test of the pure static translation from order entities to order DTOs. */
 class OrderMapperTest {
@@ -121,15 +120,16 @@ class OrderMapperTest {
     class ListUsage {
 
         @Test
-        @DisplayName("the mapped item list is not the entity's own list instance")
+        @DisplayName("the mapped item list is decoupled from later changes to the entity")
         void mappedListIsFresh() {
             OrderEntity order = anOrder();
             order.addItem(anItem());
-            List<OrderItemEntity> entityItems = order.getItems();
 
             OrderResponse response = OrderMapper.toResponse(order);
+            order.addItem(new OrderItemEntity(
+                    99, "Sticker", new BigDecimal("990"), 1, new BigDecimal("990")));
 
-            assertThat((Object) response.items()).isNotSameAs(entityItems);
+            assertThat(response.items()).hasSize(1);
         }
     }
 }
