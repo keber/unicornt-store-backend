@@ -103,7 +103,7 @@ public class StoreApplication extends SpringBootServletInitializer {
 
     private static String generatePassword() {
         byte[] bytes = new byte[24];
-        new SecureRandom(1000).nextBytes(bytes);
+        new SecureRandom().nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }
