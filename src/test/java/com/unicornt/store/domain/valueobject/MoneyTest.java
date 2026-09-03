@@ -55,8 +55,9 @@ class MoneyTest {
     @Test
     @DisplayName("rejects multiplication by a negative factor")
     void rejectsNegativeFactor() {
+        Money base = Money.ofClp(1000);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> Money.ofClp(1000).times(-1))
+                .isThrownBy(() -> base.times(-1))
                 .withMessageContaining("must not be negative");
     }
 

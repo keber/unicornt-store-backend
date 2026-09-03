@@ -38,20 +38,23 @@ class OrderTest {
     @DisplayName("the item list is an immutable copy")
     void itemsAreCopied() {
         Order order = Order.place("ada@example.com", ADDRESS, twoLines());
+        List<OrderItem> items = order.items();
+        OrderItem extra = new OrderItem(9L, "x", Money.ofClp(1), 1);
 
         assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> order.items().add(new OrderItem(9L, "x", Money.ofClp(1), 1)));
+                .isThrownBy(() -> items.add(extra));
     }
 
     @Test
     @DisplayName("rejects a blank user, a null address and an empty line list")
     void rejectsInvalid() {
+        List<OrderItem> lines = twoLines();
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> Order.place("  ", ADDRESS, twoLines())).withMessageContaining("belong to a user");
+                .isThrownBy(() -> Order.place("  ", ADDRESS, lines)).withMessageContaining("belong to a user");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> Order.place(null, ADDRESS, twoLines())).withMessageContaining("belong to a user");
+                .isThrownBy(() -> Order.place(null, ADDRESS, lines)).withMessageContaining("belong to a user");
         assertThatExceptionOfType(NullPointerException.class)
-                .isThrownBy(() -> Order.place("ada", null, twoLines())).withMessageContaining("shippingAddress");
+                .isThrownBy(() -> Order.place("ada", null, lines)).withMessageContaining("shippingAddress");
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> Order.place("ada", ADDRESS, List.of())).withMessageContaining("at least one line");
     }
@@ -60,28 +63,30 @@ class OrderTest {
     @DisplayName("the reconstitution constructor accepts a stored order and rejects nulls")
     void reconstitution() {
         Instant now = Instant.now();
-        Order order = new Order(58L, "ada", ADDRESS, twoLines(), Money.ofClp(30970), OrderStatus.CONFIRMED, now);
+        List<OrderItem> lines = twoLines();
+        Money money = Money.ofClp(1);
+        Order order = new Order(58L, "ada", ADDRESS, lines, Money.ofClp(30970), OrderStatus.CONFIRMED, now);
 
         assertThat(order.id()).isEqualTo(58L);
         assertThat(order.createdAt()).isEqualTo(now);
 
         assertThatExceptionOfType(NullPointerException.class)
-                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, twoLines(), null, OrderStatus.CONFIRMED, now))
+                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, lines, null, OrderStatus.CONFIRMED, now))
                 .withMessageContaining("total");
         assertThatExceptionOfType(NullPointerException.class)
-                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, twoLines(), Money.ofClp(1), null, now))
+                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, lines, money, null, now))
                 .withMessageContaining("status");
         assertThatExceptionOfType(NullPointerException.class)
-                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, twoLines(), Money.ofClp(1), OrderStatus.CONFIRMED, null))
+                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, lines, money, OrderStatus.CONFIRMED, null))
                 .withMessageContaining("createdAt");
         assertThatExceptionOfType(NullPointerException.class)
-                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, null, Money.ofClp(1), OrderStatus.CONFIRMED, now))
+                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, null, money, OrderStatus.CONFIRMED, now))
                 .withMessageContaining("items");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, List.of(), Money.ofClp(1), OrderStatus.CONFIRMED, now))
+                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, List.of(), money, OrderStatus.CONFIRMED, now))
                 .withMessageContaining("at least one line");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new Order(1L, "  ", ADDRESS, twoLines(), Money.ofClp(1), OrderStatus.CONFIRMED, now))
+                .isThrownBy(() -> new Order(1L, "  ", ADDRESS, lines, money, OrderStatus.CONFIRMED, now))
                 .withMessageContaining("belong to a user");
     }
 }

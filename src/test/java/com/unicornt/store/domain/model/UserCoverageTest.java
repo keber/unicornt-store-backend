@@ -32,11 +32,12 @@ class UserCoverageTest {
     @Test
     @DisplayName("rejects a null (not merely blank) required field")
     void rejectsNullFields() {
+        Set<String> roles = Set.of("ROLE_USER");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new User(null, null, "L", "a@b.cl", "h", Set.of("ROLE_USER")))
+                .isThrownBy(() -> new User(null, null, "L", "a@b.cl", "h", roles))
                 .withMessageContaining("first name");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new User(null, "F", "L", "a@b.cl", null, Set.of("ROLE_USER")))
+                .isThrownBy(() -> new User(null, "F", "L", "a@b.cl", null, roles))
                 .withMessageContaining("password hash");
     }
 

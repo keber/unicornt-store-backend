@@ -62,8 +62,9 @@ class CategoryTest {
     void nameLength() {
         assertThat(new Category(1L, "x".repeat(100), "s").name()).hasSize(100);
 
+        String tooLong = "x".repeat(101);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new Category(1L, "x".repeat(101), "s"))
+                .isThrownBy(() -> new Category(1L, tooLong, "s"))
                 .withMessageContaining("100 characters");
     }
 

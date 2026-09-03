@@ -90,17 +90,19 @@ class UserRepositoryAdapterTest {
     @DisplayName("save fails when a role name has not been seeded")
     void failsOnUnknownRole() {
         when(roles.findByName("ROLE_USER")).thenReturn(Optional.empty());
+        User account = User.register("Ada", "Lovelace", "ada@example.com", "hashed", Set.of("ROLE_USER"));
 
-        assertThatExceptionOfType(ResourceNotFoundException.class).isThrownBy(() ->
-                adapter.save(User.register("Ada", "Lovelace", "ada@example.com", "hashed", Set.of("ROLE_USER"))));
+        assertThatExceptionOfType(ResourceNotFoundException.class)
+                .isThrownBy(() -> adapter.save(account));
     }
 
     @Test
     @DisplayName("save fails when the referenced existing account id is gone")
     void failsOnMissingExistingAccount() {
         when(users.findById(99L)).thenReturn(Optional.empty());
+        User account = new User(99L, "Ada", "Lovelace", "ada@example.com", "hashed", Set.of("ROLE_USER"));
 
-        assertThatExceptionOfType(ResourceNotFoundException.class).isThrownBy(() ->
-                adapter.save(new User(99L, "Ada", "Lovelace", "ada@example.com", "hashed", Set.of("ROLE_USER"))));
+        assertThatExceptionOfType(ResourceNotFoundException.class)
+                .isThrownBy(() -> adapter.save(account));
     }
 }

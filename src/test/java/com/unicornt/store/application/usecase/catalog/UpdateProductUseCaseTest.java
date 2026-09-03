@@ -60,8 +60,9 @@ class UpdateProductUseCaseTest {
     void failsWhenMissing() {
         when(productRepository.existsById(5L)).thenReturn(false);
 
+        ProductCommand cmd = command();
         assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> useCase.execute(5L, command()))
+                .isThrownBy(() -> useCase.execute(5L, cmd))
                 .withMessageContaining("Product not found: 5");
         verify(productRepository, never()).save(any());
     }
@@ -72,8 +73,9 @@ class UpdateProductUseCaseTest {
         when(productRepository.existsById(5L)).thenReturn(true);
         when(categoryRepository.existsById(3L)).thenReturn(false);
 
+        ProductCommand cmd = command();
         assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> useCase.execute(5L, command()))
+                .isThrownBy(() -> useCase.execute(5L, cmd))
                 .withMessageContaining("Category not found: 3");
         verify(productRepository, never()).save(any());
     }
@@ -85,8 +87,9 @@ class UpdateProductUseCaseTest {
         when(categoryRepository.existsById(3L)).thenReturn(true);
         when(productTypeRepository.existsById(1L)).thenReturn(false);
 
+        ProductCommand cmd = command();
         assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> useCase.execute(5L, command()))
+                .isThrownBy(() -> useCase.execute(5L, cmd))
                 .withMessageContaining("Product type not found: 1");
         verify(productRepository, never()).save(any());
     }

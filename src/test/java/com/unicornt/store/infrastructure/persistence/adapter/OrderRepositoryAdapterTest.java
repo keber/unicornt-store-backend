@@ -71,9 +71,10 @@ class OrderRepositoryAdapterTest {
     @DisplayName("save fails with not-found when the principal has no account")
     void saveUnknownUser() {
         when(users.findByEmail("ada@example.com")).thenReturn(Optional.empty());
+        Order order = domainOrder();
 
         assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> adapter.save(domainOrder()));
+                .isThrownBy(() -> adapter.save(order));
     }
 
     @Test

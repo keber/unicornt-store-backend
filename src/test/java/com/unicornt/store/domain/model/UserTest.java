@@ -45,37 +45,41 @@ class UserTest {
         @Test
         @DisplayName("rejects a blank first name, last name or email")
         void rejectsBlankRequiredFields() {
+            Set<String> role = userRole();
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> User.register(" ", "Lovelace", "ada@example.com", "h", userRole()));
+                    .isThrownBy(() -> User.register(" ", "Lovelace", "ada@example.com", "h", role));
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> User.register("Ada", "", "ada@example.com", "h", userRole()));
+                    .isThrownBy(() -> User.register("Ada", "", "ada@example.com", "h", role));
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> User.register("Ada", "Lovelace", null, "h", userRole()));
+                    .isThrownBy(() -> User.register("Ada", "Lovelace", null, "h", role));
         }
 
         @Test
         @DisplayName("rejects a first or last name longer than 100 characters")
         void rejectsOverlongNames() {
             String tooLong = "x".repeat(101);
+            Set<String> role = userRole();
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> User.register(tooLong, "Lovelace", "ada@example.com", "h", userRole()));
+                    .isThrownBy(() -> User.register(tooLong, "Lovelace", "ada@example.com", "h", role));
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> User.register("Ada", tooLong, "ada@example.com", "h", userRole()));
+                    .isThrownBy(() -> User.register("Ada", tooLong, "ada@example.com", "h", role));
         }
 
         @Test
         @DisplayName("rejects an email longer than 150 characters")
         void rejectsOverlongEmail() {
             String email = "a".repeat(140) + "@example.com";
+            Set<String> role = userRole();
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> User.register("Ada", "Lovelace", email, "h", userRole()));
+                    .isThrownBy(() -> User.register("Ada", "Lovelace", email, "h", role));
         }
 
         @Test
         @DisplayName("rejects a blank password hash")
         void rejectsBlankHash() {
+            Set<String> role = userRole();
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> User.register("Ada", "Lovelace", "ada@example.com", "  ", userRole()));
+                    .isThrownBy(() -> User.register("Ada", "Lovelace", "ada@example.com", "  ", role));
         }
 
         @Test
@@ -102,8 +106,9 @@ class UserTest {
     @DisplayName("exposes an unmodifiable role set")
     void rolesAreUnmodifiable() {
         User user = User.register("Ada", "Lovelace", "ada@example.com", "hashed", userRole());
+        Set<String> roles = user.roles();
         assertThatExceptionOfType(UnsupportedOperationException.class)
-                .isThrownBy(() -> user.roles().add(User.ROLE_ADMIN));
+                .isThrownBy(() -> roles.add(User.ROLE_ADMIN));
     }
 
     @Test

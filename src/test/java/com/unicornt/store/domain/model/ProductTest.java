@@ -36,16 +36,18 @@ class ProductTest {
         @Test
         @DisplayName("rejects a blank name")
         void rejectsBlankName() {
+            Money price = Money.ofClp(10);
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> new Product(1L, "   ", null, null, Money.ofClp(10), 1L, null, 1L, null, 0, true))
+                    .isThrownBy(() -> new Product(1L, "   ", null, null, price, 1L, null, 1L, null, 0, true))
                     .withMessageContaining("name is required");
         }
 
         @Test
         @DisplayName("rejects a null name")
         void rejectsNullName() {
+            Money price = Money.ofClp(10);
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> new Product(1L, null, null, null, Money.ofClp(10), 1L, null, 1L, null, 0, true))
+                    .isThrownBy(() -> new Product(1L, null, null, null, price, 1L, null, 1L, null, 0, true))
                     .withMessageContaining("name is required");
         }
 
@@ -53,8 +55,9 @@ class ProductTest {
         @DisplayName("rejects a name longer than 200 characters")
         void rejectsLongName() {
             String tooLong = "x".repeat(201);
+            Money price = Money.ofClp(10);
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> new Product(1L, tooLong, null, null, Money.ofClp(10), 1L, null, 1L, null, 0, true))
+                    .isThrownBy(() -> new Product(1L, tooLong, null, null, price, 1L, null, 1L, null, 0, true))
                     .withMessageContaining("200 characters");
         }
 
@@ -77,32 +80,36 @@ class ProductTest {
         @Test
         @DisplayName("rejects a non-positive price")
         void rejectsZeroPrice() {
+            Money zero = Money.ofClp(0);
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> new Product(1L, "Hoodie", null, null, Money.ofClp(0), 1L, null, 1L, null, 0, true))
+                    .isThrownBy(() -> new Product(1L, "Hoodie", null, null, zero, 1L, null, 1L, null, 0, true))
                     .withMessageContaining("price must be greater than 0");
         }
 
         @Test
         @DisplayName("rejects negative stock")
         void rejectsNegativeStock() {
+            Money price = Money.ofClp(10);
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> new Product(1L, "Hoodie", null, null, Money.ofClp(10), 1L, null, 1L, null, -1, true))
+                    .isThrownBy(() -> new Product(1L, "Hoodie", null, null, price, 1L, null, 1L, null, -1, true))
                     .withMessageContaining("stock must not be negative");
         }
 
         @Test
         @DisplayName("rejects a non-positive category id")
         void rejectsCategoryId() {
+            Money price = Money.ofClp(10);
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> new Product(1L, "Hoodie", null, null, Money.ofClp(10), 0L, null, 1L, null, 0, true))
+                    .isThrownBy(() -> new Product(1L, "Hoodie", null, null, price, 0L, null, 1L, null, 0, true))
                     .withMessageContaining("category must be referenced");
         }
 
         @Test
         @DisplayName("rejects a non-positive product type id")
         void rejectsProductTypeId() {
+            Money price = Money.ofClp(10);
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> new Product(1L, "Hoodie", null, null, Money.ofClp(10), 1L, null, 0L, null, 0, true))
+                    .isThrownBy(() -> new Product(1L, "Hoodie", null, null, price, 1L, null, 0L, null, 0, true))
                     .withMessageContaining("product type must be referenced");
         }
     }

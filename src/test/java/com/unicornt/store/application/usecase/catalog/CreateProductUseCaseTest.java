@@ -71,8 +71,9 @@ class CreateProductUseCaseTest {
     void failsOnMissingCategory() {
         when(categoryRepository.existsById(3L)).thenReturn(false);
 
+        ProductCommand cmd = command();
         assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> useCase.execute(command()))
+                .isThrownBy(() -> useCase.execute(cmd))
                 .withMessageContaining("Category not found: 3");
         verify(productRepository, never()).save(any());
     }
@@ -83,8 +84,9 @@ class CreateProductUseCaseTest {
         when(categoryRepository.existsById(3L)).thenReturn(true);
         when(productTypeRepository.existsById(1L)).thenReturn(false);
 
+        ProductCommand cmd = command();
         assertThatExceptionOfType(ResourceNotFoundException.class)
-                .isThrownBy(() -> useCase.execute(command()))
+                .isThrownBy(() -> useCase.execute(cmd))
                 .withMessageContaining("Product type not found: 1");
         verify(productRepository, never()).save(any());
     }

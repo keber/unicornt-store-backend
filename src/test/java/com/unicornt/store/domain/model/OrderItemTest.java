@@ -28,17 +28,18 @@ class OrderItemTest {
     @Test
     @DisplayName("rejects invalid fields")
     void rejectsInvalid() {
+        Money price = Money.ofClp(1);
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new OrderItem(0L, "n", Money.ofClp(1), 1)).withMessageContaining("productId");
+                .isThrownBy(() -> new OrderItem(0L, "n", price, 1)).withMessageContaining("productId");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new OrderItem(1L, " ", Money.ofClp(1), 1)).withMessageContaining("productName");
+                .isThrownBy(() -> new OrderItem(1L, " ", price, 1)).withMessageContaining("productName");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new OrderItem(1L, null, Money.ofClp(1), 1)).withMessageContaining("productName");
+                .isThrownBy(() -> new OrderItem(1L, null, price, 1)).withMessageContaining("productName");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new OrderItem(-3L, "n", Money.ofClp(1), 1)).withMessageContaining("productId");
+                .isThrownBy(() -> new OrderItem(-3L, "n", price, 1)).withMessageContaining("productId");
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new OrderItem(1L, "n", null, 1)).withMessageContaining("unitPrice");
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new OrderItem(1L, "n", Money.ofClp(1), 0)).withMessageContaining("quantity");
+                .isThrownBy(() -> new OrderItem(1L, "n", price, 0)).withMessageContaining("quantity");
     }
 }
