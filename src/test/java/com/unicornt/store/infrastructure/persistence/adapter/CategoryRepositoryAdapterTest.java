@@ -17,6 +17,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,6 +63,17 @@ class CategoryRepositoryAdapterTest {
         when(categories.existsById(3)).thenReturn(true);
 
         assertThat(adapter.existsById(3L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("an id past the int range is a miss, never a truncated lookup")
+    void idOutsideIntRangeIsAMiss() {
+        long overflowing = Integer.MAX_VALUE + 1L;
+
+        assertThat(adapter.findById(overflowing)).isEmpty();
+        assertThat(adapter.existsById(overflowing)).isFalse();
+
+        verifyNoInteractions(categories);
     }
 
     @Test

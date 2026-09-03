@@ -2,6 +2,7 @@ package com.unicornt.store.infrastructure.persistence.adapter;
 
 import com.unicornt.store.domain.model.Category;
 import com.unicornt.store.domain.repository.CategoryRepository;
+import com.unicornt.store.infrastructure.persistence.EntityIds;
 import com.unicornt.store.infrastructure.persistence.mapper.CategoryPersistenceMapper;
 import com.unicornt.store.infrastructure.persistence.repository.SpringDataCategoryRepository;
 import org.springframework.stereotype.Component;
@@ -28,12 +29,17 @@ public class CategoryRepositoryAdapter implements CategoryRepository {
 
     @Override
     public Optional<Category> findById(long id) {
-        return categories.findById((int) id).map(CategoryPersistenceMapper::toDomain);
+        Integer entityId = EntityIds.toInt(id);
+        if (entityId == null) {
+            return Optional.empty();
+        }
+        return categories.findById(entityId).map(CategoryPersistenceMapper::toDomain);
     }
 
     @Override
     public boolean existsById(long id) {
-        return categories.existsById((int) id);
+        Integer entityId = EntityIds.toInt(id);
+        return entityId != null && categories.existsById(entityId);
     }
 
     @Override
