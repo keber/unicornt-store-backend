@@ -14,7 +14,9 @@ public class CategoryJpaEntity {
     private String name;
     private String slug;
 
-    public CategoryJpaEntity() {}
+    public CategoryJpaEntity() {
+        // required no-arg constructor for JPA; rows are populated through the setters
+    }
 
     public int    getId()   { return id; }
     public String getName() { return name; }

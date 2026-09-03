@@ -14,7 +14,9 @@ public class ProductTypeJpaEntity {
     private String name;
     private String slug;
 
-    public ProductTypeJpaEntity() {}
+    public ProductTypeJpaEntity() {
+        // required no-arg constructor for JPA; rows are populated through the setters
+    }
 
     public int    getId()   { return id; }
     public String getName() { return name; }

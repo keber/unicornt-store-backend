@@ -64,6 +64,7 @@ public class OrderJpaEntity {
     private List<OrderItemJpaEntity> items = new ArrayList<>();
 
     public OrderJpaEntity() {
+        // required no-arg constructor for JPA; rows are populated through the setters and addItem
     }
 
     public void addItem(OrderItemJpaEntity item) {

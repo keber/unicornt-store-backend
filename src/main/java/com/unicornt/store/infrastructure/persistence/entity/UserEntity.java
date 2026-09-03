@@ -33,6 +33,7 @@ public class UserEntity {
     private Set<RoleEntity> roles = new HashSet<>();
 
     public UserEntity() {
+        // required no-arg constructor for JPA; rows are populated through the setters
     }
 
     public Long getId() {

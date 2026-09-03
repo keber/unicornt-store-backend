@@ -33,6 +33,7 @@ public class OrderItemJpaEntity {
     private BigDecimal subtotal = BigDecimal.ZERO;
 
     public OrderItemJpaEntity() {
+        // required no-arg constructor for JPA; rows are populated through the setters
     }
 
     public OrderItemJpaEntity(int productId, String productName, BigDecimal unitPrice, int quantity, BigDecimal subtotal) {

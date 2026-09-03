@@ -24,6 +24,7 @@ public class CartItemJpaEntity {
     private ProductJpaEntity product;
 
     public CartItemJpaEntity() {
+        // required no-arg constructor for JPA; rows are populated through the setters
     }
 
     public CartItemJpaEntity(Long userId, int productId, int quantity) {
