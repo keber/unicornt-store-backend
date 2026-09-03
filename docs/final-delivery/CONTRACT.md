@@ -81,6 +81,32 @@ Codes: `VALIDATION_ERROR`, `RESOURCE_NOT_FOUND`, `BUSINESS_RULE_VIOLATION` (stoc
 Value objects committed: `Money`, `Quantity`. `Email` / `ProductId` evaluated per
 slice. No `ProductName` / `Street` / `CategoryName`.
 
+### 3.1 Product payloads (field list)
+
+Every single-product endpoint (`GET /{id}`, `POST`, `PUT`) returns
+`ProductResponse`; `GET /api/v1/products` returns `ProductPageResponse`.
+
+`ProductResponse`: `id` (int), `name` (string), `description` (string),
+`imageBase` (string), `price` (int, CLP), `categoryId` (int), `categoryName`
+(string), `productTypeId` (int), `productTypeName` (string), **`stock` (int, ≥ 0)**,
+`active` (bool). All fields always present.
+
+`ProductPageResponse`: `content` (`ProductResponse[]`), `page` (int, 0-based),
+`size` (int), `totalElements` (long), `totalPages` (int). A **flat envelope** — it
+is never a raw Spring `Page` (no `pageable` / `sort` / `empty` / `numberOfElements`).
+The frontend `isProductPageDto` guard rejects the Spring `Page` shape and rejects
+any product line missing `stock`.
+
+`ProductCreateRequest` / `ProductUpdateRequest`: `name`, `description`, `imageBase`,
+`price`, `categoryId`, `productTypeId`, `stock`, `active` — same names as the
+response minus `id` / `categoryName` / `productTypeName`. `stock` is required and
+`≥ 0`; `active` defaults to `true`.
+
+> `stock` was added to both `ProductResponse` and the frontend `ProductDto` in
+> P1 (backend `d91b7e8`, frontend `7c9a693`). The frontend uses it for
+> `isPurchasable()` (out-of-stock gating) and the admin product form; the domain
+> uses it to clamp cart-merge quantities. It is load-bearing, not decorative.
+
 ---
 
 ## 4. Ownership (parallelism contract)
