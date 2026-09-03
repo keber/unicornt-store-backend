@@ -27,7 +27,11 @@ public class ProductionApiDocsGuard extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String path = request.getRequestURI();
         if (isApiDocsPath(path)) {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            // setStatus, not sendError: sendError triggers an /error dispatch that the
+            // stateless security chain then answers with 401.
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\":404,\"error\":\"Not Found\",\"path\":\"" + path + "\"}");
             return;
         }
         filterChain.doFilter(request, response);
