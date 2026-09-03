@@ -3,6 +3,7 @@ package com.unicornt.store.infrastructure.persistence.adapter;
 import com.unicornt.store.domain.model.Product;
 import com.unicornt.store.domain.repository.PageResult;
 import com.unicornt.store.domain.repository.ProductRepository;
+import com.unicornt.store.infrastructure.persistence.EntityIds;
 import com.unicornt.store.infrastructure.persistence.entity.CategoryJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.ProductJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.ProductTypeJpaEntity;
@@ -49,12 +50,17 @@ public class ProductRepositoryAdapter implements ProductRepository {
 
     @Override
     public Optional<Product> findById(long id) {
-        return products.findById((int) id).map(entity -> toDomainList(List.of(entity)).get(0));
+        Integer entityId = EntityIds.toInt(id);
+        if (entityId == null) {
+            return Optional.empty();
+        }
+        return products.findById(entityId).map(entity -> toDomainList(List.of(entity)).get(0));
     }
 
     @Override
     public boolean existsById(long id) {
-        return products.existsById((int) id);
+        Integer entityId = EntityIds.toInt(id);
+        return entityId != null && products.existsById(entityId);
     }
 
     @Override
@@ -65,7 +71,11 @@ public class ProductRepositoryAdapter implements ProductRepository {
 
     @Override
     public void deleteById(long id) {
-        products.deleteById((int) id);
+        Integer entityId = EntityIds.toInt(id);
+        if (entityId == null) {
+            return;
+        }
+        products.deleteById(entityId);
     }
 
     /** Fills the transient category and product-type name labels, then maps to the domain model. */

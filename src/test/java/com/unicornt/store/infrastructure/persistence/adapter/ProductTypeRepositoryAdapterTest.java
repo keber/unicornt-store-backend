@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,5 +58,16 @@ class ProductTypeRepositoryAdapterTest {
         when(productTypes.existsById(1)).thenReturn(true);
 
         assertThat(adapter.existsById(1L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("an id past the int range is a miss, never a truncated lookup")
+    void idOutsideIntRangeIsAMiss() {
+        long overflowing = Integer.MAX_VALUE + 1L;
+
+        assertThat(adapter.findById(overflowing)).isEmpty();
+        assertThat(adapter.existsById(overflowing)).isFalse();
+
+        verifyNoInteractions(productTypes);
     }
 }

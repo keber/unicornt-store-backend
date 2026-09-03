@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -144,6 +145,16 @@ class ProductRepositoryAdapterTest {
 
         adapter.deleteById(3L);
         verify(products).deleteById(3);
+    }
+
+    @Test
+    @DisplayName("an id past the int range is a miss, never a truncated lookup")
+    void idOutsideIntRangeIsAMiss() {
+        assertThat(adapter.findById(Integer.MAX_VALUE + 1L)).isEmpty();
+        assertThat(adapter.existsById(Integer.MIN_VALUE - 1L)).isFalse();
+        adapter.deleteById(Integer.MAX_VALUE + 1L);
+
+        verifyNoInteractions(products);
     }
 
     @Test
