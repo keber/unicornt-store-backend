@@ -2,8 +2,8 @@ package com.unicornt.store;
 
 import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
-import com.unicornt.store.infrastructure.persistence.repository.RoleRepository;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataRoleRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +30,9 @@ import java.util.Set;
 public class StoreApplication extends SpringBootServletInitializer {
 
     private static final Logger log = LoggerFactory.getLogger(StoreApplication.class);
+
+    /** Shared CSPRNG: constructing one is costly and a single instance is thread-safe. */
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
@@ -60,8 +63,8 @@ public class StoreApplication extends SpringBootServletInitializer {
     @ConditionalOnProperty(name = "app.bootstrap-admin.email")
     CommandLineRunner bootstrapAdmin(@Value("${app.bootstrap-admin.email}") String email,
                                      @Value("${app.bootstrap-admin.password:}") String configuredPassword,
-                                     RoleRepository roleRepository,
-                                     UserRepository userRepository,
+                                     SpringDataRoleRepository roleRepository,
+                                     SpringDataUserRepository userRepository,
                                      PasswordEncoder passwordEncoder) {
         return args -> {
             String address = email.trim();
@@ -103,7 +106,7 @@ public class StoreApplication extends SpringBootServletInitializer {
 
     private static String generatePassword() {
         byte[] bytes = new byte[24];
-        new SecureRandom(1000).nextBytes(bytes);
+        SECURE_RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }

@@ -162,6 +162,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- ArchUnit: architecture rules as tests, with a frozen violation baseline -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Testcontainers: integration tests against a real PostgreSQL -->
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -233,18 +241,59 @@
                         </goals>
                         <configuration>
                             <rules>
+                                <!-- Dimension 2: 100% of the core business rules. domain is pure
+                                     Java, application is the use cases; both are fully covered. -->
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>com.unicornt.store.domain</include>
+                                        <include>com.unicornt.store.domain.*</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>1.00</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>1.00</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <element>PACKAGE</element>
+                                    <includes>
+                                        <include>com.unicornt.store.application</include>
+                                        <include>com.unicornt.store.application.*</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>1.00</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.95</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <!-- Safety net over the rest (web / persistence adapters / security). -->
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.92</minimum>
+                                            <minimum>0.85</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.88</minimum>
+                                            <minimum>0.75</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

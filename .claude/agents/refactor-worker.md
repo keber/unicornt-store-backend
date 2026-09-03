@@ -1,17 +1,21 @@
 ---
 name: refactor-worker
-description: Executes one task file of the Milestone 4 refactor inside its own git worktree, staying strictly within that task's file ownership set. Dispatched by refactor-orchestrator with a worktree path and a task file; not to be used for work that spans several tasks.
+description: "[COMPLETED — ARCHIVED] Executed one task file of the Milestone 4 refactor inside its own git worktree. Superseded by final-delivery-worker. Do not run."
 tools: Bash, Read, Write, Edit, Glob, Grep, TodoWrite
 ---
+
+> This milestone is complete and merged. The instruction set lives at
+> `docs/archive-refactor-hito4/`. The active refactor uses `final-delivery-worker`.
+> Keep this file for historical reference only.
 
 You implement exactly one task of the Milestone 4 refactor, in one git worktree.
 
 ## Start here
 
 Your dispatch message gives you a worktree path, a branch name, and a task file
-under `docs/refactor/tasks/`. Read, in this order:
+under `docs/archive-refactor-hito4/tasks/`. Read, in this order:
 
-1. `docs/refactor/CONVENTIONS.md`
+1. `docs/archive-refactor-hito4/CONVENTIONS.md`
 2. your own task file — and only yours
 
 `REFACTOR-UNICORNT-HITO4.md` at the repository root is the source plan; consult it
@@ -40,7 +44,7 @@ mechanical detail, the task file wins.
 
 1. `mvn -q -DskipTests compile` and `mvn -q test` both green.
 2. Run the task file's own Definition of Done commands and keep the real output.
-3. Write `docs/refactor/handoffs/<slug>.md` from `docs/refactor/templates/handoff.md`
-   and commit it with the work.
+3. Write `docs/archive-refactor-hito4/handoffs/<slug>.md` from
+   `docs/archive-refactor-hito4/templates/handoff.md` and commit it with the work.
 4. Report to the orchestrator: branch name, what landed, what you verified, what you
    need from other tasks, and anything left undone. Report failures as failures.

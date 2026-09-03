@@ -1,9 +1,9 @@
 package com.unicornt.store.infrastructure.security;
 
 import tools.jackson.databind.ObjectMapper;
-import com.unicornt.store.domain.service.UserService;
-import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
-import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
+import com.unicornt.store.application.usecase.identity.GetUserByEmailUseCase;
+import com.unicornt.store.application.usecase.identity.RegisterUserUseCase;
+import com.unicornt.store.domain.model.User;
 import com.unicornt.store.infrastructure.web.error.RestAccessDeniedHandler;
 import com.unicornt.store.infrastructure.web.error.RestAuthEntryPoint;
 import com.unicornt.store.infrastructure.web.rest.AuthRestController;
@@ -18,7 +18,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -46,12 +45,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * End to end behaviour of the stateless filter chain: token issuing, the JSON shape of the
- * 401 and 403 produced before the dispatcher, and the CORS preflight.
+ * 401 and 403 produced before the dispatcher, and the CORS preflight. The chain is exercised
+ * through the real {@link AuthRestController} with the identity use cases mocked out.
  */
 @WebMvcTest(controllers = AuthRestController.class)
 @ImportAutoConfiguration({SecurityAutoConfiguration.class, ServletWebSecurityAutoConfiguration.class,
         SecurityFilterAutoConfiguration.class})
-@Import({SecurityConfig.class, JwtAuthFilter.class, JwtService.class,
+@Import({SecurityConfig.class, com.unicornt.store.infrastructure.config.CorsConfig.class,
+        JwtAuthFilter.class, JwtService.class,
         RestAuthEntryPoint.class, RestAccessDeniedHandler.class,
         SecurityChainTest.AdminOnlyEndpointConfig.class})
 class SecurityChainTest {
@@ -82,7 +83,10 @@ class SecurityChainTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private UserService userService;
+    private RegisterUserUseCase registerUser;
+
+    @MockitoBean
+    private GetUserByEmailUseCase getUserByEmail;
 
     @MockitoBean
     private UserDetailsService userDetailsService;
@@ -181,7 +185,7 @@ class SecurityChainTest {
 
     @Test
     void meWithTokenDescribesTheAccount() throws Exception {
-        when(userService.findByEmail(USER_EMAIL)).thenReturn(account(USER_EMAIL, "ROLE_USER"));
+        when(getUserByEmail.execute(USER_EMAIL)).thenReturn(account(USER_EMAIL, "ROLE_USER"));
         String token = jwtService.generate(USER_EMAIL, List.of("ROLE_USER"));
 
         mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
@@ -199,7 +203,7 @@ class SecurityChainTest {
 
     @Test
     void registerCreatesTheAccount() throws Exception {
-        when(userService.register("Ada", "Lovelace", USER_EMAIL, PASSWORD))
+        when(registerUser.execute("Ada", "Lovelace", USER_EMAIL, PASSWORD))
                 .thenReturn(account(USER_EMAIL, "ROLE_USER"));
 
         String body = objectMapper.writeValueAsString(java.util.Map.of(
@@ -226,11 +230,31 @@ class SecurityChainTest {
                         org.hamcrest.Matchers.containsString("POST")));
     }
 
+    @Test
+    void getProductsPreflightFromTheViteOriginIsAllowed() throws Exception {
+        mockMvc.perform(options("/api/v1/products")
+                        .header("Origin", FRONTEND_ORIGIN)
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", FRONTEND_ORIGIN))
+                .andExpect(header().string("Access-Control-Allow-Methods",
+                        org.hamcrest.Matchers.containsString("GET")));
+    }
+
+    @Test
+    void preflightFromAnUnknownOriginIsRejected() throws Exception {
+        mockMvc.perform(options("/api/v1/products")
+                        .header("Origin", "http://evil.example")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isForbidden());
+    }
+
     private void stubAccount(String email, String role) {
-        when(userDetailsService.loadUserByUsername(email)).thenReturn(new User(
-                email,
-                new BCryptPasswordEncoder().encode(PASSWORD),
-                List.of(new SimpleGrantedAuthority(role))));
+        when(userDetailsService.loadUserByUsername(email)).thenReturn(
+                new org.springframework.security.core.userdetails.User(
+                        email,
+                        new BCryptPasswordEncoder().encode(PASSWORD),
+                        List.of(new SimpleGrantedAuthority(role))));
     }
 
     private String credentials(String email) throws Exception {
@@ -238,15 +262,7 @@ class SecurityChainTest {
                 java.util.Map.of("email", email, "password", PASSWORD));
     }
 
-    private UserEntity account(String email, String role) {
-        UserEntity user = new UserEntity();
-        user.setId(1L);
-        user.setFirstName("Ada");
-        user.setLastName("Lovelace");
-        user.setEmail(email);
-        user.setPassword("irrelevant");
-        RoleEntity roleEntity = new RoleEntity(role);
-        user.setRoles(Set.of(roleEntity));
-        return user;
+    private User account(String email, String role) {
+        return new User(1L, "Ada", "Lovelace", email, "irrelevant-hash", Set.of(role));
     }
 }

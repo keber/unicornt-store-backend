@@ -1,14 +1,15 @@
 package com.unicornt.store.infrastructure.web.rest;
 
-import com.unicornt.store.domain.service.UserService;
-import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
-import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
+import com.unicornt.store.application.usecase.identity.GetUserByEmailUseCase;
+import com.unicornt.store.application.usecase.identity.RegisterUserUseCase;
+import com.unicornt.store.domain.model.User;
 import com.unicornt.store.infrastructure.security.JwtService;
 import com.unicornt.store.infrastructure.web.dto.AuthDtos.LoginRequest;
 import com.unicornt.store.infrastructure.web.dto.AuthDtos.MeResponse;
 import com.unicornt.store.infrastructure.web.dto.AuthDtos.RegisterRequest;
 import com.unicornt.store.infrastructure.web.dto.AuthDtos.TokenResponse;
 import com.unicornt.store.infrastructure.web.error.ErrorResponse;
+import com.unicornt.store.infrastructure.web.mapper.AuthRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -32,20 +33,23 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.List;
 
-/** Registration, login and identity of the caller. */
+/** Registration, login and identity of the caller. Thin: it delegates to the identity use cases. */
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication", description = "Account registration and stateless token issuing")
 public class AuthRestController {
 
-    private final UserService userService;
+    private final RegisterUserUseCase registerUser;
+    private final GetUserByEmailUseCase getUserByEmail;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    public AuthRestController(UserService userService,
-                              AuthenticationManager authenticationManager,
-                              JwtService jwtService) {
-        this.userService = userService;
+    public AuthRestController(RegisterUserUseCase registerUser,
+                             GetUserByEmailUseCase getUserByEmail,
+                             AuthenticationManager authenticationManager,
+                             JwtService jwtService) {
+        this.registerUser = registerUser;
+        this.getUserByEmail = getUserByEmail;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
     }
@@ -61,9 +65,9 @@ public class AuthRestController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<MeResponse> register(@Valid @RequestBody RegisterRequest request) {
-        UserEntity user = userService.register(
+        User user = registerUser.execute(
                 request.firstName(), request.lastName(), request.email(), request.password());
-        return ResponseEntity.created(URI.create("/api/v1/auth/me")).body(toMeResponse(user));
+        return ResponseEntity.created(URI.create("/api/v1/auth/me")).body(AuthRestMapper.toMeResponse(user));
     }
 
     @PostMapping("/login")
@@ -98,14 +102,6 @@ public class AuthRestController {
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
             throw new InsufficientAuthenticationException("Authentication required");
         }
-        return ResponseEntity.ok(toMeResponse(userService.findByEmail(authentication.getName())));
-    }
-
-    private MeResponse toMeResponse(UserEntity user) {
-        List<String> roles = user.getRoles().stream()
-                .map(RoleEntity::getName)
-                .sorted()
-                .toList();
-        return new MeResponse(user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(), roles);
+        return ResponseEntity.ok(AuthRestMapper.toMeResponse(getUserByEmail.execute(authentication.getName())));
     }
 }

@@ -79,8 +79,7 @@ ehthumbs_vista.db
 desktop.ini
 
 # ── Secrets and local configuration ──────────────────────────────
-# NEVER commit credentials - use environment variables (see pom.xml)
-*.env
+# NEVER commit credentials - all secrets come from environment variables.
 .env
 .env.*
 !.env.example

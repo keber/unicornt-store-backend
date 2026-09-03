@@ -1,16 +1,20 @@
 package com.unicornt.store.infrastructure.web.rest;
 
+import com.unicornt.store.application.usecase.catalog.CreateProductUseCase;
+import com.unicornt.store.application.usecase.catalog.DeleteProductUseCase;
+import com.unicornt.store.application.usecase.catalog.GetProductUseCase;
+import com.unicornt.store.application.usecase.catalog.ListProductsUseCase;
+import com.unicornt.store.application.usecase.catalog.ProductCommand;
+import com.unicornt.store.application.usecase.catalog.UpdateProductUseCase;
 import com.unicornt.store.domain.exception.ResourceNotFoundException;
-import com.unicornt.store.domain.service.ProductService;
-import com.unicornt.store.infrastructure.persistence.entity.ProductEntity;
+import com.unicornt.store.domain.model.Product;
+import com.unicornt.store.domain.repository.PageResult;
+import com.unicornt.store.domain.valueobject.Money;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,7 +23,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -34,8 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Web slice for the product resource. The security filter chain is disabled here on
- * purpose: this test pins the HTTP contract, while authorization is covered by the
- * security task through the request matchers listed in the handoff note.
+ * purpose: this test pins the HTTP contract; authorization is covered by the
+ * identity slice. Each method mocks the use case it calls.
  */
 @WebMvcTest(ProductRestController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -49,6 +53,7 @@ class ProductRestControllerTest {
               "price": 25990,
               "categoryId": 3,
               "productTypeId": 1,
+              "stock": 40,
               "active": true
             }
             """;
@@ -58,7 +63,8 @@ class ProductRestControllerTest {
               "name": "  ",
               "price": -5,
               "categoryId": 3,
-              "productTypeId": 1
+              "productTypeId": 1,
+              "stock": 3
             }
             """;
 
@@ -66,34 +72,43 @@ class ProductRestControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ProductService productService;
+    private ListProductsUseCase listProducts;
+    @MockitoBean
+    private GetProductUseCase getProduct;
+    @MockitoBean
+    private CreateProductUseCase createProduct;
+    @MockitoBean
+    private UpdateProductUseCase updateProduct;
+    @MockitoBean
+    private DeleteProductUseCase deleteProduct;
 
-    // SecurityConfig (T2) is picked up by @WebMvcTest's security auto-configuration and needs
+    // SecurityConfig is picked up by @WebMvcTest security auto-configuration and needs
     // these beans to construct its filter chain; mocked here so this slice stays narrow.
     @MockitoBean
     private com.unicornt.store.infrastructure.security.JwtService jwtService;
-
     @MockitoBean
     private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
 
     @Test
     @DisplayName("GET /api/v1/products returns a page of products")
     void listReturnsPage() throws Exception {
-        when(productService.search(eq("hoodies"), eq("unicorn"), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(sampleEntity()), PageRequest.of(0, 20), 1));
+        when(listProducts.execute(eq("unicorns"), eq("unicorn"), eq(0), eq(20)))
+                .thenReturn(new PageResult<>(List.of(sampleProduct()), 0, 20, 1));
 
-        mockMvc.perform(get("/api/v1/products").param("category", "hoodies").param("q", "unicorn"))
+        mockMvc.perform(get("/api/v1/products").param("category", "unicorns").param("q", "unicorn"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(42))
                 .andExpect(jsonPath("$.content[0].name").value("Unicorn hoodie"))
-                .andExpect(jsonPath("$.content[0].categoryName").value("Hoodies"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.content[0].categoryName").value("Unicorns"))
+                .andExpect(jsonPath("$.content[0].stock").value(40))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
     }
 
     @Test
     @DisplayName("GET /api/v1/products/{id} on a missing id returns 404 with RESOURCE_NOT_FOUND")
     void getByIdUnknownReturnsNotFound() throws Exception {
-        when(productService.findById(999)).thenThrow(new ResourceNotFoundException("Product", 999));
+        when(getProduct.execute(999L)).thenThrow(new ResourceNotFoundException("Product", 999));
 
         mockMvc.perform(get("/api/v1/products/999"))
                 .andExpect(status().isNotFound())
@@ -120,7 +135,7 @@ class ProductRestControllerTest {
     @Test
     @DisplayName("POST /api/v1/products with a valid payload returns 201 and a Location header")
     void createValidReturnsCreated() throws Exception {
-        when(productService.create(any(ProductEntity.class))).thenReturn(sampleEntity());
+        when(createProduct.execute(any(ProductCommand.class))).thenReturn(sampleProduct());
 
         mockMvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -138,13 +153,13 @@ class ProductRestControllerTest {
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
-        verify(productService).delete(42);
+        verify(deleteProduct).execute(42L);
     }
 
     @Test
     @DisplayName("DELETE /api/v1/products/{id} on a missing id returns 404")
     void deleteUnknownReturnsNotFound() throws Exception {
-        doThrow(new ResourceNotFoundException("Product", 999)).when(productService).delete(anyInt());
+        doThrow(new ResourceNotFoundException("Product", 999)).when(deleteProduct).execute(anyLong());
 
         mockMvc.perform(delete("/api/v1/products/999"))
                 .andExpect(status().isNotFound())
@@ -154,8 +169,8 @@ class ProductRestControllerTest {
     @Test
     @DisplayName("The paginated payload keeps the documented envelope")
     void pageEnvelopeIsStable() throws Exception {
-        when(productService.search(any(), any(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(sampleEntity()), PageRequest.of(0, 20), 1));
+        when(listProducts.execute(any(), any(), eq(0), eq(20)))
+                .thenReturn(new PageResult<>(List.of(sampleProduct()), 0, 20, 1));
 
         String body = mockMvc.perform(get("/api/v1/products"))
                 .andExpect(status().isOk())
@@ -164,18 +179,8 @@ class ProductRestControllerTest {
         assertThat(body).contains("\"content\"").contains("\"totalElements\"").contains("\"totalPages\"");
     }
 
-    private ProductEntity sampleEntity() {
-        ProductEntity entity = new ProductEntity();
-        entity.setId(42);
-        entity.setName("Unicorn hoodie");
-        entity.setDescription("Cotton hoodie");
-        entity.setImageBase("hoodie-unicorn");
-        entity.setPrice(25990);
-        entity.setCategoryId(3);
-        entity.setCategoryName("Hoodies");
-        entity.setProductTypeId(1);
-        entity.setProductTypeName("Apparel");
-        entity.setActive(true);
-        return entity;
+    private Product sampleProduct() {
+        return new Product(42L, "Unicorn hoodie", "Cotton hoodie", "hoodie-unicorn",
+                Money.ofClp(25990), 3L, "Unicorns", 1L, "T-shirt", 40, true);
     }
 }

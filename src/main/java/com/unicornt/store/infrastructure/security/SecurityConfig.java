@@ -1,6 +1,5 @@
 package com.unicornt.store.infrastructure.security;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,11 +17,6 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 /**
  * Stateless security for the REST API: no session, no form login, no CSRF token, and every
@@ -40,9 +34,8 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /** Endpoints reachable without a token. */
+    /** Non-auth endpoints reachable without a token (API docs). */
     private static final String[] PUBLIC_PATHS = {
-            "/api/v1/auth/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",
@@ -74,9 +67,10 @@ public class SecurityConfig {
                 .logout(logout -> logout.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // AUTHENTICATED, declared before the public auth prefix below
+                        // AUTHENTICATED, declared before the public auth matchers below
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
                         // PUBLIC
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_CATALOG_PATHS).permitAll()
                         // ADMIN
@@ -107,22 +101,7 @@ public class SecurityConfig {
         return new ProviderManager(provider);
     }
 
-    /**
-     * CORS for the frontend repository, which is deployed on its own origin. The allowed
-     * origins come from app.cors.allowed-origins as a comma separated list.
-     */
-    @Bean
-    CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origins}") List<String> allowedOrigins) {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        configuration.setExposedHeaders(List.of("Location"));
-        configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+    // CORS is configured globally in infrastructure.config.CorsConfig and consumed
+    // here through http.cors(Customizer.withDefaults()). There is no @CrossOrigin
+    // on any controller.
 }

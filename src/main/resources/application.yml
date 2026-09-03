@@ -27,7 +27,7 @@ spring:
   sql:
     init:
       mode: ${SQL_INIT_MODE:always}
-      schema-locations: classpath:db/migration/V1__init.sql
+      schema-locations: classpath:db/migration/V1__init.sql,classpath:db/migration/V3__order_inline_shipping_address.sql
       data-locations: classpath:db/migration/V2__seed_reference_data.sql
       continue-on-error: false
   web:

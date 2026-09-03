@@ -19,6 +19,7 @@ public class RoleEntity {
     private Set<UserEntity> users = new HashSet<>();
 
     public RoleEntity() {
+        // required no-arg constructor for JPA; rows are populated through the setters
     }
 
     public RoleEntity(String name) {
