@@ -8,6 +8,32 @@ build/
 *.war
 *.ear
 
+# Node / JavaScript
+node_modules/
+jspm_packages/
+.pnpm-store/
+
+# Python
+venv/
+.venv/
+env/
+ENV/
+bin/
+lib/
+develop-eggs/
+dist/
+build/
+*.egg-info/
+
+# PHP (Composer)
+vendor/
+
+# Ruby
+bin/
+.bundle/
+vendor/bundle/
+
+
 # ── Maven ─────────────────────────────────────────────────────────
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
@@ -40,11 +66,16 @@ nbdist/
 .DS_Store
 .AppleDouble
 .LSOverride
+Icon_
 ._*
 
 # Windows
 Thumbs.db
+Thumbs.db:encryptable
 ehthumbs.db
+ehthumbs_vista.db
+*.lnk
+*.cab
 desktop.ini
 
 # ── Secrets and local configuration ──────────────────────────────
@@ -52,6 +83,7 @@ desktop.ini
 .env
 .env.*
 !.env.example
+!.env.template
 secrets.properties
 local.properties
 
