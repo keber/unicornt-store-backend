@@ -1,7 +1,7 @@
 package com.unicornt.store.infrastructure.persistence.adapter;
 
 import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
-import com.unicornt.store.infrastructure.persistence.repository.RoleRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 class RoleRepositoryAdapterTest {
 
     @Mock
-    private RoleRepository roles;
+    private SpringDataRoleRepository roles;
     @InjectMocks
     private RoleRepositoryAdapter adapter;
 

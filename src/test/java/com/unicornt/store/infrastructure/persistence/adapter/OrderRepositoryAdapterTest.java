@@ -9,7 +9,7 @@ import com.unicornt.store.infrastructure.persistence.entity.OrderJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
 import com.unicornt.store.infrastructure.persistence.mapper.OrderPersistenceMapper;
 import com.unicornt.store.infrastructure.persistence.repository.SpringDataOrderRepository;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 class OrderRepositoryAdapterTest {
 
     @Mock private SpringDataOrderRepository orders;
-    @Mock private UserRepository users;
+    @Mock private SpringDataUserRepository users;
     @InjectMocks private OrderRepositoryAdapter adapter;
 
     private static Order domainOrder() {

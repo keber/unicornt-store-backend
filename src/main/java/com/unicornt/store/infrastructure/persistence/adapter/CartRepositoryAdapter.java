@@ -6,7 +6,7 @@ import com.unicornt.store.domain.repository.CartRepository;
 import com.unicornt.store.infrastructure.persistence.entity.CartItemJpaEntity;
 import com.unicornt.store.infrastructure.persistence.mapper.CartPersistenceMapper;
 import com.unicornt.store.infrastructure.persistence.repository.SpringDataCartItemRepository;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -17,7 +17,7 @@ import java.util.Map;
  *
  * <p>The port addresses a cart by the principal identity ({@code userId}, an
  * email). The {@code cart_items} table keys on the numeric user id, so this
- * adapter resolves the email to that id through {@link UserRepository}; that
+ * adapter resolves the email to that id through {@link SpringDataUserRepository}; that
  * translation is the only reason the port is not numeric. When the identity
  * cannot be resolved the cart is treated as empty.</p>
  */
@@ -25,9 +25,9 @@ import java.util.Map;
 public class CartRepositoryAdapter implements CartRepository {
 
     private final SpringDataCartItemRepository rows;
-    private final UserRepository users;
+    private final SpringDataUserRepository users;
 
-    public CartRepositoryAdapter(SpringDataCartItemRepository rows, UserRepository users) {
+    public CartRepositoryAdapter(SpringDataCartItemRepository rows, SpringDataUserRepository users) {
         this.rows = rows;
         this.users = users;
     }

@@ -4,8 +4,8 @@ import com.unicornt.store.domain.exception.ResourceNotFoundException;
 import com.unicornt.store.domain.model.User;
 import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
-import com.unicornt.store.infrastructure.persistence.repository.RoleRepository;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataRoleRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,9 +28,9 @@ import static org.mockito.Mockito.when;
 class UserRepositoryAdapterTest {
 
     @Mock
-    private UserRepository users;
+    private SpringDataUserRepository users;
     @Mock
-    private RoleRepository roles;
+    private SpringDataRoleRepository roles;
     @InjectMocks
     private UserRepositoryAdapter adapter;
 

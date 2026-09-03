@@ -16,19 +16,19 @@ import java.util.Set;
  * JPA-backed implementation of the {@link UserRepository} domain port.
  *
  * <p>It delegates to the Spring Data
- * {@code infrastructure.persistence.repository.UserRepository} (referenced by its
+ * {@code infrastructure.persistence.repository.SpringDataUserRepository} (referenced by its
  * fully qualified name to avoid the clash with the port above) and resolves role
  * names against the seeded {@link RoleEntity} rows at the boundary.</p>
  */
 @Component
 public class UserRepositoryAdapter implements UserRepository {
 
-    private final com.unicornt.store.infrastructure.persistence.repository.UserRepository users;
-    private final com.unicornt.store.infrastructure.persistence.repository.RoleRepository roles;
+    private final com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository users;
+    private final com.unicornt.store.infrastructure.persistence.repository.SpringDataRoleRepository roles;
 
     public UserRepositoryAdapter(
-            com.unicornt.store.infrastructure.persistence.repository.UserRepository users,
-            com.unicornt.store.infrastructure.persistence.repository.RoleRepository roles) {
+            com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository users,
+            com.unicornt.store.infrastructure.persistence.repository.SpringDataRoleRepository roles) {
         this.users = users;
         this.roles = roles;
     }

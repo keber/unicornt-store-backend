@@ -2,8 +2,8 @@ package com.unicornt.store;
 
 import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
-import com.unicornt.store.infrastructure.persistence.repository.RoleRepository;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataRoleRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,8 +60,8 @@ public class StoreApplication extends SpringBootServletInitializer {
     @ConditionalOnProperty(name = "app.bootstrap-admin.email")
     CommandLineRunner bootstrapAdmin(@Value("${app.bootstrap-admin.email}") String email,
                                      @Value("${app.bootstrap-admin.password:}") String configuredPassword,
-                                     RoleRepository roleRepository,
-                                     UserRepository userRepository,
+                                     SpringDataRoleRepository roleRepository,
+                                     SpringDataUserRepository userRepository,
                                      PasswordEncoder passwordEncoder) {
         return args -> {
             String address = email.trim();

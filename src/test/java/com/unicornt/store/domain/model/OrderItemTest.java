@@ -33,6 +33,10 @@ class OrderItemTest {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new OrderItem(1L, " ", Money.ofClp(1), 1)).withMessageContaining("productName");
         assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new OrderItem(1L, null, Money.ofClp(1), 1)).withMessageContaining("productName");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new OrderItem(-3L, "n", Money.ofClp(1), 1)).withMessageContaining("productId");
+        assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new OrderItem(1L, "n", null, 1)).withMessageContaining("unitPrice");
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> new OrderItem(1L, "n", Money.ofClp(1), 0)).withMessageContaining("quantity");

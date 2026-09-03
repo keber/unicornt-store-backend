@@ -48,6 +48,8 @@ class OrderTest {
     void rejectsInvalid() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> Order.place("  ", ADDRESS, twoLines())).withMessageContaining("belong to a user");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> Order.place(null, ADDRESS, twoLines())).withMessageContaining("belong to a user");
         assertThatExceptionOfType(NullPointerException.class)
                 .isThrownBy(() -> Order.place("ada", null, twoLines())).withMessageContaining("shippingAddress");
         assertThatExceptionOfType(IllegalArgumentException.class)
@@ -75,5 +77,11 @@ class OrderTest {
         assertThatExceptionOfType(NullPointerException.class)
                 .isThrownBy(() -> new Order(1L, "ada", ADDRESS, null, Money.ofClp(1), OrderStatus.CONFIRMED, now))
                 .withMessageContaining("items");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new Order(1L, "ada", ADDRESS, List.of(), Money.ofClp(1), OrderStatus.CONFIRMED, now))
+                .withMessageContaining("at least one line");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new Order(1L, "  ", ADDRESS, twoLines(), Money.ofClp(1), OrderStatus.CONFIRMED, now))
+                .withMessageContaining("belong to a user");
     }
 }

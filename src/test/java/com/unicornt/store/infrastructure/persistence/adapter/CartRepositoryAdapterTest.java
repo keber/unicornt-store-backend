@@ -5,7 +5,7 @@ import com.unicornt.store.domain.model.CartItem;
 import com.unicornt.store.infrastructure.persistence.entity.CartItemJpaEntity;
 import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
 import com.unicornt.store.infrastructure.persistence.repository.SpringDataCartItemRepository;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +33,7 @@ class CartRepositoryAdapterTest {
     @Mock
     private SpringDataCartItemRepository rows;
     @Mock
-    private UserRepository users;
+    private SpringDataUserRepository users;
     @InjectMocks
     private CartRepositoryAdapter adapter;
 

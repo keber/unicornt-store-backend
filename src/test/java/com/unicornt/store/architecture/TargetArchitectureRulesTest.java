@@ -51,7 +51,6 @@ class TargetArchitectureRulesTest {
     // ---- whole codebase (enabled at P5) -------------------------------------
 
     @ArchTest
-    @ArchIgnore(reason = "FINAL-DELIVERY: pending P5 — every Spring Data repository still lives in infrastructure")
     static final ArchRule every_repository_interface_lives_in_domain =
             classes().that().areInterfaces().and().haveSimpleNameEndingWith("Repository")
                     .and().haveSimpleNameNotStartingWith("SpringData")

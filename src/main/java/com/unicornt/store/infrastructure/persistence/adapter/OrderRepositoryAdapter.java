@@ -6,7 +6,7 @@ import com.unicornt.store.domain.repository.OrderRepository;
 import com.unicornt.store.infrastructure.persistence.entity.OrderJpaEntity;
 import com.unicornt.store.infrastructure.persistence.mapper.OrderPersistenceMapper;
 import com.unicornt.store.infrastructure.persistence.repository.SpringDataOrderRepository;
-import com.unicornt.store.infrastructure.persistence.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -21,9 +21,9 @@ import java.util.Optional;
 public class OrderRepositoryAdapter implements OrderRepository {
 
     private final SpringDataOrderRepository orders;
-    private final UserRepository users;
+    private final SpringDataUserRepository users;
 
-    public OrderRepositoryAdapter(SpringDataOrderRepository orders, UserRepository users) {
+    public OrderRepositoryAdapter(SpringDataOrderRepository orders, SpringDataUserRepository users) {
         this.orders = orders;
         this.users = users;
     }
