@@ -31,6 +31,9 @@ public class StoreApplication extends SpringBootServletInitializer {
 
     private static final Logger log = LoggerFactory.getLogger(StoreApplication.class);
 
+    /** Shared CSPRNG: constructing one is costly and a single instance is thread-safe. */
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
         return builder.sources(StoreApplication.class);
@@ -103,7 +106,7 @@ public class StoreApplication extends SpringBootServletInitializer {
 
     private static String generatePassword() {
         byte[] bytes = new byte[24];
-        new SecureRandom().nextBytes(bytes);
+        SECURE_RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }
