@@ -1,0 +1,1849 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Unicornt Store API",
+        "description": "REST API for the Unicornt store: product catalog, cart, checkout and JWT-based authentication.",
+        "contact": {
+            "name": "Unicornt Store",
+            "email": "support@unicornt.store"
+        },
+        "version": "v1"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Generated server url"
+        }
+    ],
+    "security": [
+        {
+            "bearerAuth": []
+        }
+    ],
+    "tags": [
+        {
+            "name": "Products",
+            "description": "Catalog product management"
+        },
+        {
+            "name": "Categories",
+            "description": "Product category management"
+        },
+        {
+            "name": "Cart",
+            "description": "Shopping cart of the authenticated user"
+        },
+        {
+            "name": "Orders",
+            "description": "Confirmation and history of the authenticated user's orders"
+        },
+        {
+            "name": "Authentication",
+            "description": "Account registration and stateless token issuing"
+        }
+    ],
+    "paths": {
+        "/api/v1/products/{id}": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get a product by id",
+                "operationId": "getById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Product identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "example": 42
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The requested product",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProductResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Product does not exist",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Replace a product",
+                "description": "Administrator only",
+                "operationId": "update",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Product identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "example": 42
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProductUpdateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated product",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProductResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Administrator role required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Product, category or product type does not exist",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Delete a product",
+                "description": "Administrator only",
+                "operationId": "delete",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Product identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "example": 42
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Product deleted, no body returned"
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Administrator role required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Product does not exist",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/cart/items/{productId}": {
+            "put": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Set the quantity of one line of the cart; a quantity of 0 removes it",
+                "operationId": "updateItem",
+                "parameters": [
+                    {
+                        "name": "productId",
+                        "in": "path",
+                        "description": "Product identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "example": 12
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateCartItemRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated cart",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CartResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The product is not a line of the cart",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Remove one line from the cart",
+                "operationId": "removeItem",
+                "parameters": [
+                    {
+                        "name": "productId",
+                        "in": "path",
+                        "description": "Product identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "example": 12
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Line removed"
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The product is not a line of the cart",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/products": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "List products",
+                "description": "Returns a page of catalog products, optionally filtered by category and free text",
+                "operationId": "list",
+                "parameters": [
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "description": "Category slug or category name",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "unicorns"
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Free text matched against name and description",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "unicorn"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Zero-based page number",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 0
+                        },
+                        "example": 0
+                    },
+                    {
+                        "name": "size",
+                        "in": "query",
+                        "description": "Page size (1-100)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int32",
+                            "default": 20
+                        },
+                        "example": 20
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Page of products",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProductPageResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Create a product",
+                "description": "Administrator only",
+                "operationId": "create",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProductCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Product created, its URI is in the Location header",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProductResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Administrator role required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Referenced category or product type does not exist",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/orders": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "List the authenticated user's orders, most recent first",
+                "operationId": "list_1",
+                "responses": {
+                    "200": {
+                        "description": "Orders of the caller",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/OrderResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Confirm the current cart as a new order",
+                "description": "Items come from the server cart; the address is in the body. Payment is simulated.",
+                "operationId": "place",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PlaceOrderRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Order confirmed",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OrderConfirmationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload or empty cart",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "A product of the cart is out of stock",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/categories": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "List categories",
+                "description": "Returns every product category ordered by name",
+                "operationId": "list_2",
+                "responses": {
+                    "200": {
+                        "description": "All categories",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CategoryResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Create a category",
+                "description": "Administrator only",
+                "operationId": "create_1",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CategoryCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Category created, its URI is in the Location header",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CategoryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Administrator role required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "A category with the same slug already exists",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/cart/merge": {
+            "post": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Merge a local (anonymous) cart into the authenticated user's cart",
+                "description": "For each line the new quantity is server + local, clamped to the product's stock",
+                "operationId": "merge",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MergeCartRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Merged cart",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CartResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/cart/items": {
+            "post": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Add a product to the cart, or increase the quantity of an existing line",
+                "operationId": "addItem",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddCartItemRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Quantity increased on an existing line",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CartResponse"
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "New line created",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CartResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The product does not exist",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/register": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Register a new account",
+                "description": "Creates an account with a BCrypt hashed password and the ROLE_USER role",
+                "operationId": "register",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Account created",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Email already registered",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Exchange credentials for an access token",
+                "description": "Returns a signed JWT to be sent as an Authorization Bearer header",
+                "operationId": "login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Token issued",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TokenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid payload",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Bad credentials",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orders/{id}": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get one of the authenticated user's orders",
+                "operationId": "get",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Order identifier",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "example": 58
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The requested order",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OrderResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The order does not exist or is not the caller's",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/cart": {
+            "get": {
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Get the cart of the authenticated user",
+                "operationId": "getCart",
+                "responses": {
+                    "200": {
+                        "description": "Cart of the caller",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CartResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/auth/me": {
+            "get": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Describe the authenticated account",
+                "description": "Resolves the caller from the token in the security context",
+                "operationId": "me",
+                "responses": {
+                    "200": {
+                        "description": "Account returned",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid token",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ProductUpdateRequest": {
+                "type": "object",
+                "description": "Full replacement of an existing product",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Commercial name of the product",
+                        "example": "Unicorn hoodie",
+                        "maxLength": 200,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Long description shown on the product page",
+                        "example": "Cotton hoodie with an embroidered unicorn",
+                        "maxLength": 2000,
+                        "minLength": 0
+                    },
+                    "imageBase": {
+                        "type": "string",
+                        "description": "Base name of the product image file, without extension",
+                        "example": "hoodie-unicorn",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "price": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Unit price in whole CLP units",
+                        "example": 25990
+                    },
+                    "categoryId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of an existing category",
+                        "example": 3
+                    },
+                    "productTypeId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of an existing product type",
+                        "example": 1
+                    },
+                    "stock": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Units in stock",
+                        "example": 40
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Whether the product is offered in the storefront",
+                        "example": true
+                    }
+                },
+                "required": [
+                    "categoryId",
+                    "name",
+                    "price",
+                    "productTypeId",
+                    "stock"
+                ]
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "description": "Uniform error payload returned by the API",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Human readable error message",
+                        "example": "Product not found: 42"
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Stable machine readable error code",
+                        "example": "RESOURCE_NOT_FOUND"
+                    },
+                    "status": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "HTTP status code",
+                        "example": 404
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Moment the error was produced, in UTC"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Request path that produced the error",
+                        "example": "/api/v1/products/42"
+                    },
+                    "errors": {
+                        "type": "array",
+                        "description": "Field level errors, empty unless the failure is a validation failure",
+                        "items": {
+                            "$ref": "#/components/schemas/FieldError"
+                        }
+                    }
+                }
+            },
+            "FieldError": {
+                "type": "object",
+                "description": "A single rejected field",
+                "properties": {
+                    "field": {
+                        "type": "string",
+                        "description": "Rejected field name",
+                        "example": "price"
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Reason the field was rejected",
+                        "example": "must be greater than 0"
+                    }
+                }
+            },
+            "ProductResponse": {
+                "type": "object",
+                "description": "Catalog product as exposed by the API",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Product identifier",
+                        "example": 42
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Commercial name of the product",
+                        "example": "Unicorn hoodie"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Long description shown on the product page",
+                        "example": "Cotton hoodie with an embroidered unicorn"
+                    },
+                    "imageBase": {
+                        "type": "string",
+                        "description": "Base name of the product image file, without extension",
+                        "example": "hoodie-unicorn"
+                    },
+                    "price": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Unit price in whole CLP units",
+                        "example": 25990
+                    },
+                    "categoryId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of the category the product belongs to",
+                        "example": 3
+                    },
+                    "categoryName": {
+                        "type": "string",
+                        "description": "Name of the category the product belongs to",
+                        "example": "Unicorns"
+                    },
+                    "productTypeId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of the product type",
+                        "example": 1
+                    },
+                    "productTypeName": {
+                        "type": "string",
+                        "description": "Name of the product type",
+                        "example": "T-shirt"
+                    },
+                    "stock": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Units in stock",
+                        "example": 40
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "description": "Whether the product is offered in the storefront",
+                        "example": true
+                    }
+                }
+            },
+            "UpdateCartItemRequest": {
+                "type": "object",
+                "description": "New absolute quantity for an existing cart line",
+                "properties": {
+                    "quantity": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "New number of units of the line; 0 removes it",
+                        "example": 3
+                    }
+                },
+                "required": [
+                    "quantity"
+                ]
+            },
+            "CartItemResponse": {
+                "type": "object",
+                "description": "A single priced cart line",
+                "properties": {
+                    "productId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of the product",
+                        "example": 12
+                    },
+                    "productName": {
+                        "type": "string",
+                        "description": "Product name at the time the cart was read",
+                        "example": "Unicorn plush"
+                    },
+                    "imageBase": {
+                        "type": "string",
+                        "description": "Base name of the product image file, without extension",
+                        "example": "unicorn-plush"
+                    },
+                    "unitPrice": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Unit price in whole CLP units",
+                        "example": 14990
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Units of this line",
+                        "example": 2
+                    },
+                    "subtotal": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Unit price multiplied by the quantity",
+                        "example": 29980
+                    }
+                }
+            },
+            "CartResponse": {
+                "type": "object",
+                "description": "Cart of the authenticated user",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "description": "Lines of the cart",
+                        "items": {
+                            "$ref": "#/components/schemas/CartItemResponse"
+                        }
+                    },
+                    "itemCount": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Total number of units across every line",
+                        "example": 3
+                    },
+                    "total": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Sum of every line subtotal, in whole CLP units",
+                        "example": 44970
+                    }
+                }
+            },
+            "ProductCreateRequest": {
+                "type": "object",
+                "description": "New catalog product",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Commercial name of the product",
+                        "example": "Unicorn hoodie",
+                        "maxLength": 200,
+                        "minLength": 0
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Long description shown on the product page",
+                        "example": "Cotton hoodie with an embroidered unicorn",
+                        "maxLength": 2000,
+                        "minLength": 0
+                    },
+                    "imageBase": {
+                        "type": "string",
+                        "description": "Base name of the product image file, without extension",
+                        "example": "hoodie-unicorn",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "price": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Unit price in whole CLP units",
+                        "example": 25990
+                    },
+                    "categoryId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of an existing category",
+                        "example": 3
+                    },
+                    "productTypeId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of an existing product type",
+                        "example": 1
+                    },
+                    "stock": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Units in stock",
+                        "example": 40
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Whether the product is offered in the storefront",
+                        "example": true
+                    }
+                },
+                "required": [
+                    "categoryId",
+                    "name",
+                    "price",
+                    "productTypeId",
+                    "stock"
+                ]
+            },
+            "PlaceOrderRequest": {
+                "type": "object",
+                "description": "Confirm the current cart into an order",
+                "properties": {
+                    "shippingAddress": {
+                        "$ref": "#/components/schemas/ShippingAddressRequest"
+                    }
+                },
+                "required": [
+                    "shippingAddress"
+                ]
+            },
+            "ShippingAddressRequest": {
+                "type": "object",
+                "description": "Where the order ships",
+                "properties": {
+                    "street": {
+                        "type": "string",
+                        "description": "Street and number",
+                        "example": "Av. Providencia 1234",
+                        "maxLength": 200,
+                        "minLength": 0
+                    },
+                    "city": {
+                        "type": "string",
+                        "description": "City",
+                        "example": "Santiago",
+                        "maxLength": 100,
+                        "minLength": 0
+                    },
+                    "region": {
+                        "type": "string",
+                        "description": "Region / state",
+                        "example": "Region Metropolitana",
+                        "maxLength": 100,
+                        "minLength": 0
+                    },
+                    "zipCode": {
+                        "type": "string",
+                        "description": "Postal code (optional)",
+                        "example": "7500000",
+                        "maxLength": 20,
+                        "minLength": 0
+                    }
+                },
+                "required": [
+                    "city",
+                    "region",
+                    "street"
+                ]
+            },
+            "OrderConfirmationResponse": {
+                "type": "object",
+                "description": "Result of confirming a cart",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of the new order",
+                        "example": 58
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Order status",
+                        "example": "CONFIRMED"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Order total in whole CLP units",
+                        "example": 44970
+                    }
+                }
+            },
+            "CategoryCreateRequest": {
+                "type": "object",
+                "description": "New product category",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Display name of the category",
+                        "example": "Hoodies",
+                        "maxLength": 100,
+                        "minLength": 0
+                    },
+                    "slug": {
+                        "type": "string",
+                        "description": "URL friendly identifier; derived from the name when omitted",
+                        "example": "hoodies",
+                        "maxLength": 100,
+                        "minLength": 0,
+                        "pattern": "^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$"
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "CategoryResponse": {
+                "type": "object",
+                "description": "Product category as exposed by the API",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Category identifier",
+                        "example": 3
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Display name of the category",
+                        "example": "Hoodies"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "description": "URL friendly identifier",
+                        "example": "hoodies"
+                    }
+                }
+            },
+            "MergeCartItem": {
+                "type": "object",
+                "description": "A single local cart line",
+                "properties": {
+                    "productId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of the product",
+                        "example": 12
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Units held locally",
+                        "example": 1
+                    }
+                },
+                "required": [
+                    "productId",
+                    "quantity"
+                ]
+            },
+            "MergeCartRequest": {
+                "type": "object",
+                "description": "Local (anonymous) cart lines to fold into the user's cart",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "description": "Local cart lines",
+                        "items": {
+                            "$ref": "#/components/schemas/MergeCartItem"
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "items"
+                ]
+            },
+            "AddCartItemRequest": {
+                "type": "object",
+                "description": "Product and units to add to the cart",
+                "properties": {
+                    "productId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of the product to add",
+                        "example": 12
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Units to add",
+                        "example": 2
+                    }
+                },
+                "required": [
+                    "productId",
+                    "quantity"
+                ]
+            },
+            "RegisterRequest": {
+                "type": "object",
+                "description": "Data required to open a new account",
+                "properties": {
+                    "firstName": {
+                        "type": "string",
+                        "description": "Given name",
+                        "example": "Ada",
+                        "maxLength": 100,
+                        "minLength": 0
+                    },
+                    "lastName": {
+                        "type": "string",
+                        "description": "Family name",
+                        "example": "Lovelace",
+                        "maxLength": 100,
+                        "minLength": 0
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Email, also used as the login identity",
+                        "example": "ada@example.com",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "Plain password, stored hashed with BCrypt",
+                        "example": "s3cret!",
+                        "maxLength": 100,
+                        "minLength": 6
+                    }
+                },
+                "required": [
+                    "email",
+                    "firstName",
+                    "lastName",
+                    "password"
+                ]
+            },
+            "MeResponse": {
+                "type": "object",
+                "description": "Account behind the presented token",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Account identifier",
+                        "example": 7
+                    },
+                    "firstName": {
+                        "type": "string",
+                        "description": "Given name",
+                        "example": "Ada"
+                    },
+                    "lastName": {
+                        "type": "string",
+                        "description": "Family name",
+                        "example": "Lovelace"
+                    },
+                    "email": {
+                        "type": "string",
+                        "description": "Registered email",
+                        "example": "ada@example.com"
+                    },
+                    "roles": {
+                        "type": "array",
+                        "description": "Granted authorities, prefixed with ROLE_",
+                        "example": [
+                            "ROLE_USER"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "LoginRequest": {
+                "type": "object",
+                "description": "Credentials exchanged for an access token",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "description": "Registered email",
+                        "example": "ada@example.com",
+                        "minLength": 1
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "Account password",
+                        "example": "s3cret!",
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
+            "TokenResponse": {
+                "type": "object",
+                "description": "Signed access token and its lifetime",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "JWT to be sent as an Authorization Bearer header",
+                        "example": "eyJhbGciOiJIUzI1NiJ9..."
+                    },
+                    "expiresIn": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Token lifetime in milliseconds",
+                        "example": 3600000
+                    }
+                }
+            },
+            "ProductPageResponse": {
+                "type": "object",
+                "description": "A page of catalog products",
+                "properties": {
+                    "content": {
+                        "type": "array",
+                        "description": "Products on this page",
+                        "items": {
+                            "$ref": "#/components/schemas/ProductResponse"
+                        }
+                    },
+                    "page": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Zero-based page number",
+                        "example": 0
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Requested page size",
+                        "example": 20
+                    },
+                    "totalElements": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Total number of products across all pages",
+                        "example": 3
+                    },
+                    "totalPages": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Total number of pages",
+                        "example": 1
+                    }
+                }
+            },
+            "OrderLineResponse": {
+                "type": "object",
+                "description": "A single line of a confirmed order",
+                "properties": {
+                    "productId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of the purchased product",
+                        "example": 12
+                    },
+                    "productName": {
+                        "type": "string",
+                        "description": "Product name frozen at purchase time",
+                        "example": "Rainbow Mug"
+                    },
+                    "unitPrice": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Unit price frozen at purchase time, whole CLP units",
+                        "example": 7990
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Purchased units",
+                        "example": 2
+                    },
+                    "subtotal": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Unit price multiplied by the quantity",
+                        "example": 15980
+                    }
+                }
+            },
+            "OrderResponse": {
+                "type": "object",
+                "description": "A confirmed order",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "Identifier of the order",
+                        "example": 58
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Order status",
+                        "example": "CONFIRMED"
+                    },
+                    "total": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Order total in whole CLP units",
+                        "example": 44970
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Moment the order was confirmed, in UTC"
+                    },
+                    "shippingAddress": {
+                        "$ref": "#/components/schemas/ShippingAddressResponse",
+                        "description": "Shipping address snapshot"
+                    },
+                    "items": {
+                        "type": "array",
+                        "description": "Lines of the order",
+                        "items": {
+                            "$ref": "#/components/schemas/OrderLineResponse"
+                        }
+                    }
+                }
+            },
+            "ShippingAddressResponse": {
+                "type": "object",
+                "description": "Shipping address snapshot",
+                "properties": {
+                    "street": {
+                        "type": "string"
+                    },
+                    "city": {
+                        "type": "string"
+                    },
+                    "region": {
+                        "type": "string"
+                    },
+                    "zipCode": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "JWT obtained from POST /api/v1/auth/login, sent as 'Authorization: Bearer <token>'",
+                "in": "header",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    }
+}
