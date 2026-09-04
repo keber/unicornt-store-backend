@@ -152,13 +152,36 @@ force-push, no branch deletion, linear history.
 - [ ] 🧑 `mkdir -p /var/www/unicornt-dev /var/www/unicornt-qa`; give the
       frontend deploy key write access (rsync target).
 
+**Verified 2026-09-04 via `deploy/vps-check.sh` + manual dump.** Actual infra:
+EasyEngine (`nginx-proxy` container + per-site nginx container, not host nginx) —
+that's fine, it terminates TLS for all 3 API hosts already. SSH is **better than
+planned**: three users `deploy-{dev,qa,prod}`, each key `restrict,command="sudo
+-n /usr/local/sbin/deploy-unicornt-<env>"` — properly locked, one script each,
+no argument passed through (CI's `deploy <channel> <sha>` string is ignored;
+harmless). `main.yml`'s deploy step and `deploy/vps-check.sh` were updated to
+match. Remaining before the dev cutover (P5):
+
+- [ ] 🧑 `/opt/unicornt/{dev,qa}/.env`: `IMAGE_TAG=latest` → `IMAGE_TAG=dev` /
+      `IMAGE_TAG=qa` (both currently run the same stale `:latest`, which is why
+      `/api/v1/products` 302s to `/login` — pre-REST-refactor image, not a config
+      bug). `chmod 600` both `.env`.
+- [ ] 🧑 `/opt/unicornt/qa/compose.yml`: the `networks:` key is named
+      `unicornt-dev-network` (copy-paste from dev) instead of
+      `unicornt-qa-network`. The external `name:` value is correct
+      (`api-unicornt-qa.keber.cl`); only the local key is wrong — cosmetic
+      unless it collides with dev's network object. Rename for hygiene.
+- [ ] 🧑 `/opt/unicornt/prod/.env` is missing `DOCKERHUB_USERNAME`,
+      `SPRING_DATASOURCE_URL` (+ confirm `APP_CORS_ALLOWED_ORIGINS`,
+      `APP_JWT_SECRET`) — not urgent, prod is P8.
+- [x] 🧑 Repo secrets `DOCKERHUB_USERNAME` (`keberflores`) + `DOCKERHUB_TOKEN` set.
+
 ### P4 — GitHub Environments & secrets (🧑)
 
 Backend repo → Settings → Environments: `dev`, `qa`, `prod`.
 
 - [ ] Per environment secrets: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`,
       `DEPLOY_SSH_KEY` (that env's private key).
-- [ ] Per environment variables: `API_BASE_URL` (for the smoke job),
+- [   ] Per environment variables: `API_BASE_URL` (for the smoke job),
       `FRONTEND_ORIGIN` (for the CORS assertion).
 - [x] `prod` environment: **required reviewer = you**; deployment branch rule =
       `main` only. `qa` → `qa` only. `dev` → `dev` only.
@@ -452,6 +475,13 @@ Do **P3 and P4 before merging the P2 PR into `dev`**: the merge is a push to
 is not ready, that job fails (test + build still pass).
 
 ### 9.1 P3 — one-time VPS setup (🧑, as a sudo user on the box)
+
+> **Superseded by what's actually on the box** — kept as the original sketch.
+> Real infra: EasyEngine (containerized nginx-proxy, not host nginx/certbot);
+> three `deploy-{dev,qa,prod}` users each with a `restrict,command="sudo -n
+> /usr/local/sbin/deploy-unicornt-<env>"` key (not a shared `deployer`);
+> `compose.yml` not `docker-compose.yml`. See the P3 status note (§4) for what's
+> actually done and what's left. (d) and (e) below no longer apply as written.
 
 **a. DNS** — at your DNS provider, `A` records → the VPS public IP:
 

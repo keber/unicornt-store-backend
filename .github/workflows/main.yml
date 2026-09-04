@@ -215,15 +215,18 @@ jobs:
 
       - name: Trigger deploy on the server
         run: |
-          # The key is pinned server-side to a forced command
-          # (/opt/unicornt/<env>/deploy.sh). It reads the requested image tag
-          # from $SSH_ORIGINAL_COMMAND, writes it into that env's .env, then
-          # runs docker compose pull && up -d.
+          # DEPLOY_USER is deploy-<channel>. Its key is pinned server-side to
+          #   restrict,command="sudo -n /usr/local/sbin/deploy-unicornt-<channel>"
+          # so whatever we send here is ignored — the server runs that script,
+          # which does `docker compose pull && up -d` in /opt/unicornt/<channel>/.
+          # The env's .env pins IMAGE_TAG=<channel>, so it pulls the moving
+          # channel tag that `build-and-push` just updated. The trailing args are
+          # only a breadcrumb in the CI log and the server's auth log.
           ssh -i ~/.ssh/deploy_key \
               -p "${{ secrets.DEPLOY_PORT }}" \
               -o StrictHostKeyChecking=yes \
               "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-              "deploy ${{ needs.resolve-target.outputs.sha_tag }}"
+              "deploy ${{ needs.resolve-target.outputs.channel }} ${{ needs.resolve-target.outputs.sha_tag }}"
 
       - name: Smoke check (API 200 + CORS)
         env:
