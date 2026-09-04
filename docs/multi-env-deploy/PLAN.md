@@ -7,8 +7,10 @@ own live URL, all sharing one VPS behind the existing nginx + SSL setup.
 **Status:** in progress. D1–D6 settled (§2). §3, P0–P4 done (rulesets still
 disabled, re-enable when convenient). **P5 done 2026-09-04 —
 `https://unicornt-dev.keber.dev` / `https://api-unicornt-dev.keber.dev` are
-live, full pipeline green.** Next: **P6** (frontend dev cutover, 🤖+👥) and
-prepping qa's known-needed fixes (P3 note, §4) ahead of **P7**.
+live, full pipeline green.** qa prep (stale DB reset + compose networks fix)
+done. **P6 code done, PR [#26](https://github.com/keber/unicornt-store-frontend/pull/26)
+open** — blocked on 🧑 VPS + frontend Environment setup (P6 runbook, §4) before
+it can merge/run. Next after that: **P7** (promote both repos to qa).
 
 Owner legend: 🤖 Claude does it in the repo · 🧑 you do it (GitHub settings, VPS,
 DNS, Supabase) · 👥 together (review / merge / watch a deploy).
@@ -231,18 +233,65 @@ infra/CI wiring only):
    compose.yml has the identical gap (network name `api-unicornt-qa.keber.cl`)
    — patch it before/at P7, or its first deploy 502s the same way.**
 
-### P6 — Frontend dev cutover (🤖 workflow, 👥 merge)
+### P6 — Frontend dev cutover (🤖 workflow, 👥 merge) — **code done, PR open**
 
-- [ ] 🤖 Frontend: add `VITE_API_BASE_URL` to the Pages build in `static.yml`
-      (prod value) and to the live-E2E build.
-- [ ] 🤖 Frontend: new `deploy-vps.yml` — on push to `dev` build with the dev
-      `VITE_API_BASE_URL` and rsync `dist/` → `/var/www/unicornt-dev`; on push
-      to `qa` → `/var/www/unicornt-qa`.
-- [ ] 🤖 Frontend post-build check: `grep` the expected base URL in
-      `dist/assets/*.js`; fail if absent.
-- [ ] 👥 Merge to frontend `dev`; confirm `https://unicornt-dev.keber.dev`
-      loads and talks to `api-unicornt-dev.keber.dev` (network tab, no CORS
-      error).
+- [x] 🤖 `static.yml` (prod/Pages): bakes `VITE_API_BASE_URL=https://api-unicornt-store.keber.cl`
+      into the build; verifies it landed in `dist/assets/*.js`. (`e2e-live.yml`
+      needed no change — it tests the already-deployed site, it doesn't build.)
+- [x] 🤖 New `deploy-vps.yml`: push to `dev`/`qa` → lint+test+build
+      (`VITE_API_BASE_URL` from `vars.API_HOST`) → same bundle check → rsync
+      `dist/` to the VPS → smoke check. `environment:`-scoped like the backend.
+- [x] 🤖 `gate-pr-source.yml` added to frontend (mirrors backend).
+- [x] 🤖 `ci.yml` / `unit-report.yml` / `e2e.yml`: added `dev`/`qa` to
+      `pull_request` triggers (additive, `refactor`/`etapas/**` untouched) so
+      PRs into dev/qa get checks.
+- [x] Frontend PR: [#26](https://github.com/keber/unicornt-store-frontend/pull/26) → `dev`.
+- [ ] 🧑 **VPS + Environment setup needed before `deploy-vps.yml` can run** — see
+      the runbook addendum right below. Nothing here touches the live site
+      until this is done and the PR merges.
+- [ ] 👥 Merge PR #26; watch `deploy-vps.yml` on `dev`; confirm
+      `https://unicornt-dev.keber.dev` loads and talks to
+      `api-unicornt-dev.keber.dev` (network tab, no CORS error).
+
+**P6 runbook — VPS + Environment setup (🧑, mirrors P3/P4 for the backend):**
+
+Frontend `dev`/`qa`/`prod` Environments already exist (created earlier, empty).
+Needed per env (`dev`, `qa`):
+
+- Secrets: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`.
+- Variable: `API_HOST` (`api-unicornt-dev.keber.dev` / `api-unicornt-qa.keber.cl`).
+  `HOST` (the frontend's own host) already exists from earlier setup.
+
+On the VPS — confirm the two sites' htdocs roots first (don't guess):
+
+```sh
+docker inspect unicornt-devkeberdev-nginx-1 --format '{{json .Mounts}}' | python3 -m json.tool
+docker inspect unicornt-qakebercl-nginx-1   --format '{{json .Mounts}}' | python3 -m json.tool
+# or, if EasyEngine's own CLI is on PATH:
+ee site info unicornt-dev.keber.dev
+```
+
+Then a restricted deploy user per env, same spirit as `deploy-{dev,qa,prod}` —
+`rrsync` locked to that site's htdocs root instead of a forced script:
+
+```sh
+sudo useradd -m -s /usr/sbin/nologin deploy-frontend-dev
+sudo -u deploy-frontend-dev mkdir -p ~deploy-frontend-dev/.ssh
+# find rrsync (ships with the rsync package, path varies by distro):
+find / -name rrsync -type f 2>/dev/null
+# authorized_keys entry (path = the confirmed htdocs root, trailing slash matters):
+echo 'command="/usr/bin/rrsync -delete <htdocs-root>/",restrict ssh-ed25519 AAAA... github-actions:unicornt-store-frontend-dev' \
+  | sudo -u deploy-frontend-dev tee ~deploy-frontend-dev/.ssh/authorized_keys
+sudo chmod 700 ~deploy-frontend-dev/.ssh
+sudo chmod 600 ~deploy-frontend-dev/.ssh/authorized_keys
+sudo chown -R deploy-frontend-dev:deploy-frontend-dev <htdocs-root>   # deploy user must own/write it
+```
+
+Repeat for qa (`deploy-frontend-qa`, its own key, its own htdocs root). Generate
+the keypairs the same way as the backend's (`ssh-keygen -t ed25519 -f ...`), put
+the private half in the matching frontend GitHub Environment, delete it locally.
+
+Local test before wiring CI: `rsync -az --delete -e "ssh -i key -p <port>" ./some-test-dir/ deploy-frontend-dev@<host>:/` should land files in the htdocs root and nowhere else — try a path traversal (`../`) and confirm rrsync refuses it.
 
 ### P7 — Promote to qa (👥)
 
