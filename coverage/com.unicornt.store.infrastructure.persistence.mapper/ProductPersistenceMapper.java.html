@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductPersistenceMapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.persistence.mapper</a> &gt; <span class="el_source">ProductPersistenceMapper.java</span></div><h1>ProductPersistenceMapper.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.persistence.mapper;
+
+import com.unicornt.store.domain.model.Product;
+import com.unicornt.store.domain.valueobject.Money;
+import com.unicornt.store.infrastructure.persistence.entity.ProductJpaEntity;
+
+/**
+ * Converts between the {@link ProductJpaEntity} row and the {@link Product} domain
+ * model. Pure static methods, no framework. The category / product-type name labels
+ * are read from the entity's transient fields, which the repository adapter fills
+ * from a lookup before calling {@link #toDomain}.
+ */
+public final class ProductPersistenceMapper {
+
+    private ProductPersistenceMapper() {
+    }
+
+    public static Product toDomain(ProductJpaEntity entity) {
+<span class="fc" id="L19">        return new Product(</span>
+<span class="fc" id="L20">                entity.getId(),</span>
+<span class="fc" id="L21">                entity.getName(),</span>
+<span class="fc" id="L22">                entity.getDescription(),</span>
+<span class="fc" id="L23">                entity.getImageBase(),</span>
+<span class="fc" id="L24">                Money.ofClp(entity.getPrice()),</span>
+<span class="fc" id="L25">                entity.getCategoryId(),</span>
+<span class="fc" id="L26">                entity.getCategoryName(),</span>
+<span class="fc" id="L27">                entity.getProductTypeId(),</span>
+<span class="fc" id="L28">                entity.getProductTypeName(),</span>
+<span class="fc" id="L29">                entity.getStock(),</span>
+<span class="fc" id="L30">                entity.isActive());</span>
+    }
+
+    /** A new entity carrying the column values of {@code product} (id 0 means &quot;insert&quot;). */
+    public static ProductJpaEntity toEntity(Product product) {
+<span class="fc" id="L35">        ProductJpaEntity entity = new ProductJpaEntity();</span>
+<span class="fc" id="L36">        applyColumns(entity, product);</span>
+<span class="fc" id="L37">        return entity;</span>
+    }
+
+    /** Copies the mutable columns of {@code product} onto an already-loaded {@code entity}. */
+    public static void applyColumns(ProductJpaEntity entity, Product product) {
+<span class="fc" id="L42">        entity.setId((int) product.id());</span>
+<span class="fc" id="L43">        entity.setName(product.name());</span>
+<span class="fc" id="L44">        entity.setDescription(product.description());</span>
+<span class="fc" id="L45">        entity.setImageBase(product.imageBase());</span>
+<span class="fc" id="L46">        entity.setPrice(product.price().amount());</span>
+<span class="fc" id="L47">        entity.setCategoryId((int) product.categoryId());</span>
+<span class="fc" id="L48">        entity.setProductTypeId((int) product.productTypeId());</span>
+<span class="fc" id="L49">        entity.setStock(product.stock());</span>
+<span class="fc" id="L50">        entity.setActive(product.isActive());</span>
+<span class="fc" id="L51">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

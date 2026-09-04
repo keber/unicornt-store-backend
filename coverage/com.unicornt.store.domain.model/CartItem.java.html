@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CartItem.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.domain.model</a> &gt; <span class="el_source">CartItem.java</span></div><h1>CartItem.java</h1><pre class="source lang-java linenums">package com.unicornt.store.domain.model;
+
+import com.unicornt.store.domain.valueobject.Quantity;
+
+import java.util.Objects;
+
+/**
+ * One line of a {@link Cart}: a product and how many units of it the shopper wants.
+ *
+ * &lt;p&gt;Plain Java. The invariants are: a positive product reference and a strictly
+ * positive {@link Quantity} (a zero quantity is modelled by the {@link Cart}
+ * dropping the line, never by a {@code CartItem} of zero). Product name, image and
+ * price are &lt;em&gt;not&lt;/em&gt; held here; they are read-model data the application layer
+ * joins in from the catalog when it prices the cart.&lt;/p&gt;
+ */
+public final class CartItem {
+
+    private final long productId;
+    private final Quantity quantity;
+
+<span class="fc" id="L21">    public CartItem(long productId, Quantity quantity) {</span>
+<span class="fc bfc" id="L22" title="All 2 branches covered.">        if (productId &lt;= 0) {</span>
+<span class="fc" id="L23">            throw new IllegalArgumentException(&quot;a cart item must reference a product&quot;);</span>
+        }
+<span class="fc" id="L25">        this.quantity = Objects.requireNonNull(quantity, &quot;quantity is required&quot;);</span>
+<span class="fc" id="L26">        this.productId = productId;</span>
+<span class="fc" id="L27">    }</span>
+
+    public static CartItem of(long productId, int units) {
+<span class="fc" id="L30">        return new CartItem(productId, Quantity.of(units));</span>
+    }
+
+    /** The same line with {@code units} added to the current quantity. */
+    CartItem withAdditionalUnits(int units) {
+<span class="fc" id="L35">        return new CartItem(productId, quantity.plus(Quantity.of(units)));</span>
+    }
+
+    /** The same line at an absolute quantity. */
+    CartItem withQuantity(Quantity newQuantity) {
+<span class="fc" id="L40">        return new CartItem(productId, newQuantity);</span>
+    }
+
+    public long productId() {
+<span class="fc" id="L44">        return productId;</span>
+    }
+
+    public Quantity quantity() {
+<span class="fc" id="L48">        return quantity;</span>
+    }
+
+    @Override
+    public boolean equals(Object other) {
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        return other instanceof CartItem item</span>
+                &amp;&amp; item.productId == this.productId
+<span class="fc bfc" id="L55" title="All 4 branches covered.">                &amp;&amp; item.quantity.equals(this.quantity);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="fc" id="L60">        return Objects.hash(productId, quantity);</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L65">        return &quot;CartItem{productId=&quot; + productId + &quot;, quantity=&quot; + quantity + '}';</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

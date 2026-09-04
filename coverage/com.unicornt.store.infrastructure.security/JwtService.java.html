@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.security</a> &gt; <span class="el_source">JwtService.java</span></div><h1>JwtService.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * Issues and verifies the HMAC signed access tokens used by the API.
+ *
+ * &lt;p&gt;The signing key is derived from {@code app.jwt.secret}, which is a Base64 encoded
+ * value of at least 32 bytes supplied through the environment. There is deliberately no
+ * fallback value: a missing secret must fail startup rather than silently sign tokens
+ * with a well known key.&lt;/p&gt;
+ */
+@Service
+public class JwtService {
+
+    /** Name of the claim carrying the granted authorities of the subject. */
+    public static final String ROLES_CLAIM = &quot;roles&quot;;
+
+    private final SecretKey key;
+    private final long expirationMs;
+
+    JwtService(@Value(&quot;${app.jwt.secret}&quot;) String secret,
+<span class="fc" id="L35">               @Value(&quot;${app.jwt.expiration-ms}&quot;) long expirationMs) {</span>
+<span class="fc" id="L36">        this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));</span>
+<span class="fc" id="L37">        this.expirationMs = expirationMs;</span>
+<span class="fc" id="L38">    }</span>
+
+    /**
+     * Builds a signed token for the given subject.
+     *
+     * @param subject the account identity, the user email in this application
+     * @param roles   authority names, already prefixed with {@code ROLE_}
+     */
+    public String generate(String subject, Collection&lt;String&gt; roles) {
+<span class="fc" id="L47">        Instant now = Instant.now();</span>
+<span class="fc" id="L48">        return Jwts.builder()</span>
+<span class="fc" id="L49">                .subject(subject)</span>
+<span class="fc" id="L50">                .claim(ROLES_CLAIM, List.copyOf(roles))</span>
+<span class="fc" id="L51">                .issuedAt(Date.from(now))</span>
+<span class="fc" id="L52">                .expiration(Date.from(now.plusMillis(expirationMs)))</span>
+<span class="fc" id="L53">                .signWith(key)</span>
+<span class="fc" id="L54">                .compact();</span>
+    }
+
+    /**
+     * Verifies the signature and expiry of a token.
+     *
+     * @throws io.jsonwebtoken.JwtException if the token is malformed, expired or badly signed
+     */
+    public Jws&lt;Claims&gt; parse(String token) {
+<span class="fc" id="L63">        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token);</span>
+    }
+
+    /** Token lifetime in milliseconds, echoed to clients as {@code expiresIn}. */
+    public long expirationMs() {
+<span class="fc" id="L68">        return expirationMs;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

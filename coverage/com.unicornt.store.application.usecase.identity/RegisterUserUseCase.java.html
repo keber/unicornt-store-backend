@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegisterUserUseCase.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.application.usecase.identity</a> &gt; <span class="el_source">RegisterUserUseCase.java</span></div><h1>RegisterUserUseCase.java</h1><pre class="source lang-java linenums">package com.unicornt.store.application.usecase.identity;
+
+import com.unicornt.store.domain.exception.DuplicateResourceException;
+import com.unicornt.store.domain.exception.ResourceNotFoundException;
+import com.unicornt.store.domain.model.User;
+import com.unicornt.store.domain.repository.RoleRepository;
+import com.unicornt.store.domain.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Set;
+
+/**
+ * Registers a self-service account: validate the input, enforce the raw-password
+ * length and email-uniqueness rules (PLAN.md &amp;sect;2.4), hash the password and
+ * persist the account with the single {@link User#ROLE_USER} authority.
+ */
+@Service
+public class RegisterUserUseCase {
+
+    /** Minimum length of the raw password, checked here because the model only sees the hash. */
+    public static final int MIN_PASSWORD_LENGTH = 6;
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordHasher passwordHasher;
+
+    public RegisterUserUseCase(UserRepository userRepository,
+                               RoleRepository roleRepository,
+<span class="fc" id="L30">                               PasswordHasher passwordHasher) {</span>
+<span class="fc" id="L31">        this.userRepository = userRepository;</span>
+<span class="fc" id="L32">        this.roleRepository = roleRepository;</span>
+<span class="fc" id="L33">        this.passwordHasher = passwordHasher;</span>
+<span class="fc" id="L34">    }</span>
+
+    @Transactional
+    public User execute(String firstName, String lastName, String email, String rawPassword) {
+<span class="fc" id="L38">        requireText(firstName, &quot;First name is required&quot;);</span>
+<span class="fc" id="L39">        requireText(lastName, &quot;Last name is required&quot;);</span>
+<span class="fc" id="L40">        requireText(email, &quot;Email is required&quot;);</span>
+<span class="fc" id="L41">        requireText(rawPassword, &quot;Password is required&quot;);</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">        if (rawPassword.length() &lt; MIN_PASSWORD_LENGTH) {</span>
+<span class="fc" id="L43">            throw new IllegalArgumentException(</span>
+                    &quot;Password must be at least &quot; + MIN_PASSWORD_LENGTH + &quot; characters long&quot;);
+        }
+
+<span class="fc" id="L47">        String normalizedEmail = email.trim();</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (userRepository.existsByEmail(normalizedEmail)) {</span>
+<span class="fc" id="L49">            throw new DuplicateResourceException(&quot;User&quot;, &quot;email&quot;, normalizedEmail);</span>
+        }
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (!roleRepository.existsByName(User.ROLE_USER)) {</span>
+<span class="fc" id="L52">            throw new ResourceNotFoundException(</span>
+                    &quot;Role &quot; + User.ROLE_USER + &quot; not found. Run the reference-data seed first.&quot;);
+        }
+
+<span class="fc" id="L56">        User account = User.register(</span>
+                firstName, lastName, normalizedEmail,
+<span class="fc" id="L58">                passwordHasher.hash(rawPassword), Set.of(User.ROLE_USER));</span>
+<span class="fc" id="L59">        return userRepository.save(account);</span>
+    }
+
+    private static void requireText(String value, String message) {
+<span class="fc bfc" id="L63" title="All 4 branches covered.">        if (value == null || value.isBlank()) {</span>
+<span class="fc" id="L64">            throw new IllegalArgumentException(message);</span>
+        }
+<span class="fc" id="L66">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

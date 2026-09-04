@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Order.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.domain.model</a> &gt; <span class="el_source">Order.java</span></div><h1>Order.java</h1><pre class="source lang-java linenums">package com.unicornt.store.domain.model;
+
+import com.unicornt.store.domain.valueobject.Money;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * An order confirmed from a cart. Plain Java. Invariants: an order always belongs to
+ * a user, always ships somewhere, and always has at least one line; the total is the
+ * sum of the line subtotals, computed here, never taken from the caller.
+ */
+public final class Order {
+
+    private final Long id;
+    private final String userId;
+    private final ShippingAddress shippingAddress;
+    private final List&lt;OrderItem&gt; items;
+    private final Money total;
+    private final OrderStatus status;
+    private final Instant createdAt;
+
+    public Order(Long id, String userId, ShippingAddress shippingAddress,
+<span class="fc" id="L25">                 List&lt;OrderItem&gt; items, Money total, OrderStatus status, Instant createdAt) {</span>
+<span class="fc bfc" id="L26" title="All 4 branches covered.">        if (userId == null || userId.isBlank()) {</span>
+<span class="fc" id="L27">            throw new IllegalArgumentException(&quot;an order must belong to a user&quot;);</span>
+        }
+<span class="fc" id="L29">        Objects.requireNonNull(shippingAddress, &quot;shippingAddress is required&quot;);</span>
+<span class="fc" id="L30">        Objects.requireNonNull(items, &quot;items is required&quot;);</span>
+<span class="fc bfc" id="L31" title="All 2 branches covered.">        if (items.isEmpty()) {</span>
+<span class="fc" id="L32">            throw new IllegalArgumentException(&quot;an order has at least one line&quot;);</span>
+        }
+<span class="fc" id="L34">        Objects.requireNonNull(total, &quot;total is required&quot;);</span>
+<span class="fc" id="L35">        Objects.requireNonNull(status, &quot;status is required&quot;);</span>
+<span class="fc" id="L36">        Objects.requireNonNull(createdAt, &quot;createdAt is required&quot;);</span>
+<span class="fc" id="L37">        this.id = id;</span>
+<span class="fc" id="L38">        this.userId = userId;</span>
+<span class="fc" id="L39">        this.shippingAddress = shippingAddress;</span>
+<span class="fc" id="L40">        this.items = List.copyOf(items);</span>
+<span class="fc" id="L41">        this.total = total;</span>
+<span class="fc" id="L42">        this.status = status;</span>
+<span class="fc" id="L43">        this.createdAt = createdAt;</span>
+<span class="fc" id="L44">    }</span>
+
+    /** Places a brand-new order: payment is simulated, so it is born {@code CONFIRMED}. */
+    public static Order place(String userId, ShippingAddress shippingAddress, List&lt;OrderItem&gt; items) {
+<span class="fc" id="L48">        Money total = items.stream()</span>
+<span class="fc" id="L49">                .map(OrderItem::subtotal)</span>
+<span class="fc" id="L50">                .reduce(Money.ofClp(0), Money::plus);</span>
+<span class="fc" id="L51">        return new Order(null, userId, shippingAddress, items, total, OrderStatus.CONFIRMED, Instant.now());</span>
+    }
+
+    public Long id() {
+<span class="fc" id="L55">        return id;</span>
+    }
+
+    public String userId() {
+<span class="fc" id="L59">        return userId;</span>
+    }
+
+    public ShippingAddress shippingAddress() {
+<span class="fc" id="L63">        return shippingAddress;</span>
+    }
+
+    public List&lt;OrderItem&gt; items() {
+<span class="fc" id="L67">        return items;</span>
+    }
+
+    public Money total() {
+<span class="fc" id="L71">        return total;</span>
+    }
+
+    public OrderStatus status() {
+<span class="fc" id="L75">        return status;</span>
+    }
+
+    public Instant createdAt() {
+<span class="fc" id="L79">        return createdAt;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

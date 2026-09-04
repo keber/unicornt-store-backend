@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>User.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.domain.model</a> &gt; <span class="el_source">User.java</span></div><h1>User.java</h1><pre class="source lang-java linenums">package com.unicornt.store.domain.model;
+
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Objects;
+import java.util.Set;
+
+/**
+ * A registered account.
+ *
+ * &lt;p&gt;Plain Java. Invariants enforced on construction (PLAN.md &amp;sect;2.4): the first
+ * and last name are required and at most {@value #MAX_NAME_LENGTH} characters, the
+ * email is required and at most {@value #MAX_EMAIL_LENGTH} characters, the password
+ * is stored only as a hash and is never blank, and the account carries at least one
+ * non-blank role name.&lt;/p&gt;
+ *
+ * &lt;p&gt;Two rules live outside this model on purpose: the &lt;em&gt;raw&lt;/em&gt; password length
+ * ({@code &gt;= 6}) is checked by the registration use case before hashing, because the
+ * model only ever sees the hash; and email &lt;em&gt;uniqueness&lt;/em&gt; is a cross-account
+ * check the use case performs against the repository.&lt;/p&gt;
+ */
+public final class User {
+
+    /** Default authority granted to every self-registered account. */
+    public static final String ROLE_USER = &quot;ROLE_USER&quot;;
+
+    /** Authority that unlocks the administrative endpoints. */
+    public static final String ROLE_ADMIN = &quot;ROLE_ADMIN&quot;;
+
+    public static final int MAX_NAME_LENGTH = 100;
+    public static final int MAX_EMAIL_LENGTH = 150;
+
+    private final Long id;
+    private final String firstName;
+    private final String lastName;
+    private final String email;
+    private final String passwordHash;
+    private final Set&lt;String&gt; roles;
+
+    public User(Long id, String firstName, String lastName, String email,
+<span class="fc" id="L41">                String passwordHash, Set&lt;String&gt; roles) {</span>
+<span class="fc" id="L42">        String trimmedFirstName = requireText(firstName, &quot;first name is required&quot;);</span>
+<span class="fc" id="L43">        String trimmedLastName = requireText(lastName, &quot;last name is required&quot;);</span>
+<span class="fc" id="L44">        String trimmedEmail = requireText(email, &quot;email is required&quot;);</span>
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        if (trimmedFirstName.length() &gt; MAX_NAME_LENGTH) {</span>
+<span class="fc" id="L46">            throw new IllegalArgumentException(</span>
+                    &quot;first name must not exceed &quot; + MAX_NAME_LENGTH + &quot; characters&quot;);
+        }
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        if (trimmedLastName.length() &gt; MAX_NAME_LENGTH) {</span>
+<span class="fc" id="L50">            throw new IllegalArgumentException(</span>
+                    &quot;last name must not exceed &quot; + MAX_NAME_LENGTH + &quot; characters&quot;);
+        }
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        if (trimmedEmail.length() &gt; MAX_EMAIL_LENGTH) {</span>
+<span class="fc" id="L54">            throw new IllegalArgumentException(</span>
+                    &quot;email must not exceed &quot; + MAX_EMAIL_LENGTH + &quot; characters&quot;);
+        }
+<span class="fc bfc" id="L57" title="All 4 branches covered.">        if (passwordHash == null || passwordHash.isBlank()) {</span>
+<span class="fc" id="L58">            throw new IllegalArgumentException(&quot;password hash is required&quot;);</span>
+        }
+<span class="fc" id="L60">        Objects.requireNonNull(roles, &quot;roles are required&quot;);</span>
+<span class="fc" id="L61">        Set&lt;String&gt; copy = new LinkedHashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        for (String role : roles) {</span>
+<span class="fc" id="L63">            copy.add(requireText(role, &quot;a role name must not be blank&quot;));</span>
+<span class="fc" id="L64">        }</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        if (copy.isEmpty()) {</span>
+<span class="fc" id="L66">            throw new IllegalArgumentException(&quot;an account must have at least one role&quot;);</span>
+        }
+<span class="fc" id="L68">        this.id = id;</span>
+<span class="fc" id="L69">        this.firstName = trimmedFirstName;</span>
+<span class="fc" id="L70">        this.lastName = trimmedLastName;</span>
+<span class="fc" id="L71">        this.email = trimmedEmail;</span>
+<span class="fc" id="L72">        this.passwordHash = passwordHash;</span>
+<span class="fc" id="L73">        this.roles = Collections.unmodifiableSet(copy);</span>
+<span class="fc" id="L74">    }</span>
+
+    /** A brand-new account with no id yet and an already-hashed password. */
+    public static User register(String firstName, String lastName, String email,
+                                String passwordHash, Set&lt;String&gt; roles) {
+<span class="fc" id="L79">        return new User(null, firstName, lastName, email, passwordHash, roles);</span>
+    }
+
+    public boolean hasRole(String role) {
+<span class="fc" id="L83">        return roles.contains(role);</span>
+    }
+
+    public Long id() {
+<span class="fc" id="L87">        return id;</span>
+    }
+
+    public String firstName() {
+<span class="fc" id="L91">        return firstName;</span>
+    }
+
+    public String lastName() {
+<span class="fc" id="L95">        return lastName;</span>
+    }
+
+    public String email() {
+<span class="fc" id="L99">        return email;</span>
+    }
+
+    public String passwordHash() {
+<span class="fc" id="L103">        return passwordHash;</span>
+    }
+
+    /** The granted authorities, prefixed with {@code ROLE_}; unmodifiable. */
+    public Set&lt;String&gt; roles() {
+<span class="fc" id="L108">        return roles;</span>
+    }
+
+    private static String requireText(String value, String message) {
+<span class="fc bfc" id="L112" title="All 4 branches covered.">        if (value == null || value.isBlank()) {</span>
+<span class="fc" id="L113">            throw new IllegalArgumentException(message);</span>
+        }
+<span class="fc" id="L115">        return value.trim();</span>
+    }
+
+    @Override
+    public boolean equals(Object other) {
+<span class="fc" id="L120">        return other instanceof User user</span>
+<span class="fc bfc" id="L121" title="All 2 branches covered.">                &amp;&amp; Objects.equals(user.id, this.id)</span>
+<span class="fc bfc" id="L122" title="All 4 branches covered.">                &amp;&amp; user.email.equals(this.email);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="fc" id="L127">        return Objects.hash(id, email);</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L132">        return &quot;User{id=&quot; + id + &quot;, email='&quot; + email + &quot;', roles=&quot; + roles + '}';</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.web.error</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.web.error;
+
+import com.unicornt.store.domain.exception.DuplicateResourceException;
+import com.unicornt.store.domain.exception.OutOfStockException;
+import com.unicornt.store.domain.exception.ResourceNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * Single translation point from exception to JSON error payload.
+ * No stack trace ever reaches the client; unexpected failures are logged server side.
+ */
+@RestControllerAdvice
+<span class="fc" id="L31">public class GlobalExceptionHandler {</span>
+
+<span class="fc" id="L33">    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);</span>
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    ResponseEntity&lt;ErrorResponse&gt; notFound(ResourceNotFoundException ex, HttpServletRequest req) {
+<span class="fc" id="L37">        return build(ex.getMessage(), &quot;RESOURCE_NOT_FOUND&quot;, HttpStatus.NOT_FOUND, req);</span>
+    }
+
+    @ExceptionHandler(OutOfStockException.class)
+    ResponseEntity&lt;ErrorResponse&gt; business(OutOfStockException ex, HttpServletRequest req) {
+<span class="fc" id="L42">        return build(ex.getMessage(), &quot;BUSINESS_RULE_VIOLATION&quot;, HttpStatus.UNPROCESSABLE_ENTITY, req);</span>
+    }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    ResponseEntity&lt;ErrorResponse&gt; conflict(DuplicateResourceException ex, HttpServletRequest req) {
+<span class="fc" id="L47">        return build(ex.getMessage(), &quot;RESOURCE_CONFLICT&quot;, HttpStatus.CONFLICT, req);</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ResponseEntity&lt;ErrorResponse&gt; validation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+<span class="fc" id="L52">        List&lt;ErrorResponse.FieldError&gt; fields = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L53">                .map(f -&gt; new ErrorResponse.FieldError(f.getField(), f.getDefaultMessage()))</span>
+<span class="fc" id="L54">                .toList();</span>
+<span class="fc" id="L55">        return ResponseEntity.badRequest().body(new ErrorResponse(</span>
+<span class="fc" id="L56">                &quot;Validation failed&quot;, &quot;VALIDATION_ERROR&quot;, HttpStatus.BAD_REQUEST.value(),</span>
+<span class="fc" id="L57">                Instant.now(), req.getRequestURI(), fields));</span>
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    ResponseEntity&lt;ErrorResponse&gt; constraintViolation(ConstraintViolationException ex, HttpServletRequest req) {
+<span class="fc" id="L62">        List&lt;ErrorResponse.FieldError&gt; fields = ex.getConstraintViolations().stream()</span>
+<span class="fc" id="L63">                .map(v -&gt; new ErrorResponse.FieldError(</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">                        v.getPropertyPath() != null ? v.getPropertyPath().toString() : &quot;&quot;,</span>
+<span class="fc" id="L65">                        v.getMessage()))</span>
+<span class="fc" id="L66">                .toList();</span>
+<span class="fc" id="L67">        return ResponseEntity.badRequest().body(new ErrorResponse(</span>
+<span class="fc" id="L68">                &quot;Validation failed&quot;, &quot;VALIDATION_ERROR&quot;, HttpStatus.BAD_REQUEST.value(),</span>
+<span class="fc" id="L69">                Instant.now(), req.getRequestURI(), fields));</span>
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity&lt;ErrorResponse&gt; malformedBody(HttpMessageNotReadableException ex, HttpServletRequest req) {
+<span class="fc" id="L74">        return build(&quot;Malformed request body&quot;, &quot;MALFORMED_REQUEST&quot;, HttpStatus.BAD_REQUEST, req);</span>
+    }
+
+    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentTypeMismatchException.class})
+    ResponseEntity&lt;ErrorResponse&gt; badRequest(Exception ex, HttpServletRequest req) {
+<span class="fc bfc" id="L79" title="All 2 branches covered.">        return build(ex.getMessage() != null ? ex.getMessage() : &quot;Invalid request&quot;,</span>
+                &quot;BAD_REQUEST&quot;, HttpStatus.BAD_REQUEST, req);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity&lt;ErrorResponse&gt; dataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req) {
+<span class="fc" id="L85">        log.warn(&quot;Data integrity violation at {}&quot;, req.getRequestURI(), ex);</span>
+<span class="fc" id="L86">        return build(&quot;The request conflicts with the current state of the resource&quot;,</span>
+                &quot;RESOURCE_CONFLICT&quot;, HttpStatus.CONFLICT, req);
+    }
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    ResponseEntity&lt;ErrorResponse&gt; noHandler(Exception ex, HttpServletRequest req) {
+<span class="fc" id="L92">        return build(&quot;No endpoint &quot; + req.getMethod() + &quot; &quot; + req.getRequestURI(),</span>
+                &quot;ENDPOINT_NOT_FOUND&quot;, HttpStatus.NOT_FOUND, req);
+    }
+
+    /**
+     * Authorization failures raised inside the dispatcher (method security) must keep their
+     * 403 semantics instead of falling through to the generic safety net below.
+     * Failures raised in the filter chain are handled by the security entry points (T2).
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity&lt;ErrorResponse&gt; accessDenied(AccessDeniedException ex, HttpServletRequest req) {
+<span class="fc" id="L103">        return build(&quot;Access denied&quot;, &quot;ACCESS_DENIED&quot;, HttpStatus.FORBIDDEN, req);</span>
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity&lt;ErrorResponse&gt; unauthenticated(AuthenticationException ex, HttpServletRequest req) {
+<span class="fc" id="L108">        return build(&quot;Authentication required&quot;, &quot;UNAUTHORIZED&quot;, HttpStatus.UNAUTHORIZED, req);</span>
+    }
+
+    /** Safety net: never leak a stack trace to the client. */
+    @ExceptionHandler(Exception.class)
+    ResponseEntity&lt;ErrorResponse&gt; generic(Exception ex, HttpServletRequest req) {
+<span class="fc" id="L114">        log.error(&quot;Unhandled error at {}&quot;, req.getRequestURI(), ex);</span>
+<span class="fc" id="L115">        return build(&quot;Internal error&quot;, &quot;INTERNAL_ERROR&quot;, HttpStatus.INTERNAL_SERVER_ERROR, req);</span>
+    }
+
+    private ResponseEntity&lt;ErrorResponse&gt; build(String message, String code,
+                                                HttpStatus status, HttpServletRequest req) {
+<span class="fc" id="L120">        return ResponseEntity.status(status)</span>
+<span class="fc" id="L121">                .body(ErrorResponse.of(message, code, status, req.getRequestURI()));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

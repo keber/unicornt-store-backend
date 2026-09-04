@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CartRestController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.web.rest</a> &gt; <span class="el_source">CartRestController.java</span></div><h1>CartRestController.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.web.rest;
+
+import com.unicornt.store.application.usecase.cart.AddCartItemUseCase;
+import com.unicornt.store.application.usecase.cart.GetCartUseCase;
+import com.unicornt.store.application.usecase.cart.MergeCartUseCase;
+import com.unicornt.store.application.usecase.cart.RemoveCartItemUseCase;
+import com.unicornt.store.application.usecase.cart.UpdateCartItemUseCase;
+import com.unicornt.store.infrastructure.web.dto.CartDtos.AddCartItemRequest;
+import com.unicornt.store.infrastructure.web.dto.CartDtos.CartResponse;
+import com.unicornt.store.infrastructure.web.dto.CartDtos.MergeCartRequest;
+import com.unicornt.store.infrastructure.web.dto.CartDtos.UpdateCartItemRequest;
+import com.unicornt.store.infrastructure.web.error.ErrorResponse;
+import com.unicornt.store.infrastructure.web.mapper.CartRestMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+
+/**
+ * Cart of the authenticated user. Thin: every method reads the principal from the
+ * security context, calls one use case and maps the result. The identity never
+ * comes from the request, so no caller can reach another user's cart. Every
+ * mutating endpoint answers with the whole updated cart.
+ */
+@RestController
+@RequestMapping(&quot;/api/v1/cart&quot;)
+@PreAuthorize(&quot;isAuthenticated()&quot;)
+@SecurityRequirement(name = &quot;bearerAuth&quot;)
+@Tag(name = &quot;Cart&quot;, description = &quot;Shopping cart of the authenticated user&quot;)
+public class CartRestController {
+
+    private final GetCartUseCase getCart;
+    private final AddCartItemUseCase addCartItem;
+    private final UpdateCartItemUseCase updateCartItem;
+    private final RemoveCartItemUseCase removeCartItem;
+    private final MergeCartUseCase mergeCart;
+
+    public CartRestController(GetCartUseCase getCart,
+                             AddCartItemUseCase addCartItem,
+                             UpdateCartItemUseCase updateCartItem,
+                             RemoveCartItemUseCase removeCartItem,
+<span class="fc" id="L62">                             MergeCartUseCase mergeCart) {</span>
+<span class="fc" id="L63">        this.getCart = getCart;</span>
+<span class="fc" id="L64">        this.addCartItem = addCartItem;</span>
+<span class="fc" id="L65">        this.updateCartItem = updateCartItem;</span>
+<span class="fc" id="L66">        this.removeCartItem = removeCartItem;</span>
+<span class="fc" id="L67">        this.mergeCart = mergeCart;</span>
+<span class="fc" id="L68">    }</span>
+
+    @GetMapping
+    @Operation(summary = &quot;Get the cart of the authenticated user&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Cart of the caller&quot;),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Authentication required&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public CartResponse getCart(Authentication authentication) {
+<span class="fc" id="L78">        return CartRestMapper.toResponse(getCart.execute(authentication.getName()));</span>
+    }
+
+    @PostMapping(&quot;/items&quot;)
+    @Operation(summary = &quot;Add a product to the cart, or increase the quantity of an existing line&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Quantity increased on an existing line&quot;),
+            @ApiResponse(responseCode = &quot;201&quot;, description = &quot;New line created&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid payload&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Authentication required&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;The product does not exist&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity&lt;CartResponse&gt; addItem(@Valid @RequestBody AddCartItemRequest body,
+                                                Authentication authentication) {
+<span class="fc" id="L95">        AddCartItemUseCase.Result result = addCartItem.execute(</span>
+<span class="fc" id="L96">                authentication.getName(), body.productId(), body.quantity());</span>
+<span class="fc" id="L97">        CartResponse response = CartRestMapper.toResponse(result.cart());</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">        if (result.created()) {</span>
+<span class="fc" id="L99">            return ResponseEntity</span>
+<span class="fc" id="L100">                    .created(URI.create(&quot;/api/v1/cart/items/&quot; + body.productId()))</span>
+<span class="fc" id="L101">                    .body(response);</span>
+        }
+<span class="fc" id="L103">        return ResponseEntity.ok(response);</span>
+    }
+
+    @PutMapping(&quot;/items/{productId}&quot;)
+    @Operation(summary = &quot;Set the quantity of one line of the cart; a quantity of 0 removes it&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Updated cart&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid payload&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Authentication required&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;The product is not a line of the cart&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public CartResponse updateItem(
+            @Parameter(description = &quot;Product identifier&quot;, example = &quot;12&quot;) @PathVariable long productId,
+            @Valid @RequestBody UpdateCartItemRequest body,
+            Authentication authentication) {
+<span class="fc" id="L121">        return CartRestMapper.toResponse(</span>
+<span class="fc" id="L122">                updateCartItem.execute(authentication.getName(), productId, body.quantity()));</span>
+    }
+
+    @DeleteMapping(&quot;/items/{productId}&quot;)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = &quot;Remove one line from the cart&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;204&quot;, description = &quot;Line removed&quot;),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Authentication required&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;404&quot;, description = &quot;The product is not a line of the cart&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public void removeItem(
+            @Parameter(description = &quot;Product identifier&quot;, example = &quot;12&quot;) @PathVariable long productId,
+            Authentication authentication) {
+<span class="fc" id="L138">        removeCartItem.execute(authentication.getName(), productId);</span>
+<span class="fc" id="L139">    }</span>
+
+    @PostMapping(&quot;/merge&quot;)
+    @Operation(summary = &quot;Merge a local (anonymous) cart into the authenticated user's cart&quot;,
+            description = &quot;For each line the new quantity is server + local, clamped to the product's stock&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Merged cart&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid payload&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Authentication required&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public CartResponse merge(@Valid @RequestBody MergeCartRequest body, Authentication authentication) {
+<span class="fc" id="L152">        return CartRestMapper.toResponse(</span>
+<span class="fc" id="L153">                mergeCart.execute(authentication.getName(), CartRestMapper.toIncomingItems(body)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CartRepositoryAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.persistence.adapter</a> &gt; <span class="el_source">CartRepositoryAdapter.java</span></div><h1>CartRepositoryAdapter.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.persistence.adapter;
+
+import com.unicornt.store.domain.model.Cart;
+import com.unicornt.store.domain.model.CartItem;
+import com.unicornt.store.domain.repository.CartRepository;
+import com.unicornt.store.infrastructure.persistence.entity.CartItemJpaEntity;
+import com.unicornt.store.infrastructure.persistence.mapper.CartPersistenceMapper;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataCartItemRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository;
+import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * JPA-backed implementation of the {@link CartRepository} port.
+ *
+ * &lt;p&gt;The port addresses a cart by the principal identity ({@code userId}, an
+ * email). The {@code cart_items} table keys on the numeric user id, so this
+ * adapter resolves the email to that id through {@link SpringDataUserRepository}; that
+ * translation is the only reason the port is not numeric. When the identity
+ * cannot be resolved the cart is treated as empty.&lt;/p&gt;
+ */
+@Component
+public class CartRepositoryAdapter implements CartRepository {
+
+    private final SpringDataCartItemRepository rows;
+    private final SpringDataUserRepository users;
+
+<span class="fc" id="L30">    public CartRepositoryAdapter(SpringDataCartItemRepository rows, SpringDataUserRepository users) {</span>
+<span class="fc" id="L31">        this.rows = rows;</span>
+<span class="fc" id="L32">        this.users = users;</span>
+<span class="fc" id="L33">    }</span>
+
+    @Override
+    public Cart findByUserId(String userId) {
+<span class="fc" id="L37">        Long numericId = resolve(userId);</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        if (numericId == null) {</span>
+<span class="fc" id="L39">            return Cart.empty(userId);</span>
+        }
+<span class="fc" id="L41">        return CartPersistenceMapper.toDomain(userId, rows.findByUserId(numericId));</span>
+    }
+
+    @Override
+    public Cart save(Cart cart) {
+<span class="fc" id="L46">        Long numericId = resolve(cart.userId());</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (numericId == null) {</span>
+<span class="fc" id="L48">            throw new IllegalStateException(&quot;Cannot persist a cart for an unknown user: &quot; + cart.userId());</span>
+        }
+
+<span class="fc" id="L51">        Map&lt;Integer, CartItemJpaEntity&gt; current = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        for (CartItemJpaEntity row : rows.findByUserId(numericId)) {</span>
+<span class="fc" id="L53">            current.put(row.getProductId(), row);</span>
+<span class="fc" id="L54">        }</span>
+
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        for (CartItem item : cart.items()) {</span>
+<span class="fc" id="L57">            int productId = (int) item.productId();</span>
+<span class="fc" id="L58">            int quantity = item.quantity().value();</span>
+<span class="fc" id="L59">            CartItemJpaEntity existing = current.remove(productId);</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">            if (existing == null) {</span>
+<span class="fc" id="L61">                rows.save(CartPersistenceMapper.toEntity(numericId, item));</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">            } else if (existing.getQuantity() != quantity) {</span>
+<span class="fc" id="L63">                existing.setQuantity(quantity);</span>
+<span class="fc" id="L64">                rows.save(existing);</span>
+            }
+<span class="fc" id="L66">        }</span>
+<span class="fc" id="L67">        current.values().forEach(rows::delete);</span>
+
+<span class="fc" id="L69">        return CartPersistenceMapper.toDomain(cart.userId(), rows.findByUserId(numericId));</span>
+    }
+
+    @Override
+    public void deleteByUserId(String userId) {
+<span class="fc" id="L74">        Long numericId = resolve(userId);</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (numericId != null) {</span>
+<span class="fc" id="L76">            rows.deleteByUserId(numericId);</span>
+        }
+<span class="fc" id="L78">    }</span>
+
+    private Long resolve(String userId) {
+<span class="fc" id="L81">        return users.findByEmail(userId).map(user -&gt; user.getId()).orElse(null);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

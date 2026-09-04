@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtAuthFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.security</a> &gt; <span class="el_source">JwtAuthFilter.java</span></div><h1>JwtAuthFilter.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.List;
+
+/**
+ * Populates the security context from an {@code Authorization: Bearer &lt;token&gt;} header.
+ *
+ * &lt;p&gt;A missing, malformed or expired token is swallowed here on purpose: the request simply
+ * stays anonymous and the 401 is emitted later by {@code RestAuthEntryPoint}, so that public
+ * endpoints keep working when a stale token is presented.&lt;/p&gt;
+ */
+@Component
+public class JwtAuthFilter extends OncePerRequestFilter {
+
+    private static final String BEARER_PREFIX = &quot;Bearer &quot;;
+
+    private final JwtService jwtService;
+
+<span class="fc" id="L35">    public JwtAuthFilter(JwtService jwtService) {</span>
+<span class="fc" id="L36">        this.jwtService = jwtService;</span>
+<span class="fc" id="L37">    }</span>
+
+    @Override
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain chain) throws ServletException, IOException {
+<span class="fc" id="L43">        String header = request.getHeader(HttpHeaders.AUTHORIZATION);</span>
+<span class="fc bfc" id="L44" title="All 4 branches covered.">        if (header != null &amp;&amp; header.startsWith(BEARER_PREFIX)</span>
+<span class="fc bfc" id="L45" title="All 2 branches covered.">                &amp;&amp; SecurityContextHolder.getContext().getAuthentication() == null) {</span>
+            try {
+<span class="fc" id="L47">                Claims claims = jwtService.parse(header.substring(BEARER_PREFIX.length())).getPayload();</span>
+<span class="fc" id="L48">                var authentication = new UsernamePasswordAuthenticationToken(</span>
+<span class="fc" id="L49">                        claims.getSubject(), null, authorities(claims));</span>
+<span class="fc" id="L50">                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));</span>
+<span class="fc" id="L51">                SecurityContextHolder.getContext().setAuthentication(authentication);</span>
+<span class="fc" id="L52">            } catch (JwtException | IllegalArgumentException ignored) {</span>
+<span class="fc" id="L53">                SecurityContextHolder.clearContext();</span>
+<span class="fc" id="L54">            }</span>
+        }
+<span class="fc" id="L56">        chain.doFilter(request, response);</span>
+<span class="fc" id="L57">    }</span>
+
+    private List&lt;SimpleGrantedAuthority&gt; authorities(Claims claims) {
+<span class="fc" id="L60">        List&lt;?&gt; roles = claims.get(JwtService.ROLES_CLAIM, List.class);</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        if (roles == null) {</span>
+<span class="fc" id="L62">            return List.of();</span>
+        }
+<span class="fc" id="L64">        return roles.stream().map(String::valueOf).map(SimpleGrantedAuthority::new).toList();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

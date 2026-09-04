@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ListProductsUseCase.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.application.usecase.catalog</a> &gt; <span class="el_source">ListProductsUseCase.java</span></div><h1>ListProductsUseCase.java</h1><pre class="source lang-java linenums">package com.unicornt.store.application.usecase.catalog;
+
+import com.unicornt.store.domain.model.Product;
+import com.unicornt.store.domain.repository.PageResult;
+import com.unicornt.store.domain.repository.ProductRepository;
+import org.springframework.stereotype.Service;
+
+/** Lists the catalog, optionally filtered by category and free text, one page at a time. */
+@Service
+public class ListProductsUseCase {
+
+    /** Upper bound so a caller cannot ask for an unbounded page. */
+    static final int MAX_PAGE_SIZE = 100;
+    static final int DEFAULT_PAGE_SIZE = 20;
+
+    private final ProductRepository productRepository;
+
+<span class="fc" id="L18">    public ListProductsUseCase(ProductRepository productRepository) {</span>
+<span class="fc" id="L19">        this.productRepository = productRepository;</span>
+<span class="fc" id="L20">    }</span>
+
+    public PageResult&lt;Product&gt; execute(String category, String text, int page, int size) {
+<span class="fc" id="L23">        int safePage = Math.max(page, 0);</span>
+<span class="fc bfc" id="L24" title="All 2 branches covered.">        int safeSize = size &lt;= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);</span>
+<span class="fc" id="L25">        return productRepository.search(blankToNull(category), blankToNull(text), safePage, safeSize);</span>
+    }
+
+    private static String blankToNull(String value) {
+<span class="fc bfc" id="L29" title="All 4 branches covered.">        return value == null || value.isBlank() ? null : value.trim();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

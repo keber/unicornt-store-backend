@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreateProductUseCase.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.application.usecase.catalog</a> &gt; <span class="el_source">CreateProductUseCase.java</span></div><h1>CreateProductUseCase.java</h1><pre class="source lang-java linenums">package com.unicornt.store.application.usecase.catalog;
+
+import com.unicornt.store.domain.exception.ResourceNotFoundException;
+import com.unicornt.store.domain.model.Product;
+import com.unicornt.store.domain.repository.CategoryRepository;
+import com.unicornt.store.domain.repository.ProductRepository;
+import com.unicornt.store.domain.repository.ProductTypeRepository;
+import com.unicornt.store.domain.valueobject.Money;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Registers a new catalog product. The full validation walk: the domain
+ * {@code Product} constructor enforces name / price / stock, then the referenced
+ * category and product type must exist.
+ */
+@Service
+public class CreateProductUseCase {
+
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
+    private final ProductTypeRepository productTypeRepository;
+
+    public CreateProductUseCase(ProductRepository productRepository,
+                                CategoryRepository categoryRepository,
+<span class="fc" id="L26">                                ProductTypeRepository productTypeRepository) {</span>
+<span class="fc" id="L27">        this.productRepository = productRepository;</span>
+<span class="fc" id="L28">        this.categoryRepository = categoryRepository;</span>
+<span class="fc" id="L29">        this.productTypeRepository = productTypeRepository;</span>
+<span class="fc" id="L30">    }</span>
+
+    @Transactional
+    public Product execute(ProductCommand command) {
+<span class="fc" id="L34">        Product product = Product.create(</span>
+<span class="fc" id="L35">                command.name(), command.description(), command.imageBase(),</span>
+<span class="fc" id="L36">                Money.ofClp(command.priceClp()),</span>
+<span class="fc" id="L37">                command.categoryId(), command.productTypeId(),</span>
+<span class="fc" id="L38">                command.stock(), command.active());</span>
+<span class="fc" id="L39">        requireReferences(command);</span>
+<span class="fc" id="L40">        return productRepository.save(product);</span>
+    }
+
+    private void requireReferences(ProductCommand command) {
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (!categoryRepository.existsById(command.categoryId())) {</span>
+<span class="fc" id="L45">            throw new ResourceNotFoundException(&quot;Category&quot;, command.categoryId());</span>
+        }
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (!productTypeRepository.existsById(command.productTypeId())) {</span>
+<span class="fc" id="L48">            throw new ResourceNotFoundException(&quot;Product type&quot;, command.productTypeId());</span>
+        }
+<span class="fc" id="L50">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
