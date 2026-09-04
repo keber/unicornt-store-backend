@@ -1,4 +1,4 @@
-# prod environment — /srv/unicornt/prod/docker-compose.yml
+# prod environment — /opt/unicornt/prod/docker-compose.yml
 # App on 127.0.0.1:8088 (nginx proxies api-unicornt-store.keber.cl to it).
 # No db service: prod uses Supabase. SPRING_DATASOURCE_* come from .env.
 name: unicornt-prod

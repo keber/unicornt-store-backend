@@ -1,4 +1,4 @@
-# qa environment — /srv/unicornt/qa/docker-compose.yml
+# qa environment — /opt/unicornt/qa/docker-compose.yml
 # App on 127.0.0.1:8082 (nginx proxies api-unicornt-qa.keber.cl to it).
 # Own Postgres container with an isolated named volume.
 name: unicornt-qa

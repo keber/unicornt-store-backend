@@ -1,14 +1,14 @@
 #!/bin/sh
 # Server-side deploy script. Install one copy per environment:
-#   /srv/unicornt/dev/deploy.sh
-#   /srv/unicornt/qa/deploy.sh
-#   /srv/unicornt/prod/deploy.sh
+#   /opt/unicornt/dev/deploy.sh
+#   /opt/unicornt/qa/deploy.sh
+#   /opt/unicornt/prod/deploy.sh
 # (identical file — it acts on whatever directory it sits in).
 #
 # Pin it as the forced command for that environment's deploy key in
 # ~/.ssh/authorized_keys, e.g.:
 #
-#   command="/srv/unicornt/dev/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA... ci-deploy-dev
+#   command="/opt/unicornt/dev/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA... ci-deploy-dev
 #
 # CI connects with:  ssh ... "deploy sha-abc1234"
 # which arrives here as: SSH_ORIGINAL_COMMAND="deploy sha-abc1234"

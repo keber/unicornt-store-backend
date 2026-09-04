@@ -92,6 +92,6 @@ matching GitHub Environment — SSHes to the box and triggers that env's
 up -d`, then a smoke check (API 200 + CORS header). `prod` waits on a manual
 approval.
 
-Per-environment server files live under `/srv/unicornt/<env>/`
+Per-environment server files live under `/opt/unicornt/<env>/`
 (`docker-compose.yml` from [deploy/](../deploy/), plus a `.env` that never leaves
 the box — templates: [deploy/<env>/.env.example](../deploy/)).

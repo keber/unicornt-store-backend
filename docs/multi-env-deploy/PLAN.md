@@ -121,7 +121,7 @@ force-push, no branch deletion, linear history.
     `"deploy sha-<7>"`; **smoke folded in as a final step** (kept it one job so
     the prod approval gate fires once, not twice).
 - [x] `.github/workflows/gate-pr-source.yml` — carried in on this branch.
-- [x] `deploy/deploy.sh` — one script, sits in each `/srv/unicornt/<env>/`, acts
+- [x] `deploy/deploy.sh` — one script, sits in each `/opt/unicornt/<env>/`, acts
       on its own dir; validates the `sha-` tag from `$SSH_ORIGINAL_COMMAND`.
 - [x] `deploy/{dev,qa,prod}/docker-compose.yml` + `.env.example` — dev/qa carry a
       Postgres container (no published port), prod is app-only (Supabase).
@@ -129,12 +129,12 @@ force-push, no branch deletion, linear history.
 
 ### P3 — VPS infrastructure (🧑 on the box; 🤖 supplies configs)
 
-- [ ] 🧑 DNS `A` records → VPS IP: `unicornt-dev.keber.dev`,
+- [X] 🧑 DNS `A` records → VPS IP: `unicornt-dev.keber.dev`,
       `api-unicornt-dev.keber.dev`, `unicornt-qa.keber.cl`,
       `api-unicornt-qa.keber.cl`, `api-unicornt-store.keber.cl`.
       (`unicornt-store.keber.cl` stays pointed at GitHub Pages.)
 - [ ] 🧑 Create server dirs:
-      `/srv/unicornt/{dev,qa,prod}/` each with `docker-compose.yml` (from
+      `/opt/unicornt/{dev,qa,prod}/` each with `docker-compose.yml` (from
       `deploy/<env>/`) + `.env` (secrets, D3 profile, `IMAGE_TAG=` line).
 - [ ] 🧑 Bring up the dev + qa Postgres containers, confirm named volumes
       `pgdata_dev` / `pgdata_qa` exist and survive `docker compose down`.
@@ -147,7 +147,7 @@ force-push, no branch deletion, linear history.
 - [ ] 🧑 `certbot --nginx` for the five VPS-served names (a `keber.dev` wildcard
       cert, if you have one, may already cover the two `.keber.dev` names).
 - [ ] 🧑 Create **three** deploy SSH keys, one per env; each `authorized_keys`
-      entry uses `command="/srv/unicornt/<env>/deploy.sh",no-port-forwarding,...`
+      entry uses `command="/opt/unicornt/<env>/deploy.sh",no-port-forwarding,...`
       pointing at that env's `deploy.sh` (§7.2).
 - [ ] 🧑 `mkdir -p /var/www/unicornt-dev /var/www/unicornt-qa`; give the
       frontend deploy key write access (rsync target).
@@ -208,7 +208,7 @@ Backend repo → Settings → Environments: `dev`, `qa`, `prod`.
       idempotent `V1..V3` scripts **or** enable Flyway first (P9). At minimum,
       run the scripts once manually against Supabase and set
       `JPA_DDL_AUTO=validate`.
-- [ ] 🧑 Fill `/srv/unicornt/prod/.env` with Supabase creds + fresh
+- [ ] 🧑 Fill `/opt/unicornt/prod/.env` with Supabase creds + fresh
       `APP_JWT_SECRET` + `APP_CORS_ALLOWED_ORIGINS=https://unicornt-store.keber.cl`.
 - [ ] 👥 PR `qa → main` (gate requires head = `qa`). The `prod` environment
       pauses for your manual approval.
@@ -242,7 +242,7 @@ Backend repo → Settings → Environments: `dev`, `qa`, `prod`.
 | Workflows (`main.yml`, `gate-pr-source.yml`, frontend `static.yml`, `deploy-vps.yml`) | ✅ write / edit | review + merge PRs |
 | `application-qa.yml`, compose templates, `deploy.sh`, nginx snippets, smoke script, docs | ✅ write | copy to server |
 | GitHub rulesets, Environments, secrets, required reviewer | — | ✅ |
-| DNS records, certbot, `/srv/unicornt/*`, DB containers, SSH deploy keys, `/var/www/*` | — | ✅ |
+| DNS records, certbot, `/opt/unicornt/*`, DB containers, SSH deploy keys, `/var/www/*` | — | ✅ |
 | Supabase project, schema, backup, credential rotation | — | ✅ |
 | Cutover runs, verification | 👥 | 👥 |
 
@@ -274,18 +274,18 @@ never trigger it, so feature branches and `main`/`qa` back-merges are unaffected
 File is on disk in the backend repo; commit it with the P2 PR. Copy verbatim to
 the frontend repo.
 
-### 7.2 `/srv/unicornt/<env>/deploy.sh` (forced command, one per env)
+### 7.2 `/opt/unicornt/<env>/deploy.sh` (forced command, one per env)
 
 ```sh
 #!/bin/sh
 set -eu
-# authorized_keys: command="/srv/unicornt/dev/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA...
+# authorized_keys: command="/opt/unicornt/dev/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA...
 TAG="${SSH_ORIGINAL_COMMAND##* }"          # last whitespace-separated token
 case "$TAG" in
   sha-[0-9a-f]*) : ;;
   *) echo "refusing tag '$TAG' (want sha-<hex>)" >&2; exit 1 ;;
 esac
-cd /srv/unicornt/dev                        # <- per-env dir; the key can touch nothing else
+cd /opt/unicornt/dev                        # <- per-env dir; the key can touch nothing else
 sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${TAG}|" .env
 docker compose pull
 docker compose up -d
@@ -469,18 +469,18 @@ Leave `unicornt-store.keber.cl` pointing at GitHub Pages. Verify:
 **b. Directories & compose files**
 
 ```sh
-sudo mkdir -p /srv/unicornt/{dev,qa,prod} /var/www/unicornt-dev /var/www/unicornt-qa
+sudo mkdir -p /opt/unicornt/{dev,qa,prod} /var/www/unicornt-dev /var/www/unicornt-qa
 # from a checkout of this branch, per env:
-sudo cp deploy/dev/docker-compose.yml   /srv/unicornt/dev/
-sudo cp deploy/qa/docker-compose.yml    /srv/unicornt/qa/
-sudo cp deploy/prod/docker-compose.yml  /srv/unicornt/prod/
-sudo cp deploy/deploy.sh /srv/unicornt/dev/  && sudo cp deploy/deploy.sh /srv/unicornt/qa/  && sudo cp deploy/deploy.sh /srv/unicornt/prod/
-sudo chmod +x /srv/unicornt/*/deploy.sh
+sudo cp deploy/dev/docker-compose.yml   /opt/unicornt/dev/
+sudo cp deploy/qa/docker-compose.yml    /opt/unicornt/qa/
+sudo cp deploy/prod/docker-compose.yml  /opt/unicornt/prod/
+sudo cp deploy/deploy.sh /opt/unicornt/dev/  && sudo cp deploy/deploy.sh /opt/unicornt/qa/  && sudo cp deploy/deploy.sh /opt/unicornt/prod/
+sudo chmod +x /opt/unicornt/*/deploy.sh
 # real .env per env, from the templates — fill every __CHANGE_ME__:
-sudo cp deploy/dev/.env.example   /srv/unicornt/dev/.env
-sudo cp deploy/qa/.env.example    /srv/unicornt/qa/.env
-sudo cp deploy/prod/.env.example  /srv/unicornt/prod/.env
-sudo chmod 600 /srv/unicornt/*/.env
+sudo cp deploy/dev/.env.example   /opt/unicornt/dev/.env
+sudo cp deploy/qa/.env.example    /opt/unicornt/qa/.env
+sudo cp deploy/prod/.env.example  /opt/unicornt/prod/.env
+sudo chmod 600 /opt/unicornt/*/.env
 ```
 
 In each `.env`: set `DOCKERHUB_USERNAME`, a fresh `APP_JWT_SECRET`
@@ -491,8 +491,8 @@ a manual first `docker compose up`.
 **c. Bring the databases up** (dev/qa)
 
 ```sh
-cd /srv/unicornt/dev && sudo docker compose up -d db && sudo docker compose ps
-cd /srv/unicornt/qa  && sudo docker compose up -d db && sudo docker compose ps
+cd /opt/unicornt/dev && sudo docker compose up -d db && sudo docker compose ps
+cd /opt/unicornt/qa  && sudo docker compose up -d db && sudo docker compose ps
 sudo docker volume ls | grep pgdata      # pgdata_dev, pgdata_qa present
 ```
 
@@ -518,9 +518,9 @@ Append the **public** keys to `/home/deployer/.ssh/authorized_keys`, each pinned
 to its env's script:
 
 ```
-command="/srv/unicornt/dev/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...dev  ci-deploy-dev
-command="/srv/unicornt/qa/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...qa   ci-deploy-qa
-command="/srv/unicornt/prod/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...prod ci-deploy-prod
+command="/opt/unicornt/dev/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...dev  ci-deploy-dev
+command="/opt/unicornt/qa/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...qa   ci-deploy-qa
+command="/opt/unicornt/prod/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...prod ci-deploy-prod
 ```
 
 Local test (should pull + start, or fail cleanly on a bad tag):
@@ -545,7 +545,7 @@ sudo nginx -t && sudo systemctl reload nginx
 **f. First manual app bring-up** (optional sanity check, dev)
 
 ```sh
-cd /srv/unicornt/dev
+cd /opt/unicornt/dev
 sudo sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=latest/' .env      # any pushed tag
 sudo docker compose up -d && sudo docker compose logs -f app
 curl -fsS https://api-unicornt-dev.keber.dev/api/v1/products | head -c 200

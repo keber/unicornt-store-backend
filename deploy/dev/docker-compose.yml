@@ -1,4 +1,4 @@
-# dev environment — /srv/unicornt/dev/docker-compose.yml
+# dev environment — /opt/unicornt/dev/docker-compose.yml
 # App on 127.0.0.1:8081 (nginx proxies api-unicornt-dev.keber.dev to it).
 # Own Postgres container with an isolated named volume.
 name: unicornt-dev

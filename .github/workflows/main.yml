@@ -216,7 +216,7 @@ jobs:
       - name: Trigger deploy on the server
         run: |
           # The key is pinned server-side to a forced command
-          # (/srv/unicornt/<env>/deploy.sh). It reads the requested image tag
+          # (/opt/unicornt/<env>/deploy.sh). It reads the requested image tag
           # from $SSH_ORIGINAL_COMMAND, writes it into that env's .env, then
           # runs docker compose pull && up -d.
           ssh -i ~/.ssh/deploy_key \
