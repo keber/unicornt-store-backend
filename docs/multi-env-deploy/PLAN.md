@@ -4,9 +4,11 @@ Working plan for promoting `unicornt-store-backend` (and the matching
 `unicornt-store-frontend`) through three branch-gated environments, each on its
 own live URL, all sharing one VPS behind the existing nginx + SSL setup.
 
-**Status:** in progress. D1–D6 settled (§2). §3 secrets hygiene done. P0–P1 done
-bar re-enabling rulesets. **P2 code done on branch `ci/multi-env-pipeline`,
-awaiting PR → `dev`.** Next: P3 (VPS) + P4 (Environments) — both 🧑, runbook below.
+**Status:** in progress. D1–D6 settled (§2). §3, P0–P4 done (rulesets still
+disabled, re-enable when convenient). **P5 done 2026-09-04 —
+`https://unicornt-dev.keber.dev` / `https://api-unicornt-dev.keber.dev` are
+live, full pipeline green.** Next: **P6** (frontend dev cutover, 🤖+👥) and
+prepping qa's known-needed fixes (P3 note, §4) ahead of **P7**.
 
 Owner legend: 🤖 Claude does it in the repo · 🧑 you do it (GitHub settings, VPS,
 DNS, Supabase) · 👥 together (review / merge / watch a deploy).
@@ -161,15 +163,20 @@ no argument passed through (CI's `deploy <channel> <sha>` string is ignored;
 harmless). `main.yml`'s deploy step and `deploy/vps-check.sh` were updated to
 match. Remaining before the dev cutover (P5):
 
-- [ ] 🧑 `/opt/unicornt/{dev,qa}/.env`: `IMAGE_TAG=latest` → `IMAGE_TAG=dev` /
-      `IMAGE_TAG=qa` (both currently run the same stale `:latest`, which is why
-      `/api/v1/products` 302s to `/login` — pre-REST-refactor image, not a config
-      bug). `chmod 600` both `.env`.
-- [ ] 🧑 `/opt/unicornt/qa/compose.yml`: the `networks:` key is named
+- [x] 🧑 dev `.env`: `IMAGE_TAG=latest` → `IMAGE_TAG=dev`, `chmod 600`. **qa
+      still pending** — same edit, `IMAGE_TAG=qa`, before P7.
+- [ ] 🧑 qa needs the same two fixes dev needed (see P5's "three bugs" note):
+      reset `unicornt-qa-db` (stale pre-refactor schema →
+      `ON CONFLICT (slug)` crash) and add `networks: [default,
+      unicornt-qa-network]` under `qa/compose.yml`'s `app:` service (currently
+      has no `networks:` key at all, same gap as dev had). Do both before or
+      at the start of P7 — qa's first real deploy will 502/crash-loop
+      otherwise, exactly like dev did.
+- [ ] 🧑 `/opt/unicornt/qa/compose.yml`: the `networks:` **key name** is
       `unicornt-dev-network` (copy-paste from dev) instead of
-      `unicornt-qa-network`. The external `name:` value is correct
-      (`api-unicornt-qa.keber.cl`); only the local key is wrong — cosmetic
-      unless it collides with dev's network object. Rename for hygiene.
+      `unicornt-qa-network`. The external `name:` value is already correct
+      (`api-unicornt-qa.keber.cl`) — only the label is wrong. Purely cosmetic,
+      fix whenever convenient.
 - [ ] 🧑 `/opt/unicornt/prod/.env` is missing `DOCKERHUB_USERNAME`,
       `SPRING_DATASOURCE_URL` (+ confirm `APP_CORS_ALLOWED_ORIGINS`,
       `APP_JWT_SECRET`) — not urgent, prod is P8.
@@ -193,14 +200,36 @@ Backend repo → Settings → Environments: `dev`, `qa`, `prod`.
       `https://api-unicornt-qa.keber.cl` (qa) ·
       `https://api-unicornt-store.keber.cl` (prod, used by the Pages build).
 
-### P5 — Backend dev cutover (👥)
+### P5 — Backend dev cutover (👥) — **DONE 2026-09-04**
 
-- [ ] 👥 Merge the P2 PR into `dev`.
-- [ ] 👥 Watch the `dev` run: `test → build-and-push → deploy(dev) → smoke`.
-- [ ] 🧑 On the box: `docker compose -p unicornt-dev ps`, check logs, hit
-      `https://api-unicornt-dev.keber.dev/api/v1/products` → 200.
-- [ ] Smoke job green (API 200 + `Access-Control-Allow-Origin` matches
-      `https://unicornt-dev.keber.dev`).
+- [x] 👥 Merged PR #6 into `dev` (`c2979c9`).
+- [x] 👥 Watched the `dev` run: `test → resolve-target → build-and-push →
+      deploy(dev) → smoke` — all green (run 33881738384, rerun after fixes).
+- [x] 🧑 Verified on the box + externally: `https://api-unicornt-dev.keber.dev/api/v1/products`
+      → 200, `Access-Control-Allow-Origin: https://unicornt-dev.keber.dev`.
+- [x] Smoke job green in CI too (not just manually).
+
+Three real bugs surfaced and fixed getting here (all backend-code-independent —
+infra/CI wiring only):
+1. **`resolve-target`'s `tags` output came out empty** — GitHub Actions drops a
+   step *output* that contains a secret value (`DOCKERHUB_USERNAME`), silently.
+   Fixed by interpolating the secret directly in `build-and-push`'s `with:`
+   block instead of routing it through `needs.*.outputs` (`7f613fe`).
+2. **`unicornt-dev-db` had a stale pre-refactor schema** — `product_types`
+   existed without the `slug UNIQUE` constraint `V1__init.sql` declares (the
+   table predated today, so `CREATE TABLE IF NOT EXISTS` skipped it), so
+   `V2__seed_reference_data.sql`'s `ON CONFLICT (slug)` crashed the app on
+   every boot. Fixed by `docker compose down -v && up -d db` to reinitialize
+   from the correct migrations. **qa's db is the same age — expect the same
+   crash there; reset it before/at P7.**
+3. **`app` service had no `networks:` in `compose.yml`** — it only landed on
+   the implicit Compose default network (needed to reach `db`), never on the
+   external EasyEngine site network (`api-unicornt-dev.keber.dev`) that the
+   proxy container (`proxy_pass http://unicornt-dev-app:8080`) requires to
+   reach it by name → permanent 502. Fixed by adding
+   `networks: [default, unicornt-dev-network]` under `app:`. **qa's
+   compose.yml has the identical gap (network name `api-unicornt-qa.keber.cl`)
+   — patch it before/at P7, or its first deploy 502s the same way.**
 
 ### P6 — Frontend dev cutover (🤖 workflow, 👥 merge)
 
