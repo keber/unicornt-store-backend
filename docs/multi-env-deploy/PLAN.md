@@ -5,12 +5,13 @@ Working plan for promoting `unicornt-store-backend` (and the matching
 own live URL, all sharing one VPS behind the existing nginx + SSL setup.
 
 **Status:** in progress. D1–D6 settled (§2). §3, P0–P4 done (rulesets still
-disabled, re-enable when convenient). **P5 done 2026-09-04 —
-`https://unicornt-dev.keber.dev` / `https://api-unicornt-dev.keber.dev` are
-live, full pipeline green.** qa prep (stale DB reset + compose networks fix)
-done. **P6 code done, PR [#26](https://github.com/keber/unicornt-store-frontend/pull/26)
-open** — blocked on 🧑 VPS + frontend Environment setup (P6 runbook, §4) before
-it can merge/run. Next after that: **P7** (promote both repos to qa).
+disabled, re-enable when convenient). **P5 and P6 both done 2026-09-04 — dev is
+fully live on both repos**: `https://unicornt-dev.keber.dev` (frontend) talking
+to `https://api-unicornt-dev.keber.dev` (backend), both pipelines green
+end-to-end, independently verified. qa's backend-side prep (stale DB reset +
+compose networks fix) done; qa's frontend-side deploy user/script still needs
+the same setup as dev (P6 runbook note) plus fixing the copy-pasted script
+content. Next: **P7** (promote both repos to qa).
 
 Owner legend: 🤖 Claude does it in the repo · 🧑 you do it (GitHub settings, VPS,
 DNS, Supabase) · 👥 together (review / merge / watch a deploy).
@@ -233,27 +234,51 @@ infra/CI wiring only):
    compose.yml has the identical gap (network name `api-unicornt-qa.keber.cl`)
    — patch it before/at P7, or its first deploy 502s the same way.**
 
-### P6 — Frontend dev cutover (🤖 workflow, 👥 merge) — **code done, PR open**
+### P6 — Frontend dev cutover — **DONE 2026-09-04**
 
 - [x] 🤖 `static.yml` (prod/Pages): bakes `VITE_API_BASE_URL=https://api-unicornt-store.keber.cl`
       into the build; verifies it landed in `dist/assets/*.js`. (`e2e-live.yml`
       needed no change — it tests the already-deployed site, it doesn't build.)
-- [x] 🤖 New `deploy-vps.yml`: push to `dev`/`qa` → lint+test+build
-      (`VITE_API_BASE_URL` from `vars.API_HOST`) → same bundle check → rsync
-      `dist/` to the VPS → smoke check. `environment:`-scoped like the backend.
+- [x] 🤖 `deploy-vps.yml`: push to `dev`/`qa` → lint+test+build
+      (`VITE_API_BASE_URL` from `vars.API_HOST`) → bundle check → publish
+      `dist/` to `deploy/<channel>` branch (git, not rsync — see redesign
+      note above) → SSH-trigger the VPS pull → smoke check.
 - [x] 🤖 `gate-pr-source.yml` added to frontend (mirrors backend).
 - [x] 🤖 `ci.yml` / `unit-report.yml` / `e2e.yml`: added `dev`/`qa` to
-      `pull_request` triggers (additive, `refactor`/`etapas/**` untouched) so
-      PRs into dev/qa get checks.
-- [x] Frontend PR: [#26](https://github.com/keber/unicornt-store-frontend/pull/26) → `dev`.
-- [ ] 🧑 **VPS + Environment setup needed before `deploy-vps.yml` can run** — see
-      the runbook addendum right below. Nothing here touches the live site
-      until this is done and the PR merges.
-- [ ] 👥 Merge PR #26; watch `deploy-vps.yml` on `dev`; confirm
-      `https://unicornt-dev.keber.dev` loads and talks to
-      `api-unicornt-dev.keber.dev` (network tab, no CORS error).
+      `pull_request` triggers (additive, `refactor`/`etapas/**` untouched).
+- [x] Frontend PR [#26](https://github.com/keber/unicornt-store-frontend/pull/26) merged into `dev`.
+- [x] 🧑 VPS + Environment setup done (see runbook + fixes below).
+- [x] 👥 `deploy-vps.yml` green end to end (build → publish → SSH trigger →
+      smoke). Verified independently: `https://unicornt-dev.keber.dev` → 200,
+      `api-unicornt-dev.keber.dev` baked into `auth.service-*.js`.
 
-**P6 runbook — VPS + Environment setup (🧑):**
+**Bugs found and fixed while wiring this up** (all infra, no app code):
+
+1. **Self-deadlock in `deploy-vps.yml`'s concurrency groups** — workflow-level
+   and job-level `concurrency:` both resolved to the identical string
+   (`deploy-vps-dev`); GitHub Actions detects that as a deadlock and cancels
+   the job before it ever gets a runner (0ms duration, no steps). Fixed by
+   dropping the redundant workflow-level group.
+2. **Three parallel, inconsistent attempts at the deploy user** existed on the
+   VPS by the time we wired secrets: `deploy-frontend-dev` (created by my
+   literal runbook copy-paste, correct git-pull script, but never got an
+   `authorized_keys`), `deploy-front-{dev,qa,prod}` (created independently
+   earlier, `dev`'s key already installed), whose forced command pointed at
+   `deploy-unicornt-frontend-dev` — **a script that was a literal copy of the
+   backend's `deploy-unicornt-dev`** (`docker compose pull` against
+   `/opt/unicornt/dev/compose.yml`, the *backend's* compose file — would have
+   silently redeployed the backend instead of the frontend). Converged on
+   `deploy-front-<env>` + corrected script content; deleted the redundant
+   `deploy-frontend-dev` account. **`deploy-unicornt-frontend-{qa,prod}` have
+   the same backend-copy bug — fix before wiring qa/prod (P7/P8).**
+3. **`deploy-front-dev`'s `~/.ssh` had mode `drw-------` (no execute bit)** —
+   directories need `x` to be traversable at all; this alone silently breaks
+   key auth regardless of which key is installed. Fixed by recreating the
+   directory with `mkdir -m 700`.
+4. Along the way: a **stray trailing space in the `HOST` variable** (frontend
+   `dev` env, pre-existing) would have broken the smoke-check URL — fixed.
+
+**P6 runbook — VPS + Environment setup (🧑, kept for qa/prod reference):**
 
 **Redesigned 2026-09-04** — no rsync. `deploy-vps.yml` now publishes `dist/` as
 a normal (non-squashed) commit to a `deploy/dev` / `deploy/qa` branch in the
@@ -267,9 +292,17 @@ unicornt-dev.keber.dev -> /opt/easyengine/sites/unicornt-dev.keber.dev/app/htdoc
 unicornt-qa.keber.cl   -> /opt/easyengine/sites/unicornt-qa.keber.cl/app/htdocs
 ```
 
+> **Naming actually used** (dev is live with this — use the same for qa/prod):
+> deploy user `deploy-front-<env>` (not `deploy-frontend-<env>`), server script
+> `/usr/local/sbin/deploy-unicornt-frontend-<env>` (matches the backend's
+> `deploy-unicornt-<env>` family name-wise, but git-pull content, **not** the
+> docker-compose content it was copy-pasted from originally — verify qa/prod's
+> script content before wiring sudoers to them, see the P6 "bugs found" note
+> above).
+
 GitHub Environments (`dev`, `qa` — already exist, empty): add secrets
-`DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER` (`deploy-frontend-dev` /
-`deploy-frontend-qa`), `DEPLOY_SSH_KEY`; variable `API_HOST`
+`DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER` (`deploy-front-dev` /
+`deploy-front-qa`), `DEPLOY_SSH_KEY`; variable `API_HOST`
 (`api-unicornt-dev.keber.dev` / `api-unicornt-qa.keber.cl` — `HOST`, the
 frontend's own host, already exists).
 
