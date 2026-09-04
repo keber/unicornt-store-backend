@@ -253,45 +253,102 @@ infra/CI wiring only):
       `https://unicornt-dev.keber.dev` loads and talks to
       `api-unicornt-dev.keber.dev` (network tab, no CORS error).
 
-**P6 runbook — VPS + Environment setup (🧑, mirrors P3/P4 for the backend):**
+**P6 runbook — VPS + Environment setup (🧑):**
 
-Frontend `dev`/`qa`/`prod` Environments already exist (created earlier, empty).
-Needed per env (`dev`, `qa`):
+**Redesigned 2026-09-04** — no rsync. `deploy-vps.yml` now publishes `dist/` as
+a normal (non-squashed) commit to a `deploy/dev` / `deploy/qa` branch in the
+frontend repo (public, so anonymous `git fetch` works), then SSH-triggers a
+forced command on the box that does `git fetch && git reset --hard` — the
+exact pattern already proven on `keber.cl`, and the same SSH-trigger shape as
+the backend's `deploy-unicornt-<env>`. Confirmed htdocs roots:
 
-- Secrets: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`.
-- Variable: `API_HOST` (`api-unicornt-dev.keber.dev` / `api-unicornt-qa.keber.cl`).
-  `HOST` (the frontend's own host) already exists from earlier setup.
-
-On the VPS — confirm the two sites' htdocs roots first (don't guess):
-
-```sh
-docker inspect unicornt-devkeberdev-nginx-1 --format '{{json .Mounts}}' | python3 -m json.tool
-docker inspect unicornt-qakebercl-nginx-1   --format '{{json .Mounts}}' | python3 -m json.tool
-# or, if EasyEngine's own CLI is on PATH:
-ee site info unicornt-dev.keber.dev
+```
+unicornt-dev.keber.dev -> /opt/easyengine/sites/unicornt-dev.keber.dev/app/htdocs
+unicornt-qa.keber.cl   -> /opt/easyengine/sites/unicornt-qa.keber.cl/app/htdocs
 ```
 
-Then a restricted deploy user per env, same spirit as `deploy-{dev,qa,prod}` —
-`rrsync` locked to that site's htdocs root instead of a forced script:
+GitHub Environments (`dev`, `qa` — already exist, empty): add secrets
+`DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER` (`deploy-frontend-dev` /
+`deploy-frontend-qa`), `DEPLOY_SSH_KEY`; variable `API_HOST`
+(`api-unicornt-dev.keber.dev` / `api-unicornt-qa.keber.cl` — `HOST`, the
+frontend's own host, already exists).
+
+**a. Turn each htdocs root into a git working copy tracking its `deploy/<env>`
+branch.** `deploy/dev` doesn't exist in the repo yet — it's created by the
+first `deploy-vps.yml` run, so do that first (push the frontend PR's branch or
+merge it, or `workflow_dispatch` it once), *then* set up the box:
 
 ```sh
-sudo useradd -m -s /usr/sbin/nologin deploy-frontend-dev
+# confirm the branch exists first: git ls-remote https://github.com/keber/unicornt-store-frontend.git deploy/dev
+cd /opt/easyengine/sites/unicornt-dev.keber.dev/app/htdocs
+ls -la                          # look before wiping — see what EasyEngine put here
+git init
+git remote add origin https://github.com/keber/unicornt-store-frontend.git
+git fetch origin deploy/dev
+git reset --hard origin/deploy/dev
+```
+
+Repeat for qa (`deploy/qa`). No credentials needed — public repo, plain HTTPS.
+
+**b. Block `.git/` from being served** — a git working copy as webroot leaks
+its whole history over HTTP if nginx doesn't hide dotfiles. `keber.cl` already
+does this exact pattern successfully, so it has the answer already — check its
+nginx config and replicate:
+
+```sh
+grep -rn "\.git" /opt/easyengine/sites/keber.cl/config/nginx/ 2>/dev/null
+docker exec keber-clkeberdev-nginx-1 grep -rn "\.git\|location.*\\\\." /usr/local/openresty/nginx/conf/ 2>/dev/null
+```
+
+If found, copy the equivalent rule into the dev/qa sites' nginx config
+(container name will follow the `<site-slug>-nginx-1` pattern seen earlier,
+e.g. `unicornt-devkeberdev-nginx-1`). Verify: `curl -sI
+https://unicornt-dev.keber.dev/.git/HEAD` must **not** return 200.
+
+**c. Deploy user + forced command per env** (same shape as the backend's
+`deploy-{dev,qa,prod}`):
+
+```sh
+sudo useradd -m -s /bin/sh deploy-frontend-dev
 sudo -u deploy-frontend-dev mkdir -p ~deploy-frontend-dev/.ssh
-# find rrsync (ships with the rsync package, path varies by distro):
-find / -name rrsync -type f 2>/dev/null
-# authorized_keys entry (path = the confirmed htdocs root, trailing slash matters):
-echo 'command="/usr/bin/rrsync -delete <htdocs-root>/",restrict ssh-ed25519 AAAA... github-actions:unicornt-store-frontend-dev' \
+echo 'restrict,command="/usr/bin/sudo -n /usr/local/sbin/deploy-frontend-dev" ssh-ed25519 AAAA... github-actions:unicornt-store-frontend-dev' \
   | sudo -u deploy-frontend-dev tee ~deploy-frontend-dev/.ssh/authorized_keys
 sudo chmod 700 ~deploy-frontend-dev/.ssh
 sudo chmod 600 ~deploy-frontend-dev/.ssh/authorized_keys
-sudo chown -R deploy-frontend-dev:deploy-frontend-dev <htdocs-root>   # deploy user must own/write it
 ```
 
-Repeat for qa (`deploy-frontend-qa`, its own key, its own htdocs root). Generate
-the keypairs the same way as the backend's (`ssh-keygen -t ed25519 -f ...`), put
-the private half in the matching frontend GitHub Environment, delete it locally.
+`/usr/local/sbin/deploy-frontend-dev` (mirrors `deploy-unicornt-dev`,
+including the `flock`):
 
-Local test before wiring CI: `rsync -az --delete -e "ssh -i key -p <port>" ./some-test-dir/ deploy-frontend-dev@<host>:/` should land files in the htdocs root and nowhere else — try a path traversal (`../`) and confirm rrsync refuses it.
+```sh
+#!/usr/bin/env bash
+set -Eeuo pipefail
+readonly REPO_DIR="/opt/easyengine/sites/unicornt-dev.keber.dev/app/htdocs"
+readonly BRANCH="deploy/dev"
+readonly LOCK_FILE="/run/lock/unicornt-frontend-dev-deploy.lock"
+exec 9>"${LOCK_FILE}"
+/usr/bin/flock -n 9 || { echo "ERROR: ya existe otro despliegue en ejecución."; exit 1; }
+cd "${REPO_DIR}"
+/usr/bin/git fetch origin "${BRANCH}"
+/usr/bin/git reset --hard "origin/${BRANCH}"
+echo "Estado final:"
+/usr/bin/git log -1 --oneline
+```
+
+`sudo chmod +x` it, then the matching sudoers line (append to
+`/etc/sudoers.d/unicornt-deploy`, or a new file — `visudo -c` after either
+way):
+
+```
+deploy-frontend-dev ALL=(root) NOPASSWD: /usr/local/sbin/deploy-frontend-dev
+```
+
+Repeat (b) and (c) for qa. Local test before wiring CI (same shape as the
+backend's dry run):
+
+```sh
+sudo -u deploy-frontend-dev sudo -n /usr/local/sbin/deploy-frontend-dev
+```
 
 ### P7 — Promote to qa (👥)
 
