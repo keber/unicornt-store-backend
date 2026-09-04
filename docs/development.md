@@ -27,10 +27,10 @@ unicornt-store-backend/
 │   │   │           ├── mapper/      entity <-> DTO translation
 │   │   │           └── error/       ErrorResponse, GlobalExceptionHandler
 │   │   └── resources/
-│   │       ├── application.yml           base profile, secure by default
-│   │       ├── application-dev.yml       schema auto-sync, Swagger enabled
-│   │       ├── application-prod.yml      schema validated only, Swagger disabled
-│   │       └── db/migration/             versioned SQL schema and seed data
+│   │       ├── application.yml               base profile, secure by default
+│   │       ├── application-{dev,qa,prod}.yml.example   profile templates (committed)
+│   │       ├── application-{dev,qa,prod}.yml           generated, gitignored (see below)
+│   │       └── db/migration/                 versioned SQL schema and seed data
 │   └── test/
 │       ├── java/com/unicornt/store/      unit tests, MockMvc slices, security tests
 │       └── resources/application.properties   H2 datasource for tests
@@ -56,13 +56,26 @@ tests during the refactor to validate JPQL and startup against a real
 PostgreSQL container; `org.testcontainers:postgresql` is on the test classpath
 for that purpose.
 
+## Profile config files
+
+`application-{dev,qa,prod}.yml` are gitignored (an approval criterion names
+`application-prod.yml`); only the `*.yml.example` templates are committed. The
+Docker build regenerates them from the templates, so `docker compose up` needs
+no extra step. To run the app **outside Docker**, generate them once:
+
+```bash
+sh scripts/gen-profiles.sh      # copies each *.yml.example -> *.yml (keeps existing)
+```
+
 ## Local development loop
 
 ```bash
 cp .env.example .env
+sh scripts/gen-profiles.sh       # first time only
 docker compose up -d db          # PostgreSQL only, app runs from the IDE/Maven
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 `dev` keeps the schema in sync with `ddl-auto: update` and exposes Swagger UI at
-`http://localhost:8080/swagger-ui.html`.
+`http://localhost:8080/swagger-ui.html`. `qa` validates the schema like prod but
+keeps Swagger on; `prod` validates and serves no docs.

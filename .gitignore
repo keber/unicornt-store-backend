@@ -89,6 +89,7 @@ secrets.properties
 local.properties
 application-dev.yml
 application-prod.yml
+application-qa.yml
 
 # ── Logs ──────────────────────────────────────────────────────────
 *.log
