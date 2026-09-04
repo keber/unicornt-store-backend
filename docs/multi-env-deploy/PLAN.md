@@ -133,21 +133,21 @@ force-push, no branch deletion, linear history.
       `api-unicornt-dev.keber.dev`, `unicornt-qa.keber.cl`,
       `api-unicornt-qa.keber.cl`, `api-unicornt-store.keber.cl`.
       (`unicornt-store.keber.cl` stays pointed at GitHub Pages.)
-- [ ] 🧑 Create server dirs:
-      `/opt/unicornt/{dev,qa,prod}/` each with `docker-compose.yml` (from
+- [x] 🧑 Create server dirs:
+      `/opt/unicornt/{dev,qa,prod}/` each with `compose.yml` (from
       `deploy/<env>/`) + `.env` (secrets, D3 profile, `IMAGE_TAG=` line).
-- [ ] 🧑 Bring up the dev + qa Postgres containers, confirm named volumes
+- [x] 🧑 Bring up the dev + qa Postgres containers, confirm named volumes
       `pgdata_dev` / `pgdata_qa` exist and survive `docker compose down`.
-- [ ] 🧑 nginx server blocks (§7.6) — one per hostname:
+- [x] 🧑 nginx server blocks (§7.6) — one per hostname:
   - `api-unicornt-dev.keber.dev` → `proxy_pass http://127.0.0.1:8081`
-  - `unicornt-dev.keber.dev` → `root /var/www/unicornt-dev` (static)
+  - `unicornt-dev.keber.dev` → `root /opt/easyengine/sites/unicornt-dev.keber.dev/app/htdocs` (static)
   - `api-unicornt-qa.keber.cl` → `127.0.0.1:8082`
-  - `unicornt-qa.keber.cl` → `root /var/www/unicornt-qa` (static)
+  - `unicornt-qa.keber.cl` → `root /opt/easyengine/sites/unicornt-qa.keber.cl/app/htdocs` (static)
   - `api-unicornt-store.keber.cl` → `127.0.0.1:8088`
-- [ ] 🧑 `certbot --nginx` for the five VPS-served names (a `keber.dev` wildcard
+- [x] 🧑 `certbot --nginx` for the five VPS-served names (a `keber.dev` wildcard
       cert, if you have one, may already cover the two `.keber.dev` names).
-- [ ] 🧑 Create **three** deploy SSH keys, one per env; each `authorized_keys`
-      entry uses `command="/opt/unicornt/<env>/deploy.sh",no-port-forwarding,...`
+- [X] 🧑 Create **three** deploy SSH keys, one per env; each `authorized_keys`
+      entry uses `command="/usr/local/sbin/deploy-unicornt-<env>",no-port-forwarding,...`
       pointing at that env's `deploy.sh` (§7.2).
 - [ ] 🧑 `mkdir -p /var/www/unicornt-dev /var/www/unicornt-qa`; give the
       frontend deploy key write access (rsync target).
@@ -160,9 +160,9 @@ Backend repo → Settings → Environments: `dev`, `qa`, `prod`.
       `DEPLOY_SSH_KEY` (that env's private key).
 - [ ] Per environment variables: `API_BASE_URL` (for the smoke job),
       `FRONTEND_ORIGIN` (for the CORS assertion).
-- [ ] `prod` environment: **required reviewer = you**; deployment branch rule =
+- [x] `prod` environment: **required reviewer = you**; deployment branch rule =
       `main` only. `qa` → `qa` only. `dev` → `dev` only.
-- [ ] Leave `DOCKERHUB_USERNAME/TOKEN`, `SONAR_TOKEN`, `CODECOV_TOKEN`,
+- [x] Leave `DOCKERHUB_USERNAME/TOKEN`, `SONAR_TOKEN`, `CODECOV_TOKEN`,
       `GIST_*` as repo-level secrets.
 - [ ] Frontend repo Environments `dev` / `qa` / `prod`: `VPS_HOST`, `VPS_USER`,
       `VPS_SSH_KEY` (dev/qa only), and variable `VITE_API_BASE_URL`:
@@ -554,27 +554,56 @@ curl -fsS https://api-unicornt-dev.keber.dev/api/v1/products | head -c 200
 (There will be no image to pull until the first `dev` build runs — skip (f)
 until after the PR merges if Docker Hub has nothing yet.)
 
-### 9.2 P4 — GitHub Environments (🧑, backend repo → Settings → Environments)
+### 9.2 P4 — GitHub Environments (🧑, backend repo → Settings)
 
-Create `dev`, `qa`, `prod`. For each:
+**Repo-level** (Settings → Secrets and variables → Actions) — needed by
+`resolve-target` / `build-and-push`, which have no `environment:`:
 
-| Kind | Name | dev | qa | prod |
-|------|------|-----|----|----|
-| secret | `DEPLOY_HOST` | VPS host | VPS host | VPS host |
-| secret | `DEPLOY_PORT` | SSH port | " | " |
-| secret | `DEPLOY_USER` | `deployer` | `deployer` | `deployer` |
-| secret | `DEPLOY_SSH_KEY` | `ci-deploy-dev` private key | `ci-deploy-qa` | `ci-deploy-prod` |
-| var | `API_BASE_URL` | `https://api-unicornt-dev.keber.dev` | `https://api-unicornt-qa.keber.cl` | `https://api-unicornt-store.keber.cl` |
-| var | `FRONTEND_ORIGIN` | `https://unicornt-dev.keber.dev` | `https://unicornt-qa.keber.cl` | `https://unicornt-store.keber.cl` |
+| Kind | Name | Value |
+|------|------|-------|
+| secret | `DOCKERHUB_USERNAME` | your Docker Hub username |
+| secret | `DOCKERHUB_TOKEN` | a Docker Hub access token with write scope |
 
-- `prod`: add **Required reviewers** = you; **Deployment branches** = selected →
-  `main`. `qa` → selected → `qa`. `dev` → selected → `dev`.
-- `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` stay **repo-level** secrets (already
-  set) — `build-and-push` has no `environment:`.
-- After copying each private key into GitHub, shred the local files.
+**Per environment** `dev` / `qa` / `prod` (Settings → Environments → *env*):
+
+| Kind | Name | dev | qa | prod | status |
+|------|------|-----|----|----|--------|
+| secret | `DEPLOY_HOST` | VPS host | VPS host | VPS host | ✅ set |
+| secret | `DEPLOY_PORT` | SSH port | " | " | ✅ set |
+| secret | `DEPLOY_USER` | `deployer` | `deployer` | `deployer` | ✅ set |
+| secret | `DEPLOY_SSH_KEY` | `ci-deploy-dev` private key | `ci-deploy-qa` | `ci-deploy-prod` | ✅ set |
+| var | `HOST` | `api-unicornt-dev.keber.dev` | `api-unicornt-qa.keber.cl` | `api-unicornt-store.keber.cl` | ✅ set |
+| var | `WEB_ORIGIN` | `https://unicornt-dev.keber.dev` | `https://unicornt-qa.keber.cl` | `https://unicornt-store.keber.cl` | ❌ **add** |
+| var | `INTERNAL_PORT` | `8081` | `8082` | `8088` | ✅ set (informational) |
+| var | `COMPOSE_PROJECT` | `unicornt-dev` | `unicornt-qa` | `unicornt-prod` | ✅ set (informational) |
+| var | `ENVIRONMENT_NAME` | `dev` | `qa` | `prod` | ✅ set (informational) |
+
+The workflow reads `secrets.DEPLOY_*`, `vars.HOST` (→ `https://<HOST>`) and
+`vars.WEB_ORIGIN` (CORS assertion). `INTERNAL_PORT` / `COMPOSE_PROJECT` /
+`ENVIRONMENT_NAME` are not consumed by CI but are handy on the box — keep them.
+
+Protection (Settings → Environments → *env* → protection rules):
+
+- `prod`: **Required reviewers** = you. **Deployment branches and tags** →
+  *Selected* → add rule `main`.
+- `qa`: Deployment branches → *Selected* → `qa`.
+- `dev`: Deployment branches → *Selected* → `dev`.
+
+`gh` one-liners for what's missing:
+
+```sh
+gh secret set DOCKERHUB_USERNAME --body '<user>'
+gh secret set DOCKERHUB_TOKEN    --body '<token>'
+gh variable set WEB_ORIGIN --env dev  --body 'https://unicornt-dev.keber.dev'
+gh variable set WEB_ORIGIN --env qa   --body 'https://unicornt-qa.keber.cl'
+gh variable set WEB_ORIGIN --env prod --body 'https://unicornt-store.keber.cl'
+# prod reviewer + branch policy (replace <your-user-id>):
+gh api -X PUT repos/keber/unicornt-store-backend/environments/prod -f 'deployment_branch_policy[protected_branches]=false' -f 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/keber/unicornt-store-backend/environments/prod/deployment-branch-policies -f name=main
+```
 
 ### 9.3 Then
 
 Merge the P2 PR → `dev` → watch Actions: `test → resolve-target →
-build-and-push → deploy dev` (with the smoke step). Re-enable the `dev` ruleset
+build-and-push → deploy dev` (smoke step at the end). Re-enable the `dev` ruleset
 first if you want the PR to exercise the checks.

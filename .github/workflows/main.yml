@@ -227,8 +227,10 @@ jobs:
 
       - name: Smoke check (API 200 + CORS)
         env:
-          API_BASE_URL: ${{ vars.API_BASE_URL }}
-          FRONTEND_ORIGIN: ${{ vars.FRONTEND_ORIGIN }}
+          # vars.HOST is the API hostname without scheme (e.g. api-unicornt-dev.keber.dev);
+          # vars.WEB_ORIGIN is the browser origin the frontend is served from.
+          API_BASE_URL: https://${{ vars.HOST }}
+          FRONTEND_ORIGIN: ${{ vars.WEB_ORIGIN }}
         run: |
           set -eu
           echo "probing ${API_BASE_URL} (origin ${FRONTEND_ORIGIN})"
