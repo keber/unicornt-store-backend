@@ -383,13 +383,28 @@ backend's dry run):
 sudo -u deploy-frontend-dev sudo -n /usr/local/sbin/deploy-frontend-dev
 ```
 
-### P7 — Promote to qa (👥)
+### P7 — Promote to qa (👥) — **backend done 2026-09-04, frontend in progress**
 
-- [ ] 👥 PR `dev → qa` in **both** repos (gate requires head = `dev`).
-- [ ] Backend `qa` run deploys to `:8082`; frontend `qa` run publishes to
-      `/var/www/unicornt-qa`.
-- [ ] 👥 Verify `unicornt-qa.keber.cl` end to end; run
-      `scripts/acceptance.sh`-style checks against the qa API.
+- [x] 👥 PR `dev → qa` in both repos ([backend #7](https://github.com/keber/unicornt-store-backend/pull/7),
+      [frontend #27](https://github.com/keber/unicornt-store-frontend/pull/27)) — gate passed, merged.
+- [x] Backend `qa` run: fully green first try (dev's prep work paid off) —
+      verified `https://api-unicornt-qa.keber.cl/api/v1/products` → 200,
+      correct CORS.
+- [ ] Frontend `qa` run: build/test/publish to `deploy/qa` succeeded; stopped at
+      the SSH step — `deploy-front-qa` needs the same VPS setup dev got
+      (script content fix + `.ssh`/sudoers + fresh keypair + GH secrets).
+- [ ] 👥 Verify `unicornt-qa.keber.cl` end to end once frontend qa is wired.
+- [x] Along the way: found + closed a stray frontend PR #25 (`dev → main`
+      directly, predating the branch-gating work) — `gate-pr-source` +
+      `main_PR_required` correctly blocked it from merging. `qa` already has
+      everything it carried via #27; the real `qa → main` PR comes at P8.
+- [x] 👥 Fixed and enabled `dev_PR_required`/`qa_PR_required` on both repos
+      (were disabled; backend's had no required checks at all, frontend's
+      required a check name — `Run Tests` — that doesn't exist on that repo,
+      which would have permanently deadlocked frontend `main` merges). Now:
+      backend requires `Run Tests` (+ `Enforce promotion path` on qa/main);
+      frontend requires `quality` (+ `Enforce promotion path` on qa/main).
+      `SonarCloud Code Analysis` deliberately left non-required (unreliable).
 
 ### P8 — Promote to prod (👥)
 
