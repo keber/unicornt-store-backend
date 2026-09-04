@@ -442,3 +442,139 @@ application-qa.yml
 - `.keber.dev` is HSTS-preloaded — both dev hostnames are HTTPS-only from the
   first request; certbot must succeed before anything can talk to them.
 - Consider GHCR later only if Docker Hub pull-rate limits bite the VPS.
+
+---
+
+## 9. Runbook — P3 (VPS) & P4 (GitHub Environments)
+
+Do **P3 and P4 before merging the P2 PR into `dev`**: the merge is a push to
+`dev`, which fires `deploy(dev)`; if environment `dev` has no secrets or the box
+is not ready, that job fails (test + build still pass).
+
+### 9.1 P3 — one-time VPS setup (🧑, as a sudo user on the box)
+
+**a. DNS** — at your DNS provider, `A` records → the VPS public IP:
+
+```
+unicornt-dev.keber.dev
+api-unicornt-dev.keber.dev
+unicornt-qa.keber.cl
+api-unicornt-qa.keber.cl
+api-unicornt-store.keber.cl
+```
+
+Leave `unicornt-store.keber.cl` pointing at GitHub Pages. Verify:
+`dig +short api-unicornt-dev.keber.dev` → your IP.
+
+**b. Directories & compose files**
+
+```sh
+sudo mkdir -p /srv/unicornt/{dev,qa,prod} /var/www/unicornt-dev /var/www/unicornt-qa
+# from a checkout of this branch, per env:
+sudo cp deploy/dev/docker-compose.yml   /srv/unicornt/dev/
+sudo cp deploy/qa/docker-compose.yml    /srv/unicornt/qa/
+sudo cp deploy/prod/docker-compose.yml  /srv/unicornt/prod/
+sudo cp deploy/deploy.sh /srv/unicornt/dev/  && sudo cp deploy/deploy.sh /srv/unicornt/qa/  && sudo cp deploy/deploy.sh /srv/unicornt/prod/
+sudo chmod +x /srv/unicornt/*/deploy.sh
+# real .env per env, from the templates — fill every __CHANGE_ME__:
+sudo cp deploy/dev/.env.example   /srv/unicornt/dev/.env
+sudo cp deploy/qa/.env.example    /srv/unicornt/qa/.env
+sudo cp deploy/prod/.env.example  /srv/unicornt/prod/.env
+sudo chmod 600 /srv/unicornt/*/.env
+```
+
+In each `.env`: set `DOCKERHUB_USERNAME`, a fresh `APP_JWT_SECRET`
+(`openssl rand -base64 32`), the Postgres password (dev/qa) or Supabase creds
+(prod). `IMAGE_TAG` is rewritten by `deploy.sh`; the seeded `latest` is only for
+a manual first `docker compose up`.
+
+**c. Bring the databases up** (dev/qa)
+
+```sh
+cd /srv/unicornt/dev && sudo docker compose up -d db && sudo docker compose ps
+cd /srv/unicornt/qa  && sudo docker compose up -d db && sudo docker compose ps
+sudo docker volume ls | grep pgdata      # pgdata_dev, pgdata_qa present
+```
+
+**d. Deploy user + three forced-command keys**
+
+```sh
+sudo useradd -m -s /bin/sh deployer 2>/dev/null || true
+sudo mkdir -p /home/deployer/.ssh && sudo touch /home/deployer/.ssh/authorized_keys
+sudo chmod 700 /home/deployer/.ssh && sudo chmod 600 /home/deployer/.ssh/authorized_keys
+sudo chown -R deployer:deployer /home/deployer/.ssh
+sudo usermod -aG docker deployer          # needs docker without sudo
+```
+
+On your workstation, generate one keypair per env (no passphrase):
+
+```sh
+ssh-keygen -t ed25519 -f ci-deploy-dev  -N '' -C ci-deploy-dev
+ssh-keygen -t ed25519 -f ci-deploy-qa   -N '' -C ci-deploy-qa
+ssh-keygen -t ed25519 -f ci-deploy-prod -N '' -C ci-deploy-prod
+```
+
+Append the **public** keys to `/home/deployer/.ssh/authorized_keys`, each pinned
+to its env's script:
+
+```
+command="/srv/unicornt/dev/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...dev  ci-deploy-dev
+command="/srv/unicornt/qa/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...qa   ci-deploy-qa
+command="/srv/unicornt/prod/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty,no-X11-forwarding ssh-ed25519 AAAA...prod ci-deploy-prod
+```
+
+Local test (should pull + start, or fail cleanly on a bad tag):
+
+```sh
+ssh -i ci-deploy-dev -p <port> deployer@<host> "deploy sha-0000000"   # refused: bad tag -> good
+```
+
+The **private** keys go into the GitHub Environments (9.2), then delete them
+locally.
+
+**e. nginx** — five server blocks (templates in §7.6). API blocks
+`proxy_pass` to `127.0.0.1:{8081,8082,8088}`; static blocks `root
+/var/www/unicornt-{dev,qa}` with the multipage `try_files`. Then:
+
+```sh
+sudo certbot --nginx -d unicornt-dev.keber.dev -d api-unicornt-dev.keber.dev \
+  -d unicornt-qa.keber.cl -d api-unicornt-qa.keber.cl -d api-unicornt-store.keber.cl
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**f. First manual app bring-up** (optional sanity check, dev)
+
+```sh
+cd /srv/unicornt/dev
+sudo sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=latest/' .env      # any pushed tag
+sudo docker compose up -d && sudo docker compose logs -f app
+curl -fsS https://api-unicornt-dev.keber.dev/api/v1/products | head -c 200
+```
+
+(There will be no image to pull until the first `dev` build runs — skip (f)
+until after the PR merges if Docker Hub has nothing yet.)
+
+### 9.2 P4 — GitHub Environments (🧑, backend repo → Settings → Environments)
+
+Create `dev`, `qa`, `prod`. For each:
+
+| Kind | Name | dev | qa | prod |
+|------|------|-----|----|----|
+| secret | `DEPLOY_HOST` | VPS host | VPS host | VPS host |
+| secret | `DEPLOY_PORT` | SSH port | " | " |
+| secret | `DEPLOY_USER` | `deployer` | `deployer` | `deployer` |
+| secret | `DEPLOY_SSH_KEY` | `ci-deploy-dev` private key | `ci-deploy-qa` | `ci-deploy-prod` |
+| var | `API_BASE_URL` | `https://api-unicornt-dev.keber.dev` | `https://api-unicornt-qa.keber.cl` | `https://api-unicornt-store.keber.cl` |
+| var | `FRONTEND_ORIGIN` | `https://unicornt-dev.keber.dev` | `https://unicornt-qa.keber.cl` | `https://unicornt-store.keber.cl` |
+
+- `prod`: add **Required reviewers** = you; **Deployment branches** = selected →
+  `main`. `qa` → selected → `qa`. `dev` → selected → `dev`.
+- `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN` stay **repo-level** secrets (already
+  set) — `build-and-push` has no `environment:`.
+- After copying each private key into GitHub, shred the local files.
+
+### 9.3 Then
+
+Merge the P2 PR → `dev` → watch Actions: `test → resolve-target →
+build-and-push → deploy dev` (with the smoke step). Re-enable the `dev` ruleset
+first if you want the PR to exercise the checks.
