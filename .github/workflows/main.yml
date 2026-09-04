@@ -143,9 +143,14 @@ jobs:
     outputs:
       channel: ${{ steps.pick.outputs.channel }}
       sha_tag: ${{ steps.pick.outputs.sha_tag }}
-      tags: ${{ steps.pick.outputs.tags }}
     steps:
-      - name: Map branch to channel and image tags
+      # Only channel/sha_tag are set here (neither is a secret). The full image
+      # reference is assembled where it's consumed (build-and-push, below) by
+      # interpolating secrets.DOCKERHUB_USERNAME directly in a `with:` field.
+      # Actions silently drops a *step output* that contains a secret value
+      # ("Skip output '...' since it may contain secret") — routing the
+      # username through an output here made `tags` come out empty.
+      - name: Map branch to channel
         id: pick
         run: |
           case "${GITHUB_REF#refs/heads/}" in
@@ -155,15 +160,11 @@ jobs:
             *)    echo "::error::unexpected ref ${GITHUB_REF}"; exit 1 ;;
           esac
           sha_tag="sha-$(echo "${GITHUB_SHA}" | cut -c1-7)"
-          image="${{ secrets.DOCKERHUB_USERNAME }}/unicornt-store"
-          tags="${image}:${sha_tag},${image}:${channel}"
-          [ "$channel" = "prod" ] && tags="${tags},${image}:latest"
           {
             echo "channel=${channel}"
             echo "sha_tag=${sha_tag}"
-            echo "tags=${tags}"
           } >> "$GITHUB_OUTPUT"
-          echo "channel=${channel}  tags=${tags}"
+          echo "channel=${channel}  sha_tag=${sha_tag}"
 
   build-and-push:
     name: Build and push image
@@ -191,7 +192,10 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ needs.resolve-target.outputs.tags }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/unicornt-store:${{ needs.resolve-target.outputs.sha_tag }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/unicornt-store:${{ needs.resolve-target.outputs.channel }}
+            ${{ needs.resolve-target.outputs.channel == 'prod' && format('{0}/unicornt-store:latest', secrets.DOCKERHUB_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
