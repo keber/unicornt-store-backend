@@ -1,0 +1,26 @@
+# The image build only needs .mvn/ mvnw pom.xml and src/ (see Dockerfile).
+# Everything else is kept out of the build context so it never reaches the
+# Docker daemon: faster uploads, and no chance of a stray .env in a layer.
+
+target/
+node_modules/
+.git/
+.github/
+.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+docs/
+deploy/
+scripts/
+*.md
+
+.env
+.env.*
+
+.vscode/
+.idea/
+*.iml
+
+# sibling course folders that live next to the project
+actividad_m6_l5/
+demoApiRest/

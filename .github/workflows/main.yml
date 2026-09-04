@@ -5,9 +5,15 @@ on:
     branches:
       - '**'
   pull_request:
-    branches: [main]
+    branches: [main, qa]
 
   workflow_dispatch:
+
+# One in-flight run per ref. PR runs supersede each other; branch runs queue so
+# a deploy is never cancelled half-way.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -35,12 +41,12 @@ jobs:
           mvn -B jacoco:report surefire-report:report-only
           test -f target/site/jacoco/jacoco.xml
           test -f target/site/surefire-report/surefire-report.html
-        
+
       - name: Generate Test badge
         if: success() || failure()
         uses: gaelgirodon/ci-badges-action@v1
         with:
-          gist-id: ${{ secrets.GIST_ID }} 
+          gist-id: ${{ secrets.GIST_ID }}
           token: ${{ secrets.GIST_TOKEN }}
 
       - name: Upload reports
@@ -71,13 +77,13 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        
+
     - name: Set up Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '25'
-        
+
     - name: Compile for Sonar
       run: mvn -B compile
 
@@ -103,8 +109,10 @@ jobs:
         fail_ci_if_error: true
         disable_search: true
 
+    # The published report site is per-repo (one gh-pages), so only main
+    # refreshes it. Sonar + Codecov above still run on every branch and PR.
     - name: Combine JaCoCo and Surefire reports
-      if: success() || failure()
+      if: (success() || failure()) && github.ref == 'refs/heads/main'
       run: |
         mkdir -p target/site/combined
         cp -r target/site/jacoco target/site/combined/coverage
@@ -112,42 +120,59 @@ jobs:
         cp target/site/surefire-report/surefire-report.html target/site/combined/tests/index.html
 
     - name: Deploy reports to GitHub Pages
+      if: github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./target/site/combined
         force_orphan: true
 
-  build-and-push:
-    runs-on: ubuntu-latest
+  # ---------------------------------------------------------------------------
+  # Deploy pipeline. Only pushes to dev / qa / main go past resolve-target.
+  #   dev  -> environment "dev"  -> api-unicornt-dev.keber.dev   (:8081)
+  #   qa   -> environment "qa"   -> api-unicornt-qa.keber.cl     (:8082)
+  #   main -> environment "prod" -> api-unicornt-store.keber.cl  (:8088, manual approval)
+  # ---------------------------------------------------------------------------
+  resolve-target:
+    name: Resolve deploy channel
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/qa' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps.meta.outputs.version_tag }}
+      channel: ${{ steps.pick.outputs.channel }}
+      sha_tag: ${{ steps.pick.outputs.sha_tag }}
+      tags: ${{ steps.pick.outputs.tags }}
+    steps:
+      - name: Map branch to channel and image tags
+        id: pick
+        run: |
+          case "${GITHUB_REF#refs/heads/}" in
+            dev)  channel=dev ;;
+            qa)   channel=qa ;;
+            main) channel=prod ;;
+            *)    echo "::error::unexpected ref ${GITHUB_REF}"; exit 1 ;;
+          esac
+          sha_tag="sha-$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          image="${{ secrets.DOCKERHUB_USERNAME }}/unicornt-store"
+          tags="${image}:${sha_tag},${image}:${channel}"
+          [ "$channel" = "prod" ] && tags="${tags},${image}:latest"
+          {
+            echo "channel=${channel}"
+            echo "sha_tag=${sha_tag}"
+            echo "tags=${tags}"
+          } >> "$GITHUB_OUTPUT"
+          echo "channel=${channel}  tags=${tags}"
+
+  build-and-push:
+    name: Build and push image
+    needs: resolve-target
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-
-      - name: Set image tag
-        id: meta
-        run: |
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          echo "version_tag=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '25'
-          cache: maven
-
-      - name: Build jar with Maven
-        run: mvn -B -DskipTests clean package
-
-      - name: Verify target contents
-        run: ls -lah target
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v4
@@ -158,42 +183,72 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      # The image is built entirely inside the multi-stage Dockerfile (Maven
+      # runs there); the `test` job already covers compilation, so there is no
+      # separate jar build on the runner.
       - name: Build and push image
         uses: docker/build-push-action@v7
         with:
           context: .
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/unicornt-store:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/unicornt-store:${{ steps.meta.outputs.version_tag }}
+          tags: ${{ needs.resolve-target.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
+    name: Deploy ${{ needs.resolve-target.outputs.channel }}
+    needs: [resolve-target, build-and-push]
     runs-on: ubuntu-latest
-    needs: build-and-push
+    environment: ${{ needs.resolve-target.outputs.channel }}
+    concurrency: deploy-${{ needs.resolve-target.outputs.channel }}
 
     steps:
-      - name: Setup SSH key
+      - name: Set up SSH key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          # printf preserves newlines correctly and the value never
-          # appears in logs because GitHub Actions masks all secrets
+          # printf preserves newlines; Actions masks the secret in logs.
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          # Add host to known_hosts to avoid an interactive prompt
-          ssh-keyscan -p ${{ secrets.DEPLOY_PORT }} "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy to server via SSH
+      - name: Trigger deploy on the server
         run: |
-          # on the server, authorized_keys has command= to run a specific script that does docker-compose pull & docker-compose up -d
+          # The key is pinned server-side to a forced command
+          # (/srv/unicornt/<env>/deploy.sh). It reads the requested image tag
+          # from $SSH_ORIGINAL_COMMAND, writes it into that env's .env, then
+          # runs docker compose pull && up -d.
           ssh -i ~/.ssh/deploy_key \
-              -p ${{ secrets.DEPLOY_PORT }} \
+              -p "${{ secrets.DEPLOY_PORT }}" \
               -o StrictHostKeyChecking=yes \
-              "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
+              "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+              "deploy ${{ needs.resolve-target.outputs.sha_tag }}"
 
-      - name: Cleanup SSH key
+      - name: Smoke check (API 200 + CORS)
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          FRONTEND_ORIGIN: ${{ vars.FRONTEND_ORIGIN }}
+        run: |
+          set -eu
+          echo "probing ${API_BASE_URL} (origin ${FRONTEND_ORIGIN})"
+          code=none
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${API_BASE_URL}/api/v1/products" || true)
+            [ "$code" = 200 ] && break
+            echo "  attempt $i: HTTP ${code}, retrying..."
+            sleep 5
+          done
+          [ "$code" = 200 ] || { echo "::error::products list returned ${code}"; exit 1; }
+
+          acao=$(curl -s -D - -o /dev/null -H "Origin: ${FRONTEND_ORIGIN}" \
+                   "${API_BASE_URL}/api/v1/products" \
+                 | tr -d '\r' \
+                 | awk -F': ' 'tolower($1)=="access-control-allow-origin"{print $2}')
+          [ "$acao" = "${FRONTEND_ORIGIN}" ] || {
+            echo "::error::Access-Control-Allow-Origin was '${acao:-none}', expected '${FRONTEND_ORIGIN}'"; exit 1; }
+          echo "smoke OK"
+
+      - name: Clean up SSH key
         if: always()
         run: rm -f ~/.ssh/deploy_key

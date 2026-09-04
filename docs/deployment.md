@@ -72,3 +72,26 @@ wrapper on `eclipse-temurin:25-jdk`; the second stage copies only the jar into
 
 See the [repository docker-compose.yml](../docker-compose.yml). Both services
 read every credential from `.env`; nothing is hardcoded.
+
+## Environments (dev / qa / prod)
+
+Branch-gated deploys, all on one VPS behind nginx + SSL. Full runbook:
+[multi-env-deploy/PLAN.md](multi-env-deploy/PLAN.md).
+
+| Env  | Branch | API URL                       | App port | Database |
+|------|--------|-------------------------------|----------|----------|
+| dev  | `dev`  | `api-unicornt-dev.keber.dev`  | 8081     | Postgres container (`pgdata_dev`) |
+| qa   | `qa`   | `api-unicornt-qa.keber.cl`    | 8082     | Postgres container (`pgdata_qa`)  |
+| prod | `main` | `api-unicornt-store.keber.cl` | 8088     | Supabase (pooled) |
+
+CI ([.github/workflows/main.yml](../.github/workflows/main.yml)): a push to
+`dev` / `qa` / `main` runs tests, builds one image tagged `sha-<short>` +
+`:<channel>` (`:latest` too for prod), then the `deploy` job — scoped to the
+matching GitHub Environment — SSHes to the box and triggers that env's
+`deploy.sh`, which pins the SHA tag in `.env` and runs `docker compose pull &&
+up -d`, then a smoke check (API 200 + CORS header). `prod` waits on a manual
+approval.
+
+Per-environment server files live under `/srv/unicornt/<env>/`
+(`docker-compose.yml` from [deploy/](../deploy/), plus a `.env` that never leaves
+the box — templates: [deploy/<env>/.env.example](../deploy/)).

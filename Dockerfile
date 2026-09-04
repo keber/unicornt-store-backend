@@ -6,6 +6,13 @@ COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 COPY src/ src/
 
+# The per-profile config files (application-{dev,qa,prod}.yml) are gitignored
+# (an approval criterion names application-prod.yml). Generate them from the
+# committed *.yml.example templates so every profile ships inside the jar and
+# SPRING_PROFILES_ACTIVE can select one at runtime.
+RUN cd src/main/resources \
+ && for p in dev qa prod; do cp "application-$p.yml.example" "application-$p.yml"; done
+
 # Normalize line endings before executing: a checkout with core.autocrlf=true
 # (the common Windows default) rewrites mvnw's LF endings to CRLF, which
 # breaks its "#!/bin/sh" shebang inside this Linux build stage.
