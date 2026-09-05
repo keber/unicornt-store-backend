@@ -50,12 +50,19 @@ Spring Boot maps `SPRING_DATASOURCE_URL` to `spring.datasource.url` automaticall
 | Profile | `ddl-auto` | Swagger UI / `/api-docs` | Use |
 |---------|-----------|---------------------------|-----|
 | *(none)* | `validate` | disabled | secure default, closed documentation |
-| `dev` | `update` | enabled | local development |
-| `prod` | `validate` | disabled | production |
+| `dev` | `update` | enabled | local development, `dev` branch deploy |
+| `qa` | `validate` | enabled | pre-production gate, `qa` branch deploy |
+| `prod` | `validate` | disabled | production, `main` branch deploy |
 
 ```bash
-SPRING_PROFILES_ACTIVE=dev   # or prod
+SPRING_PROFILES_ACTIVE=dev   # or qa, or prod
 ```
+
+The three profile files `application-{dev,qa,prod}.yml` are **gitignored**; only
+the committed `application-{dev,qa,prod}.yml.example` templates are tracked. They
+are regenerated from the templates during the Docker build, and by
+`scripts/gen-profiles.sh` for non-Docker runs. See
+[development.md](development.md#profile-config-files).
 
 ## Schema
 

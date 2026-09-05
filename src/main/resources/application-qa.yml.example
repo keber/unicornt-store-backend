@@ -1,0 +1,17 @@
+# QA profile: pre-production gate. Schema is locked exactly like prod
+# (Hibernate only validates, never mutates), but the API documentation stays
+# open so testers can drive the endpoints from Swagger UI.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    try-it-out-enabled: true

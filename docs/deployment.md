@@ -72,3 +72,33 @@ wrapper on `eclipse-temurin:25-jdk`; the second stage copies only the jar into
 
 See the [repository docker-compose.yml](../docker-compose.yml). Both services
 read every credential from `.env`; nothing is hardcoded.
+
+## Environments (dev / qa / prod)
+
+Branch-gated deploys, all on one VPS behind nginx + SSL. Full runbook:
+[multi-env-deploy/PLAN.md](multi-env-deploy/PLAN.md).
+
+| Env  | Branch | API URL                       | App port | Database |
+|------|--------|-------------------------------|----------|----------|
+| dev  | `dev`  | `api-unicornt-dev.keber.dev`  | 8081     | Postgres container (`pgdata_dev`) |
+| qa   | `qa`   | `api-unicornt-qa.keber.cl`    | 8082     | Postgres container (`pgdata_qa`)  |
+| prod | `main` | `api-unicornt-store.keber.cl` | 8088     | Supabase (pooled) |
+
+CI ([.github/workflows/main.yml](../.github/workflows/main.yml)): a push to
+`dev` / `qa` / `main` runs tests, builds one image tagged `sha-<short>` +
+`:<channel>` (`:latest` too for prod), then the `deploy` job — scoped to the
+matching GitHub Environment — SSHes to the box and triggers that env's
+deploy script (`/usr/local/sbin/deploy-unicornt-<env>`, pinned as the deploy
+key's forced command), which runs `docker compose pull && up -d` in that env's
+directory, then a smoke check (API 200 + CORS header). `prod` waits on a manual
+approval.
+
+The deploy follows the **moving channel tag**: the server pulls whatever
+`IMAGE_TAG` that env's `.env` holds (`dev` / `qa` / `prod`), which
+`build-and-push` has just repointed. It does not pin the immutable
+`sha-<short>` tag — that tag is still pushed, and is what you set `IMAGE_TAG`
+to by hand for a fast rollback.
+
+Per-environment server files live under `/opt/unicornt/<env>/`
+(`docker-compose.yml` from [deploy/](../deploy/), plus a `.env` that never leaves
+the box — templates: [deploy/<env>/.env.example](../deploy/)).

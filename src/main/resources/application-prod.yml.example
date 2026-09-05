@@ -1,0 +1,17 @@
+# Production profile: Hibernate only validates the schema and never modifies it.
+# No API documentation is served.
+#
+# Flyway is NOT in the build yet (P9 of docs/multi-env-deploy). Until it lands,
+# the schema is applied by running V1..V3 by hand against the prod database and
+# keeping SQL_INIT_MODE=never — see deploy/prod/.env.example.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
