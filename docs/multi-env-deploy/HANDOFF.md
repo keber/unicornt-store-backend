@@ -5,6 +5,16 @@
 [LESSONS.md](LESSONS.md) if you hit something that smells like a repeat of a
 past problem.
 
+> **Update 2026-09-05.** P8 has since been reframed and its preflight
+> completed — read [PLAN.md](PLAN.md) §4 "P8" as the current source of truth,
+> not the checklist summary below. Specifically: item 2 here is stale (the prod
+> `.env` is complete; it was world-readable at `644` and is now `600`), item 3's
+> `SQL_INIT_MODE=always` is superseded, and items 6–7 are confirmed — the old
+> single-target deploy path is fully retired, with nothing left on the box.
+> Two facts the checklist below did not account for: the live prod storefront is
+> still the pre-integration static app, and the `e2e` suite is knowingly stale
+> and must be demoted from required before the frontend can merge.
+
 ## One-paragraph state of the world
 
 Both repos (`unicornt-store-backend`, sibling checkout `unicornt-store-frontend`)

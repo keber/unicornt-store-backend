@@ -4,16 +4,20 @@ Working plan for promoting `unicornt-store-backend` (and the matching
 `unicornt-store-frontend`) through three branch-gated environments, each on its
 own live URL, all sharing one VPS behind the existing nginx + SSL setup.
 
-**Status:** in progress. D1–D6 settled (§2). §3, P0–P4 done. **P5, P6 and P7 all
+**Status:** in progress. D1–D8 settled (§2). §3, P0–P4 done. **P5, P6 and P7 all
 done 2026-09-04 — dev and qa are both fully live on both repos**:
 `unicornt-dev.keber.dev` / `api-unicornt-dev.keber.dev` and
 `unicornt-qa.keber.cl` / `api-unicornt-qa.keber.cl`, every pipeline green
 end-to-end, independently verified. `dev_PR_required`/`qa_PR_required` fixed
 (see P7 notes — backend had no required checks at all; frontend required a
 check name that doesn't exist on that repo) and **enabled** on both repos —
-direct pushes to `dev`/`qa` now require a PR on both repos. Next: **P8**
-(promote both repos to `main`/prod) — the one with the manual approval gate
-and the Supabase cutover.
+direct pushes to `dev`/`qa` now require a PR on both repos.
+
+**Now: P8**, reframed 2026-09-05 after preparing it surfaced two facts the
+original checklist did not account for — the prod storefront is still the
+pre-integration static app, and the backend promotion is independent of it.
+P8.0 (preflight) is done; the prod box is ready and the old deploy path is
+confirmed retired. Read §4 "P8" in full before touching anything.
 
 Owner legend: 🤖 Claude does it in the repo · 🧑 you do it (GitHub settings, VPS,
 DNS, Supabase) · 👥 together (review / merge / watch a deploy).
@@ -54,8 +58,10 @@ force-push, no branch deletion, linear history.
 | D2 | Spring profile files in the image | **Keep `application-{dev,qa,prod}.yml` gitignored** (an approval criterion names `application-prod.yml`). Only the `*.yml.example` templates are committed. The three real files are generated from their templates **during the Docker build** so all three ship in the jar and `SPRING_PROFILES_ACTIVE` selects at runtime (§7.7). Local non-Docker runs generate them with `scripts/gen-profiles.sh`. |
 | D3 | `qa` profile behaviour | `ddl-auto: validate`, `show-sql: false`, **Swagger UI enabled**. Reflected in `application-qa.yml.example`. |
 | D4 | Required PR approvals | **0 required approvals**; rely on required checks + no-force-push + linear history. Revisit if a collaborator joins. |
-| D5 | Image tags | Deploy pins immutable `:sha-<short>`; also push a moving channel tag `:dev` / `:qa` / `:prod`; keep `:latest` = prod. |
+| D5 | Image tags | `build-and-push` pushes `:sha-<short>` **and** a moving channel tag `:dev` / `:qa` / `:prod` (+ `:latest` for prod). **Correction 2026-09-05:** the *deploy* does not pin the immutable tag. The scripts installed on the box ignore what CI sends and `docker compose pull` whatever `IMAGE_TAG` the env's `.env` holds — which is the channel tag (`IMAGE_TAG=dev` / `qa` / `prod`). `main.yml` documents this correctly; the repo's `deploy/deploy.sh` and §7.2 described the unbuilt pinning design. Consequence for rollback: see §6. |
 | D6 | Registry | **Docker Hub** (`$DOCKERHUB_USERNAME/unicornt-store`), unchanged. |
+| D7 | Promotion merge style | **Squash merge** for every promotion PR (`dev → qa`, `qa → main`), both repos. `main`'s history then reads as one commit per promotion regardless of how much churn rode along. Settled 2026-09-05; the frontend already did this (PR #27), the backend used a merge commit (PR #7). |
+| D8 | Working notes vs documentation | `docs/configuration.md`, `docs/deployment.md`, `docs/development.md` describe the deployed system and are promoted normally. `docs/multi-env-deploy/`, `docs/final-delivery/`, `docs/archive-refactor-hito4/` are **working notes**. For the rest of this cycle they ride along with code — **never open a docs-only promotion PR**; the friction was never "notes on `main`", it was three PRs to move a paragraph. At the archive point (delivery + multi-env rollout both complete) they move off the promotion path for good: a `notes` branch edited through a worktree, folded back in as one curated archive PR. Settled 2026-09-05. |
 
 ---
 
@@ -412,22 +418,181 @@ sudo -u deploy-frontend-dev sudo -n /usr/local/sbin/deploy-frontend-dev
 
 ### P8 — Promote to prod (👥)
 
-- [ ] 🧑 Supabase: create the `unicornt_store` schema; take a snapshot/backup;
-      append `&sslmode=require` to the JDBC URL if the driver needs it.
-- [ ] 🧑 Decide prod schema management: keep `SQL_INIT_MODE=always` with the
-      idempotent `V1..V3` scripts **or** enable Flyway first (P9). At minimum,
-      run the scripts once manually against Supabase and set
-      `JPA_DDL_AUTO=validate`.
-- [ ] 🧑 Fill `/opt/unicornt/prod/.env` with Supabase creds + fresh
-      `APP_JWT_SECRET` + `APP_CORS_ALLOWED_ORIGINS=https://unicornt-store.keber.cl`.
-- [ ] 👥 PR `qa → main` (gate requires head = `qa`). The `prod` environment
-      pauses for your manual approval.
-- [ ] 👥 Approve; watch `deploy(prod)` → `:8088`; smoke job asserts
+**Reframed 2026-09-05.** The original checklist assumed prod was one more
+cutover like dev and qa. Two facts found while preparing it say otherwise, and
+they change the order of operations:
+
+1. **The live prod storefront is still the pre-integration static app.** The
+   bundle served from `unicornt-store.keber.cl` reads `data/products.json` and
+   never calls an API. Frontend `qa → main` is therefore not a CI-only change:
+   it is ~80 files that swap prod onto the backend-integrated app, and `qa`'s
+   `static.yml` hard-bakes `https://api-unicornt-store.keber.cl` with a step
+   that fails the build if the URL is absent from the bundle. **Merging the
+   frontend before the prod API is live and seeded takes the prod storefront
+   down.**
+2. **Backend `qa → main` is independent and low-risk** — 21 files, all CI /
+   deploy / config / docs. `src/` is untouched apart from two renamed
+   `.example` profiles. The backend can be promoted on its own.
+
+So: **backend prod first, proven end to end, and only then the frontend.**
+
+The risk that matters is not downtime on a portfolio site — it is discovering a
+prod-only failure *after* the public site already depends on it, when rollback
+is "re-run an old Pages job". Everything below is ordered to make each
+prod-only unknown fail early and cheaply. There are exactly four, and dev/qa
+exercised none of them: Supabase egress + TLS from the VPS, Supabase schema
+state, write-path behaviour against a *pooled managed* Postgres, and CORS from
+the real prod origin.
+
+#### P8.0 — Preflight (🧑 on the box) — **DONE 2026-09-05**
+
+- [x] `deploy/vps-check.sh` run: every prod check `[OK]` except the three
+      expected "no CI deploy yet" warnings. The NOPASSWD warnings on all three
+      envs are a limitation of the check itself — dev and qa deploy fine.
+- [x] `chmod 600 /opt/unicornt/prod/.env` — it was `644`, i.e. the Supabase
+      password and `APP_JWT_SECRET` were world-readable on a shared box.
+- [x] `/usr/local/sbin/deploy-unicornt-prod` read in full against its dev/qa
+      siblings (LESSONS #10). It is a correct prod script — `flock`, acts on
+      `/opt/unicornt/prod`, `compose config --quiet && pull && up -d`. No
+      copy-paste bug. It does **not** pin an image tag; see the D5 correction
+      in §2 and §7.2.
+- [x] Old single-target deploy path retired: the repo-level `DEPLOY_*` secrets
+      it needed no longer exist (they live in Environments now), the merge
+      replaces `main.yml` wholesale, and `docker ps -a` shows no container left
+      from it. **Nothing further to retire.**
+- [x] `prod` GitHub Environment verified complete: `HOST`,
+      `WEB_ORIGIN=https://unicornt-store.keber.cl`, `INTERNAL_PORT=8088`,
+      `COMPOSE_PROJECT`, `ENVIRONMENT_NAME`, all four `DEPLOY_*` secrets,
+      required reviewer `keber`, branch policy `main`.
+
+#### P8.1 — Supabase (🧑) — **investigated 2026-09-05**
+
+- [x] Egress, TLS, credentials and schema existence proved in one shot from the
+      VPS (§9.4). The JDBC URL is **not** a libpq URL — `psql` rejects it
+      verbatim. Result: connects, `sslmode=require` negotiates, the rotated
+      credentials are good, server is **PostgreSQL 17.6**.
+- [x] `unicornt_store` exists — **and it is not this application's schema.**
+      It holds the mono-repo app's data model, evolved past the REST refactor's:
+      15 tables including `customers`, `payments`, `inventory`,
+      `inventory_movements`, `product_variants`, with **real data** (31 orders,
+      31 payments, 67 order items, 196 inventory rows, 10 customers, 7 users).
+      `users` and `roles` match `V1__init.sql` exactly — same ancestry — but
+      `products` is a `bigint` id with no `stock` column, and `orders` has
+      `customer_id` / a `status` enum / `subtotal` / `notes` where V1 wants
+      `user_id` / `address_id` / `shipping_address` / `total NUMERIC(12,2)`.
+      Since V1 is written entirely in `CREATE TABLE IF NOT EXISTS`, running it
+      here would **silently skip every existing table** and leave `ddl-auto:
+      validate` to fail at boot — after the prod approval had already been
+      granted. This is the failure the P8 reframe was meant to catch.
+- [x] The `public` schema already holds V1's **first six** tables
+      (`categories`, `product_types`, `products`, `roles`, `users`,
+      `users_roles`) in V1's creation order, stopping right before
+      `cart_items`. The `search_path` gotcha below has therefore already
+      happened once: something ran V1 against this database without
+      `currentSchema` taking effect and died partway. Leftovers to clean up.
+- [x] **The instance is shared.** Schema `otfsisacad` belongs to another
+      project. Two consequences: a Supabase snapshot/PITR restore is
+      *database-level*, so it would roll the neighbour back too (§6 corrected),
+      and the app's role can read and write that neighbouring schema (§8).
+
+**Decision (2026-09-05):** rename the legacy schema out of the way and give the
+API a clean one under the existing name, so the JDBC URL does not change:
+
+```sql
+ALTER SCHEMA unicornt_store RENAME TO unicornt_store_legacy;
+CREATE SCHEMA unicornt_store;
+```
+
+Rejected: a brand-new schema name (additive and safer, but leaves the confusing
+name on the legacy data forever) and a separate Supabase project (cleanest
+isolation, fixes the shared-restore problem, but new project + credentials +
+connection string). Nothing is dropped either way — the legacy data survives
+under the new name.
+
+- [ ] **Before renaming**, confirm nothing still connects to that schema. A
+      rename does not corrupt an unknown consumer, but it does break it
+      immediately. `pg_stat_activity` plus "is the mono-repo app deployed
+      anywhere?" is the check.
+- [ ] Take a **schema-scoped** `pg_dump -n unicornt_store` first (§9.5) — not a
+      Supabase snapshot, which is shared-fate on this instance.
+
+#### P8.2 — Prod schema management (🧑)
+
+- [ ] Rename + create per the decision above, then run `V1 → V3 → V2` into the
+      new schema **with `search_path` set explicitly** (§9.5). The JDBC
+      `currentSchema=` parameter is JDBC-only; `psql` does not read it, which
+      is exactly how the `public` leftovers got there.
+- [ ] Verify before going further: ten tables in `unicornt_store`, 49 products,
+      `orders` carries the V3 `ship_*` columns, and the `products` identity
+      sequence sits at 50.
+- [ ] Keep `SQL_INIT_MODE=never` in `/opt/unicornt/prod/.env`. Boot-time schema
+      mutation against a pooled managed database is the wrong default — and the
+      `public` leftovers are what a half-finished boot-time init looks like.
+      **There is no `JPA_DDL_AUTO` env var**; `application-prod.yml` hardcodes
+      `ddl-auto: validate`, which is what prod wants. P9 (Flyway) replaces this.
+- [x] **Prod's catalog is the `V2` seed** — 49 products, the same as dev/qa.
+      Settled by reading the script: `V2__seed_reference_data.sql` inserts them
+      with explicit ids and `ON CONFLICT (id) DO NOTHING`, then realigns the
+      identity sequence with `setval` so admin-created products do not collide.
+      All three scripts are genuinely idempotent.
+- [ ] Clean up the six stray tables in `public` once their row counts confirm
+      they are ours and disposable. They sit in a schema shared with another
+      project.
+
+#### P8.3 — Backend cutover (👥)
+
+- [ ] PR `qa → main`, **squash merge** (D7). Gate requires head = `qa`;
+      required checks are `Run Tests` + `Enforce promotion path`.
+- [ ] Approve the `prod` environment gate in the Actions UI (expected — D5-era
+      required reviewer, not a bug to work around).
+- [ ] Watch `deploy(prod)` → `127.0.0.1:8088`; the smoke step asserts
       `https://api-unicornt-store.keber.cl/api/v1/products` 200 + CORS =
       `https://unicornt-store.keber.cl`.
-- [ ] 👥 Confirm the Pages site (`unicornt-store.keber.cl`) still builds with
-      the prod `VITE_API_BASE_URL` and reaches the new API host.
-- [ ] 🧑 Retire the old single-target deploy path once prod is green.
+- [ ] **Write-path contract check against prod** — register → login → add to
+      cart → create order, via `docs/bruno/unicornt-store/`. This is the step
+      that actually exercises Supabase (transactions, sequences, constraints);
+      `GET /products` proves almost nothing about a managed pooled DB.
+
+#### P8.4 — Frontend cutover (👥) — only once P8.3 is green *and seeded*
+
+- [ ] Demote the stale `e2e` suite from required first — see P8.5.
+- [ ] Record the current Pages run id, so rollback is a known button rather
+      than a search.
+- [ ] Optional but recommended rehearsal: temporarily add
+      `http://localhost:4173` to prod's `APP_CORS_ALLOWED_ORIGINS`, build the
+      frontend locally with
+      `VITE_API_BASE_URL=https://api-unicornt-store.keber.cl`, `npm run
+      preview`, click through the real app against the real prod stack — then
+      revert the CORS entry **and verify it is gone**. This is the only check
+      that proves the integrated frontend works against Supabase before the
+      public site depends on it. (The heavier alternative — a canary host on
+      the idle `deploy-front-prod` machinery — buys the same signal for a DNS
+      record and a cert, and is not worth it here.)
+- [ ] PR `qa → main` on the frontend, **squash merge**. Required checks:
+      `quality` + `Enforce promotion path`.
+- [ ] Confirm `static.yml` bakes the prod API host and the Pages site reaches
+      it.
+
+#### P8.5 — E2E suite (🧑, blocking P8.4)
+
+The Playwright suite in `keber/QA-UnicorntStore-refactor` was written to
+validate the static→Vite refactor. The frontend has since changed
+substantially, so its selectors are stale: most specs fail by timeout, retry,
+and time out again — which is why a run takes the full 30-minute cap. Keeping
+it as a required check on `main` is the LESSONS #3 failure mode with extra
+steps: a check that cannot pass, gating the branch.
+
+- [ ] Edit the frontend's `rule_e2e_statuscheck_main` ruleset to drop **only**
+      its `required_status_checks` rule. Do not delete the ruleset — it also
+      carries `deletion` and `non_fast_forward` protections.
+- [ ] Leave `e2e.yml` running as informational, so the maintenance work has a
+      signal to chase.
+- [ ] Decide what to do about `e2e-live.yml`: it fires on `workflow_run`
+      after **every** successful Pages deploy from `main`, so it will spend 30
+      minutes going red immediately after the cutover. Recommend gating it off
+      until the suite is maintained — a red run at the moment of final
+      delivery reads badly and says nothing new.
+- [ ] Suite maintenance is its own workstream, not a P8 blocker.
 
 ### P9 — Hardening (later, not blocking)
 
@@ -438,8 +603,11 @@ sudo -u deploy-frontend-dev sudo -n /usr/local/sbin/deploy-frontend-dev
       starve prod on the shared box.
 - [ ] Nightly `pg_dump` of the dev/qa volumes; rely on Supabase PITR for prod.
 - [ ] Uptime check / alert on the three `/api/v1/products` endpoints.
-- [ ] `docker image prune` already in `deploy.sh`; add a weekly cron for
-      dangling volumes/build cache.
+- [ ] Prune dangling images on a schedule. The earlier claim that
+      `docker image prune` is "already in `deploy.sh`" was wrong — the script
+      actually installed on the box does not prune, so every deploy leaves the
+      previous image behind on a shared VPS. A weekly cron should cover
+      dangling images, volumes and build cache.
 - [ ] Restrict `publish-reports` + gist badge to `main` (done in P2) — confirm
       no per-branch report noise remains.
 
@@ -460,17 +628,28 @@ sudo -u deploy-frontend-dev sudo -n /usr/local/sbin/deploy-frontend-dev
 
 ## 6. Rollback
 
-- **Bad backend deploy:** `ssh deploy-<env>@host` isn't interactive; instead
-  re-run the previous good workflow run, or `gh workflow run` with an older SHA,
-  or on the box `sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=sha-OLD/' .env && docker
-  compose up -d`.
+- **Bad backend deploy:** `ssh deploy-<env>@host` isn't interactive. Because the
+  deploy follows the *moving channel tag* (D5 correction), re-running the
+  previous good workflow run rolls back by rebuilding that SHA and moving the
+  channel tag back onto it — it works, but it is a rebuild, not a repoint. The
+  fast repoint is on the box: `sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=sha-OLD/'
+  /opt/unicornt/<env>/.env && docker compose up -d`, which works because
+  `build-and-push` also pushes every `:sha-<short>`. Remember to put
+  `IMAGE_TAG` back to the channel tag afterwards, or the next CI deploy will
+  appear to do nothing.
 - **Bad frontend deploy (dev/qa):** re-run the previous frontend run; rsync
   overwrites `/var/www/unicornt-<env>`.
 - **Bad prod frontend (Pages):** re-run the previous `static.yml` run (single
-  orphan commit on `gh-pages`).
+  orphan commit on `gh-pages`). Record that run's id **before** the P8.4
+  cutover — after it, the pre-integration static build is no longer on `main`
+  and finding the right run under time pressure is the slow part.
 - **Branch protection mistake:** rulesets are non-destructive; edit/disable in
   Settings.
-- **Supabase schema damage:** restore from the P8 snapshot / PITR.
+- **Supabase schema damage:** restore from the **schema-scoped `pg_dump -n
+  unicornt_store`** taken in P8.1, not from a Supabase snapshot. The instance is
+  shared with the `otfsisacad` project, so snapshot/PITR restore is
+  database-level and shared-fate — it would roll the neighbour back too. The
+  legacy schema also survives untouched as `unicornt_store_legacy`.
 
 ---
 
@@ -484,25 +663,39 @@ never trigger it, so feature branches and `main`/`qa` back-merges are unaffected
 File is on disk in the backend repo; commit it with the P2 PR. Copy verbatim to
 the frontend repo.
 
-### 7.2 `/opt/unicornt/<env>/deploy.sh` (forced command, one per env)
+### 7.2 `/usr/local/sbin/deploy-unicornt-<env>` (forced command, one per env)
 
-```sh
-#!/bin/sh
-set -eu
-# authorized_keys: command="/opt/unicornt/dev/deploy.sh",no-port-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA...
-TAG="${SSH_ORIGINAL_COMMAND##* }"          # last whitespace-separated token
-case "$TAG" in
-  sha-[0-9a-f]*) : ;;
-  *) echo "refusing tag '$TAG' (want sha-<hex>)" >&2; exit 1 ;;
-esac
-cd /opt/unicornt/dev                        # <- per-env dir; the key can touch nothing else
-sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${TAG}|" .env
-docker compose pull
-docker compose up -d
-docker image prune -f
+**Corrected 2026-09-05 to match what is actually installed on the box.** The
+earlier draft here (and `deploy/deploy.sh` in this repo) described a script
+that reads an immutable `sha-` tag out of `SSH_ORIGINAL_COMMAND` and pins it
+into `.env`. That is not what runs. The installed script ignores the client's
+command entirely and pulls whatever `IMAGE_TAG` the env's `.env` already holds
+— the moving channel tag. See the D5 correction in §2.
+
+```bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly APP_DIR="/opt/unicornt/prod"        # <- per-env dir; the key can touch nothing else
+readonly COMPOSE_FILE="${APP_DIR}/compose.yml"
+readonly LOCK_FILE="/run/lock/unicornt-prod-deploy.lock"
+
+exec 9>"${LOCK_FILE}"
+/usr/bin/flock -n 9 || { echo "ERROR: ya existe otro despliegue en ejecución."; exit 1; }
+
+[[ -f "${COMPOSE_FILE}" ]] || { echo "ERROR: no existe ${COMPOSE_FILE}."; exit 1; }
+
+cd "${APP_DIR}"
+/usr/bin/docker compose config --quiet
+/usr/bin/docker compose pull
+/usr/bin/docker compose up -d --remove-orphans
+/usr/bin/docker compose ps
 ```
 
-CI calls: `ssh -i key -p $PORT $USER@$HOST "deploy sha-abc1234"`.
+`authorized_keys` pins it as `restrict,command="sudo -n
+/usr/local/sbin/deploy-unicornt-<env>" ssh-ed25519 AAAA...`, so the trailing
+arguments CI sends (`"deploy <channel> sha-<7>"`) are a breadcrumb for the CI
+and auth logs only — the server ignores them (LESSONS #8).
 
 ### 7.3 Smoke check (CI job step, per env)
 
@@ -652,10 +845,21 @@ application-qa.yml
 - `.keber.dev` is HSTS-preloaded — both dev hostnames are HTTPS-only from the
   first request; certbot must succeed before anything can talk to them.
 - Consider GHCR later only if Docker Hub pull-rate limits bite the VPS.
+- **DB version skew:** prod is Supabase PostgreSQL **17.6**; dev and qa run
+  `postgres:16-alpine`. Nothing in `V1..V3` cares, but qa is not a faithful
+  rehearsal of prod at the database layer. Cheap to close by bumping the dev/qa
+  containers to 17.
+- **Least privilege on the shared instance:** prod connects as the
+  `postgres.<project-ref>` pooler role, which can read and write the
+  neighbouring `otfsisacad` schema. A role scoped to `unicornt_store` would
+  contain the blast radius. P9, not blocking.
+- **`unicornt_store_legacy`** (the renamed mono-repo schema) has no owner in
+  this project once P8 lands. Decide whether it is archived, exported and
+  dropped, or left in place — it is real data from a previous milestone.
 
 ---
 
-## 9. Runbook — P3 (VPS) & P4 (GitHub Environments)
+## 9. Runbook — P3 (VPS), P4 (GitHub Environments), P8 (Supabase)
 
 Do **P3 and P4 before merging the P2 PR into `dev`**: the merge is a push to
 `dev`, which fires `deploy(dev)`; if environment `dev` has no secrets or the box
@@ -691,8 +895,11 @@ sudo mkdir -p /opt/unicornt/{dev,qa,prod} /var/www/unicornt-dev /var/www/unicorn
 sudo cp deploy/dev/docker-compose.yml   /opt/unicornt/dev/
 sudo cp deploy/qa/docker-compose.yml    /opt/unicornt/qa/
 sudo cp deploy/prod/docker-compose.yml  /opt/unicornt/prod/
-sudo cp deploy/deploy.sh /opt/unicornt/dev/  && sudo cp deploy/deploy.sh /opt/unicornt/qa/  && sudo cp deploy/deploy.sh /opt/unicornt/prod/
-sudo chmod +x /opt/unicornt/*/deploy.sh
+# NOTE (2026-09-05): P3 was actually built differently — the deploy script
+# ended up at /usr/local/sbin/deploy-unicornt-<env>, run through sudo, one file
+# per env, NOT inside /opt/unicornt/<env>/. The lines below are kept as the
+# historical record of what this runbook said; §7.2 has what is installed.
+# sudo cp deploy/deploy.sh /opt/unicornt/dev/  && ... && sudo chmod +x ...
 # real .env per env, from the templates — fill every __CHANGE_ME__:
 sudo cp deploy/dev/.env.example   /opt/unicornt/dev/.env
 sudo cp deploy/qa/.env.example    /opt/unicornt/qa/.env
@@ -824,3 +1031,177 @@ gh api -X POST repos/keber/unicornt-store-backend/environments/prod/deployment-b
 Merge the P2 PR → `dev` → watch Actions: `test → resolve-target →
 build-and-push → deploy dev` (smoke step at the end). Re-enable the `dev` ruleset
 first if you want the PR to exercise the checks.
+
+### 9.4 P8 — Supabase preflight from the VPS (🧑)
+
+A JDBC URL is not a libpq connection string. Passing
+`$SPRING_DATASOURCE_URL` straight to `psql` fails with
+`invalid connection option "jdbc:postgresql://..."` — the `jdbc:` prefix and
+the `currentSchema=` parameter are both JDBC-only. Build a libpq *conninfo*
+from the parts instead, which also sidesteps URL-encoding a password that may
+contain reserved characters.
+
+Run on the box. This keeps the password out of `argv` and out of the shell
+history — it is read inside the container from the mounted `.env`, never
+interpolated into the command line:
+
+```sh
+docker run --rm -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:16 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  psql "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+        user=$SPRING_DATASOURCE_USERNAME sslmode=require" \
+    -c "select version();" \
+    -c "\dn" \
+    -c "select current_setting(\"ssl.library\", true);"
+'
+```
+
+One command, four answers: it connects at all (egress to the Supabase pooler
+is not firewalled), TLS negotiates under `sslmode=require`, the credentials in
+the prod `.env` are the rotated ones and still valid, and `\dn` says whether
+the `unicornt_store` schema already exists.
+
+Reading it:
+
+- **`could not translate host name`** → DNS or egress, not credentials.
+- **`connection timed out`** → outbound 5432 is blocked; check the VPS
+  firewall before touching Supabase.
+- **`password authentication failed`** → the rotation in §3 did not make it
+  into `/opt/unicornt/prod/.env`. Note the Supabase *pooler* username is
+  `postgres.<project-ref>`, not plain `postgres` — a frequent cause of this
+  exact error.
+- **`server does not support SSL`** → do **not** fall back to `sslmode=disable`
+  against a managed pooler; re-check the host is the pooler endpoint.
+- **`\dn` without `unicornt_store`** → create it before the first deploy, or
+  the app starts against a schema that is not there.
+
+If it connects but the schema is missing, snapshot first (P8.1), then create
+the schema and run `V1..V3` (P8.2) — in that order.
+
+### 9.5 P8 — Prod schema cutover (🧑, on the box)
+
+Every block below runs the client in a container against Supabase. **Use
+`postgres:17`, not `postgres:16`** — `psql` is happily cross-version, but
+`pg_dump` refuses to dump from a server newer than itself, and prod is 17.6.
+
+The conninfo is rebuilt from the `.env` parts each time because a JDBC URL is
+not a libpq URL (§9.4). The password is read inside the container from the
+mounted file, so it never reaches `argv` or the shell history.
+
+#### A. Gate — confirm nothing still uses the legacy schema
+
+```sh
+docker run --rm -i -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:17 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  psql "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+        user=$SPRING_DATASOURCE_USERNAME sslmode=require" -f /dev/stdin
+' <<'SQL'
+select pid, client_addr, application_name, state, left(query, 60) as query
+from pg_stat_activity where datname = current_database() order by backend_start;
+
+select table_name,
+       (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from public.%I', table_name),
+              false, true, '')))[1]::text::bigint as rows
+from information_schema.tables where table_schema = 'public' order by table_name;
+SQL
+```
+
+`pg_stat_activity` only shows what is connected *right now*, so pair it with
+the question it cannot answer: is the mono-repo app
+(`keber/unicornt-store-springboot`) still deployed anywhere that points here?
+
+#### B. Schema-scoped backup — before any mutation
+
+```sh
+STAMP=$(date +%Y%m%d-%H%M%S)
+install -d -m 700 /root/unicornt-backups
+docker run --rm -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:17 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  pg_dump "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+           user=$SPRING_DATASOURCE_USERNAME sslmode=require" \
+    --schema=unicornt_store --no-owner --no-privileges
+' > "/root/unicornt-backups/unicornt_store-$STAMP.sql"
+chmod 600 "/root/unicornt-backups/unicornt_store-$STAMP.sql"
+
+# it must end with the completion marker, or the dump was truncated
+tail -1 "/root/unicornt-backups/unicornt_store-$STAMP.sql"
+grep -c '^CREATE TABLE' "/root/unicornt-backups/unicornt_store-$STAMP.sql"   # expect 15
+```
+
+#### C. Rename, create, migrate
+
+`search_path` is set explicitly. Without it the tables land in `public` —
+that is how the leftovers there got created. Script order mirrors what the app
+would do: `V1 → V3 → V2` (schema-locations, then data-locations).
+
+```sh
+cd /tmp
+for f in V1__init V3__order_inline_shipping_address V2__seed_reference_data; do
+  curl -fsSL -o "/tmp/$f.sql" \
+    "https://raw.githubusercontent.com/keber/unicornt-store-backend/qa/src/main/resources/db/migration/$f.sql"
+done
+
+{
+  echo "BEGIN;"
+  echo "ALTER SCHEMA unicornt_store RENAME TO unicornt_store_legacy;"
+  echo "CREATE SCHEMA unicornt_store;"
+  echo "SET search_path TO unicornt_store;"
+  cat /tmp/V1__init.sql /tmp/V3__order_inline_shipping_address.sql /tmp/V2__seed_reference_data.sql
+  echo "COMMIT;"
+} | docker run --rm -i -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:17 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  psql "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+        user=$SPRING_DATASOURCE_USERNAME sslmode=require" \
+    -v ON_ERROR_STOP=1 -f /dev/stdin
+'
+```
+
+`ON_ERROR_STOP=1` inside a single transaction means this is all-or-nothing: any
+failure rolls back to the legacy schema under its original name, and nothing is
+half-applied. That is the property the earlier `public` mess lacked.
+
+#### D. Verify before touching CI
+
+```sh
+docker run --rm -i -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:17 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  psql "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+        user=$SPRING_DATASOURCE_USERNAME sslmode=require" -f /dev/stdin
+' <<'SQL'
+select table_name from information_schema.tables
+where table_schema = 'unicornt_store' order by 1;          -- expect 10
+
+select (select count(*) from unicornt_store.products)   as products,      -- 49
+       (select count(*) from unicornt_store.categories) as categories,
+       (select count(*) from unicornt_store.roles)      as roles;
+
+select column_name from information_schema.columns
+where table_schema='unicornt_store' and table_name='orders'
+  and column_name like 'ship\_%';                          -- V3 applied: 4 rows
+
+select sequencename, last_value from pg_sequences
+where schemaname = 'unicornt_store';                       -- products seq at 50
+SQL
+```
+
+#### E. Clean up the `public` leftovers
+
+Only after step A's row counts confirm they are ours and disposable. They sit
+in a schema shared with the `otfsisacad` project, so this is deliberate, not
+housekeeping-by-reflex.
+
+```sh
+# review first, run second
+DROP TABLE IF EXISTS public.users_roles, public.users, public.roles,
+                     public.products, public.categories, public.product_types CASCADE;
+```
