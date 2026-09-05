@@ -4,14 +4,16 @@ Working plan for promoting `unicornt-store-backend` (and the matching
 `unicornt-store-frontend`) through three branch-gated environments, each on its
 own live URL, all sharing one VPS behind the existing nginx + SSL setup.
 
-**Status:** in progress. D1–D6 settled (§2). §3, P0–P4 done (rulesets still
-disabled, re-enable when convenient). **P5 and P6 both done 2026-09-04 — dev is
-fully live on both repos**: `https://unicornt-dev.keber.dev` (frontend) talking
-to `https://api-unicornt-dev.keber.dev` (backend), both pipelines green
-end-to-end, independently verified. qa's backend-side prep (stale DB reset +
-compose networks fix) done; qa's frontend-side deploy user/script still needs
-the same setup as dev (P6 runbook note) plus fixing the copy-pasted script
-content. Next: **P7** (promote both repos to qa).
+**Status:** in progress. D1–D6 settled (§2). §3, P0–P4 done. **P5, P6 and P7 all
+done 2026-09-04 — dev and qa are both fully live on both repos**:
+`unicornt-dev.keber.dev` / `api-unicornt-dev.keber.dev` and
+`unicornt-qa.keber.cl` / `api-unicornt-qa.keber.cl`, every pipeline green
+end-to-end, independently verified. `dev_PR_required`/`qa_PR_required` fixed
+(see P7 notes — backend had no required checks at all; frontend required a
+check name that doesn't exist on that repo) and **enabled** on both repos —
+direct pushes to `dev`/`qa` now require a PR on both repos. Next: **P8**
+(promote both repos to `main`/prod) — the one with the manual approval gate
+and the Supabase cutover.
 
 Owner legend: 🤖 Claude does it in the repo · 🧑 you do it (GitHub settings, VPS,
 DNS, Supabase) · 👥 together (review / merge / watch a deploy).
@@ -383,17 +385,19 @@ backend's dry run):
 sudo -u deploy-frontend-dev sudo -n /usr/local/sbin/deploy-frontend-dev
 ```
 
-### P7 — Promote to qa (👥) — **backend done 2026-09-04, frontend in progress**
+### P7 — Promote to qa — **DONE 2026-09-04, both repos**
 
 - [x] 👥 PR `dev → qa` in both repos ([backend #7](https://github.com/keber/unicornt-store-backend/pull/7),
       [frontend #27](https://github.com/keber/unicornt-store-frontend/pull/27)) — gate passed, merged.
 - [x] Backend `qa` run: fully green first try (dev's prep work paid off) —
       verified `https://api-unicornt-qa.keber.cl/api/v1/products` → 200,
       correct CORS.
-- [ ] Frontend `qa` run: build/test/publish to `deploy/qa` succeeded; stopped at
-      the SSH step — `deploy-front-qa` needs the same VPS setup dev got
-      (script content fix + `.ssh`/sudoers + fresh keypair + GH secrets).
-- [ ] 👥 Verify `unicornt-qa.keber.cl` end to end once frontend qa is wired.
+- [x] Frontend `qa`: VPS setup (script content fix, `.ssh` created with the
+      right mode from the start this time, sudoers, fresh keypair) went clean
+      on the first attempt — no rework needed, unlike dev. `deploy-vps.yml`
+      green end to end. Verified `https://unicornt-qa.keber.cl` → 200,
+      `api-unicornt-qa.keber.cl` baked into the bundle.
+- [x] 👥 Verified `unicornt-qa.keber.cl` end to end.
 - [x] Along the way: found + closed a stray frontend PR #25 (`dev → main`
       directly, predating the branch-gating work) — `gate-pr-source` +
       `main_PR_required` correctly blocked it from merging. `qa` already has
