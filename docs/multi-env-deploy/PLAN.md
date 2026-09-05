@@ -509,12 +509,13 @@ isolation, fixes the shared-restore problem, but new project + credentials +
 connection string). Nothing is dropped either way — the legacy data survives
 under the new name.
 
-- [ ] **Before renaming**, confirm nothing still connects to that schema. A
-      rename does not corrupt an unknown consumer, but it does break it
-      immediately. `pg_stat_activity` plus "is the mono-repo app deployed
-      anywhere?" is the check.
-- [ ] Take a **schema-scoped** `pg_dump -n unicornt_store` first (§9.5) — not a
-      Supabase snapshot, which is shared-fate on this instance.
+- [x] **Gate cleared 2026-09-05.** `pg_stat_activity` showed no external
+      consumer — every connection was Supabase's own machinery (`pg_net`,
+      `pg_cron`, `postgres_exporter`, `postgrest`, Supavisor). Nothing was
+      holding the legacy schema.
+- [x] Schema-scoped `pg_dump -n unicornt_store` taken to
+      `/root/unicornt-backups/` (15 tables, completion marker present, mode
+      600) — not a Supabase snapshot, which is shared-fate on this instance.
 
 #### P8.2 — Prod schema management (🧑)
 
@@ -535,9 +536,21 @@ under the new name.
       with explicit ids and `ON CONFLICT (id) DO NOTHING`, then realigns the
       identity sequence with `setval` so admin-created products do not collide.
       All three scripts are genuinely idempotent.
-- [ ] Clean up the six stray tables in `public` once their row counts confirm
-      they are ours and disposable. They sit in a schema shared with another
-      project.
+- [x] Six stray tables dropped from `public` (§9.5 E), dumped first to
+      `/root/unicornt-backups/public-strays-*.sql`. Their row counts told the
+      story: `categories` / `product_types` / `products` all **0**, but
+      `roles` / `users` / `users_roles` **2 each** — V1's DDL ran, roles seeded,
+      two users created, the catalog insert never finished. A half-completed
+      boot-time init, which is the argument for `SQL_INIT_MODE=never` in one
+      artefact.
+- [ ] **Set `SQL_INIT_MODE=never` in the server's `/opt/unicornt/prod/.env`.**
+      The file was written from the old template that said `always`; the chore
+      fixing the template does not touch the box. Left as-is, the first prod
+      boot re-runs V1/V3/V2 over the hand-built schema — idempotent, but it is
+      the same mechanism that made the `public` mess.
+- [ ] Confirm the server's `APP_CORS_ALLOWED_ORIGINS` is exactly
+      `https://unicornt-store.keber.cl`, matching the `WEB_ORIGIN` the smoke
+      step asserts — an unchecked item carried over from the P8 handoff.
 
 #### P8.3 — Backend cutover (👥)
 
