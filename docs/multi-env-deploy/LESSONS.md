@@ -51,36 +51,6 @@ same debugging session elsewhere. Narrative/history of *this* rollout lives in
    asked for confirmation each time; don't build automation that assumes it's
    silent.
 
-14. **"Require branches to be up to date before merging" is wrong for a
-    promotion train, and it fails closed.** The rule demands the head branch
-    contain the base branch's tip — which fits `feature → trunk`, where the
-    head is derived from the base. In a `dev → qa → main` train the
-    dependency runs the other way: every promotion puts a new commit on the
-    base that the head will never have, so from the *second* promotion onward
-    every promotion PR is permanently "out of date". Worse, the usual escapes
-    are typically closed by the rules you enabled alongside it — "Update
-    branch" wants to push a merge commit (blocked by required linear history)
-    or force-push a rebase (blocked by non-fast-forward), and a squash
-    back-merge does not satisfy it because the check compares ancestry, not
-    content. Enable it on the branch feature work targets; leave it off the
-    promotion targets.
-
-15. **A `PUT` on a GitHub ruleset is a full replace, not a patch.** Editing one
-    flag means reading the live ruleset, stripping the read-only fields
-    (`id`, `source`, `node_id`, `created_at`, `updated_at`, `_links`,
-    `current_user_can_bypass`) and sending the whole `rules` array back. Send a
-    partial body and the rules you omitted are silently gone — on a branch you
-    thought was protected. Snapshot every ruleset to a file before touching
-    any of them; the snapshot is also the rollback.
-
-16. **`require_extra_approval_for_unattributed_changes` can deadlock a
-    single-maintainer repo.** With `required_approving_review_count: 0` it
-    looks free, but any commit GitHub cannot attribute to a user account (an
-    Action that commits, an author email not linked to an account) silently
-    demands one approval — and GitHub does not permit approving your own PR.
-    With no bypass actors configured, the only way out is editing the ruleset
-    in Settings. Worth knowing before it fires mid-release.
-
 ## SSH / server hardening
 
 6. **A directory missing its execute bit breaks SSH key auth with no useful
@@ -148,3 +118,35 @@ same debugging session elsewhere. Narrative/history of *this* rollout lives in
     rejected because the ruleset you just enabled now applies to you too),
     that's confirmation the protection works; route through a
     branch+PR+merge instead of finding a way around it.
+
+## GitHub rulesets
+
+14. **"Require branches to be up to date before merging" is wrong for a
+    promotion train, and it fails closed.** The rule demands the head branch
+    contain the base branch's tip — which fits `feature → trunk`, where the
+    head is derived from the base. In a `dev → qa → main` train the
+    dependency runs the other way: every promotion puts a new commit on the
+    base that the head will never have, so from the *second* promotion onward
+    every promotion PR is permanently "out of date". Worse, the usual escapes
+    are typically closed by the rules you enabled alongside it — "Update
+    branch" wants to push a merge commit (blocked by required linear history)
+    or force-push a rebase (blocked by non-fast-forward), and a squash
+    back-merge does not satisfy it because the check compares ancestry, not
+    content. Enable it on the branch feature work targets; leave it off the
+    promotion targets.
+
+15. **A `PUT` on a GitHub ruleset is a full replace, not a patch.** Editing one
+    flag means reading the live ruleset, stripping the read-only fields
+    (`id`, `source`, `node_id`, `created_at`, `updated_at`, `_links`,
+    `current_user_can_bypass`) and sending the whole `rules` array back. Send a
+    partial body and the rules you omitted are silently gone — on a branch you
+    thought was protected. Snapshot every ruleset to a file before touching
+    any of them; the snapshot is also the rollback.
+
+16. **`require_extra_approval_for_unattributed_changes` can deadlock a
+    single-maintainer repo.** With `required_approving_review_count: 0` it
+    looks free, but any commit GitHub cannot attribute to a user account (an
+    Action that commits, an author email not linked to an account) silently
+    demands one approval — and GitHub does not permit approving your own PR.
+    With no bypass actors configured, the only way out is editing the ruleset
+    in Settings. Worth knowing before it fires mid-release.
