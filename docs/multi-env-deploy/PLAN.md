@@ -478,11 +478,12 @@ the real prod origin.
 #### P8.2 — Prod schema management (🧑)
 
 - [ ] Run `V1..V3` manually against Supabase, once.
-- [ ] Then set `SQL_INIT_MODE=never` + `JPA_DDL_AUTO=validate` in
-      `/opt/unicornt/prod/.env`. Boot-time schema mutation against a pooled
-      managed database is the wrong default; the template's
-      `SQL_INIT_MODE=always` is corrected as a chore. P9 (Flyway) replaces this
-      properly.
+- [ ] Then set `SQL_INIT_MODE=never` in `/opt/unicornt/prod/.env`. Boot-time
+      schema mutation against a pooled managed database is the wrong default;
+      the template's `SQL_INIT_MODE=always` is corrected as a chore. **There is
+      no `JPA_DDL_AUTO` env var** — earlier drafts of this plan said to set one;
+      `application-prod.yml` hardcodes `ddl-auto: validate`, which is already
+      what prod wants. P9 (Flyway) replaces this properly.
 - [ ] **Decide what prod's catalog actually is** — same seed as qa, or real
       data. A green API over an empty catalog is a broken-looking store, and
       this decision has never been written down.
@@ -551,8 +552,11 @@ steps: a check that cannot pass, gating the branch.
       starve prod on the shared box.
 - [ ] Nightly `pg_dump` of the dev/qa volumes; rely on Supabase PITR for prod.
 - [ ] Uptime check / alert on the three `/api/v1/products` endpoints.
-- [ ] `docker image prune` already in `deploy.sh`; add a weekly cron for
-      dangling volumes/build cache.
+- [ ] Prune dangling images on a schedule. The earlier claim that
+      `docker image prune` is "already in `deploy.sh`" was wrong — the script
+      actually installed on the box does not prune, so every deploy leaves the
+      previous image behind on a shared VPS. A weekly cron should cover
+      dangling images, volumes and build cache.
 - [ ] Restrict `publish-reports` + gist badge to `main` (done in P2) — confirm
       no per-branch report noise remains.
 
@@ -825,8 +829,11 @@ sudo mkdir -p /opt/unicornt/{dev,qa,prod} /var/www/unicornt-dev /var/www/unicorn
 sudo cp deploy/dev/docker-compose.yml   /opt/unicornt/dev/
 sudo cp deploy/qa/docker-compose.yml    /opt/unicornt/qa/
 sudo cp deploy/prod/docker-compose.yml  /opt/unicornt/prod/
-sudo cp deploy/deploy.sh /opt/unicornt/dev/  && sudo cp deploy/deploy.sh /opt/unicornt/qa/  && sudo cp deploy/deploy.sh /opt/unicornt/prod/
-sudo chmod +x /opt/unicornt/*/deploy.sh
+# NOTE (2026-09-05): P3 was actually built differently — the deploy script
+# ended up at /usr/local/sbin/deploy-unicornt-<env>, run through sudo, one file
+# per env, NOT inside /opt/unicornt/<env>/. The lines below are kept as the
+# historical record of what this runbook said; §7.2 has what is installed.
+# sudo cp deploy/deploy.sh /opt/unicornt/dev/  && ... && sudo chmod +x ...
 # real .env per env, from the templates — fill every __CHANGE_ME__:
 sudo cp deploy/dev/.env.example   /opt/unicornt/dev/.env
 sudo cp deploy/qa/.env.example    /opt/unicornt/qa/.env
