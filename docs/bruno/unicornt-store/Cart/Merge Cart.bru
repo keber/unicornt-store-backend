@@ -1,0 +1,26 @@
+meta {
+  name: Merge Cart
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cart/merge
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "items": [
+      {
+        "productId": 1,
+        "quantity": 1
+      }
+    ]
+  }
+}
