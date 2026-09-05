@@ -1,4 +1,5 @@
-# dev environment — /opt/unicornt/dev/docker-compose.yml
+# dev environment — installed on the server as /opt/unicornt/dev/compose.yml
+#            (the server uses the shorter compose.yml name; content must match)
 # App on 127.0.0.1:8081 (nginx proxies api-unicornt-dev.keber.dev to it).
 # Own Postgres container with an isolated named volume.
 name: unicornt-dev
@@ -10,6 +11,8 @@ services:
     env_file: .env
     environment:
       SPRING_PROFILES_ACTIVE: dev
+      # Behind EasyEngine's front proxy; without this Spring builds http:// URLs.
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
@@ -19,6 +22,9 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - default
+      - dev-site-network
 
   db:
     image: postgres:16-alpine
@@ -38,3 +44,11 @@ services:
 
 volumes:
   pgdata_dev:
+
+# nginx reaches the app by CONTAINER NAME over the site network, not via the
+# published 127.0.0.1:8081 port — inside the nginx container that address is the
+# container itself. The published port stays for local curl/debugging.
+networks:
+  dev-site-network:
+    external: true
+    name: api-unicornt-dev.keber.dev
