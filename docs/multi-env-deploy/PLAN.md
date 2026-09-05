@@ -513,6 +513,11 @@ under the new name.
       consumer — every connection was Supabase's own machinery (`pg_net`,
       `pg_cron`, `postgres_exporter`, `postgrest`, Supavisor). Nothing was
       holding the legacy schema.
+- [x] `sslmode` settled: **explicit `&sslmode=require`** in the JDBC URL. The
+      pgjdbc default is `prefer`, which does negotiate TLS against the pooler
+      but silently falls back to plaintext if the server ever offers it — not a
+      property to leave implicit in prod. Applied to the server `.env` and to
+      `deploy/prod/.env.example`.
 - [x] Schema-scoped `pg_dump -n unicornt_store` taken to
       `/root/unicornt-backups/` (15 tables, completion marker present, mode
       600) — not a Supabase snapshot, which is shared-fate on this instance.
