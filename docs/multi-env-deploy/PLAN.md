@@ -465,28 +465,79 @@ the real prod origin.
       `COMPOSE_PROJECT`, `ENVIRONMENT_NAME`, all four `DEPLOY_*` secrets,
       required reviewer `keber`, branch policy `main`.
 
-#### P8.1 — Supabase (🧑)
+#### P8.1 — Supabase (🧑) — **investigated 2026-09-05**
 
-- [ ] Prove egress, TLS, credentials and schema state in one shot, from the
-      VPS. Note the JDBC URL is **not** a libpq URL — `psql` rejects it
-      verbatim; the form that works is in §9.4.
-- [ ] Take a snapshot / confirm PITR is on **before** any schema work.
-- [ ] Confirm or create the `unicornt_store` schema.
-- [ ] Settle `sslmode`: the Supabase pooler requires TLS, so the JDBC URL wants
-      `&sslmode=require` unless the driver is already negotiating it.
+- [x] Egress, TLS, credentials and schema existence proved in one shot from the
+      VPS (§9.4). The JDBC URL is **not** a libpq URL — `psql` rejects it
+      verbatim. Result: connects, `sslmode=require` negotiates, the rotated
+      credentials are good, server is **PostgreSQL 17.6**.
+- [x] `unicornt_store` exists — **and it is not this application's schema.**
+      It holds the mono-repo app's data model, evolved past the REST refactor's:
+      15 tables including `customers`, `payments`, `inventory`,
+      `inventory_movements`, `product_variants`, with **real data** (31 orders,
+      31 payments, 67 order items, 196 inventory rows, 10 customers, 7 users).
+      `users` and `roles` match `V1__init.sql` exactly — same ancestry — but
+      `products` is a `bigint` id with no `stock` column, and `orders` has
+      `customer_id` / a `status` enum / `subtotal` / `notes` where V1 wants
+      `user_id` / `address_id` / `shipping_address` / `total NUMERIC(12,2)`.
+      Since V1 is written entirely in `CREATE TABLE IF NOT EXISTS`, running it
+      here would **silently skip every existing table** and leave `ddl-auto:
+      validate` to fail at boot — after the prod approval had already been
+      granted. This is the failure the P8 reframe was meant to catch.
+- [x] The `public` schema already holds V1's **first six** tables
+      (`categories`, `product_types`, `products`, `roles`, `users`,
+      `users_roles`) in V1's creation order, stopping right before
+      `cart_items`. The `search_path` gotcha below has therefore already
+      happened once: something ran V1 against this database without
+      `currentSchema` taking effect and died partway. Leftovers to clean up.
+- [x] **The instance is shared.** Schema `otfsisacad` belongs to another
+      project. Two consequences: a Supabase snapshot/PITR restore is
+      *database-level*, so it would roll the neighbour back too (§6 corrected),
+      and the app's role can read and write that neighbouring schema (§8).
+
+**Decision (2026-09-05):** rename the legacy schema out of the way and give the
+API a clean one under the existing name, so the JDBC URL does not change:
+
+```sql
+ALTER SCHEMA unicornt_store RENAME TO unicornt_store_legacy;
+CREATE SCHEMA unicornt_store;
+```
+
+Rejected: a brand-new schema name (additive and safer, but leaves the confusing
+name on the legacy data forever) and a separate Supabase project (cleanest
+isolation, fixes the shared-restore problem, but new project + credentials +
+connection string). Nothing is dropped either way — the legacy data survives
+under the new name.
+
+- [ ] **Before renaming**, confirm nothing still connects to that schema. A
+      rename does not corrupt an unknown consumer, but it does break it
+      immediately. `pg_stat_activity` plus "is the mono-repo app deployed
+      anywhere?" is the check.
+- [ ] Take a **schema-scoped** `pg_dump -n unicornt_store` first (§9.5) — not a
+      Supabase snapshot, which is shared-fate on this instance.
 
 #### P8.2 — Prod schema management (🧑)
 
-- [ ] Run `V1..V3` manually against Supabase, once.
-- [ ] Then set `SQL_INIT_MODE=never` in `/opt/unicornt/prod/.env`. Boot-time
-      schema mutation against a pooled managed database is the wrong default;
-      the template's `SQL_INIT_MODE=always` is corrected as a chore. **There is
-      no `JPA_DDL_AUTO` env var** — earlier drafts of this plan said to set one;
-      `application-prod.yml` hardcodes `ddl-auto: validate`, which is already
-      what prod wants. P9 (Flyway) replaces this properly.
-- [ ] **Decide what prod's catalog actually is** — same seed as qa, or real
-      data. A green API over an empty catalog is a broken-looking store, and
-      this decision has never been written down.
+- [ ] Rename + create per the decision above, then run `V1 → V3 → V2` into the
+      new schema **with `search_path` set explicitly** (§9.5). The JDBC
+      `currentSchema=` parameter is JDBC-only; `psql` does not read it, which
+      is exactly how the `public` leftovers got there.
+- [ ] Verify before going further: ten tables in `unicornt_store`, 49 products,
+      `orders` carries the V3 `ship_*` columns, and the `products` identity
+      sequence sits at 50.
+- [ ] Keep `SQL_INIT_MODE=never` in `/opt/unicornt/prod/.env`. Boot-time schema
+      mutation against a pooled managed database is the wrong default — and the
+      `public` leftovers are what a half-finished boot-time init looks like.
+      **There is no `JPA_DDL_AUTO` env var**; `application-prod.yml` hardcodes
+      `ddl-auto: validate`, which is what prod wants. P9 (Flyway) replaces this.
+- [x] **Prod's catalog is the `V2` seed** — 49 products, the same as dev/qa.
+      Settled by reading the script: `V2__seed_reference_data.sql` inserts them
+      with explicit ids and `ON CONFLICT (id) DO NOTHING`, then realigns the
+      identity sequence with `setval` so admin-created products do not collide.
+      All three scripts are genuinely idempotent.
+- [ ] Clean up the six stray tables in `public` once their row counts confirm
+      they are ours and disposable. They sit in a schema shared with another
+      project.
 
 #### P8.3 — Backend cutover (👥)
 
@@ -594,7 +645,11 @@ steps: a check that cannot pass, gating the branch.
   and finding the right run under time pressure is the slow part.
 - **Branch protection mistake:** rulesets are non-destructive; edit/disable in
   Settings.
-- **Supabase schema damage:** restore from the P8 snapshot / PITR.
+- **Supabase schema damage:** restore from the **schema-scoped `pg_dump -n
+  unicornt_store`** taken in P8.1, not from a Supabase snapshot. The instance is
+  shared with the `otfsisacad` project, so snapshot/PITR restore is
+  database-level and shared-fate — it would roll the neighbour back too. The
+  legacy schema also survives untouched as `unicornt_store_legacy`.
 
 ---
 
@@ -790,6 +845,17 @@ application-qa.yml
 - `.keber.dev` is HSTS-preloaded — both dev hostnames are HTTPS-only from the
   first request; certbot must succeed before anything can talk to them.
 - Consider GHCR later only if Docker Hub pull-rate limits bite the VPS.
+- **DB version skew:** prod is Supabase PostgreSQL **17.6**; dev and qa run
+  `postgres:16-alpine`. Nothing in `V1..V3` cares, but qa is not a faithful
+  rehearsal of prod at the database layer. Cheap to close by bumping the dev/qa
+  containers to 17.
+- **Least privilege on the shared instance:** prod connects as the
+  `postgres.<project-ref>` pooler role, which can read and write the
+  neighbouring `otfsisacad` schema. A role scoped to `unicornt_store` would
+  contain the blast radius. P9, not blocking.
+- **`unicornt_store_legacy`** (the renamed mono-repo schema) has no owner in
+  this project once P8 lands. Decide whether it is archived, exported and
+  dropped, or left in place — it is real data from a previous milestone.
 
 ---
 
@@ -1013,3 +1079,129 @@ Reading it:
 
 If it connects but the schema is missing, snapshot first (P8.1), then create
 the schema and run `V1..V3` (P8.2) — in that order.
+
+### 9.5 P8 — Prod schema cutover (🧑, on the box)
+
+Every block below runs the client in a container against Supabase. **Use
+`postgres:17`, not `postgres:16`** — `psql` is happily cross-version, but
+`pg_dump` refuses to dump from a server newer than itself, and prod is 17.6.
+
+The conninfo is rebuilt from the `.env` parts each time because a JDBC URL is
+not a libpq URL (§9.4). The password is read inside the container from the
+mounted file, so it never reaches `argv` or the shell history.
+
+#### A. Gate — confirm nothing still uses the legacy schema
+
+```sh
+docker run --rm -i -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:17 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  psql "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+        user=$SPRING_DATASOURCE_USERNAME sslmode=require" -f /dev/stdin
+' <<'SQL'
+select pid, client_addr, application_name, state, left(query, 60) as query
+from pg_stat_activity where datname = current_database() order by backend_start;
+
+select table_name,
+       (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from public.%I', table_name),
+              false, true, '')))[1]::text::bigint as rows
+from information_schema.tables where table_schema = 'public' order by table_name;
+SQL
+```
+
+`pg_stat_activity` only shows what is connected *right now*, so pair it with
+the question it cannot answer: is the mono-repo app
+(`keber/unicornt-store-springboot`) still deployed anywhere that points here?
+
+#### B. Schema-scoped backup — before any mutation
+
+```sh
+STAMP=$(date +%Y%m%d-%H%M%S)
+install -d -m 700 /root/unicornt-backups
+docker run --rm -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:17 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  pg_dump "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+           user=$SPRING_DATASOURCE_USERNAME sslmode=require" \
+    --schema=unicornt_store --no-owner --no-privileges
+' > "/root/unicornt-backups/unicornt_store-$STAMP.sql"
+chmod 600 "/root/unicornt-backups/unicornt_store-$STAMP.sql"
+
+# it must end with the completion marker, or the dump was truncated
+tail -1 "/root/unicornt-backups/unicornt_store-$STAMP.sql"
+grep -c '^CREATE TABLE' "/root/unicornt-backups/unicornt_store-$STAMP.sql"   # expect 15
+```
+
+#### C. Rename, create, migrate
+
+`search_path` is set explicitly. Without it the tables land in `public` —
+that is how the leftovers there got created. Script order mirrors what the app
+would do: `V1 → V3 → V2` (schema-locations, then data-locations).
+
+```sh
+cd /tmp
+for f in V1__init V3__order_inline_shipping_address V2__seed_reference_data; do
+  curl -fsSL -o "/tmp/$f.sql" \
+    "https://raw.githubusercontent.com/keber/unicornt-store-backend/qa/src/main/resources/db/migration/$f.sql"
+done
+
+{
+  echo "BEGIN;"
+  echo "ALTER SCHEMA unicornt_store RENAME TO unicornt_store_legacy;"
+  echo "CREATE SCHEMA unicornt_store;"
+  echo "SET search_path TO unicornt_store;"
+  cat /tmp/V1__init.sql /tmp/V3__order_inline_shipping_address.sql /tmp/V2__seed_reference_data.sql
+  echo "COMMIT;"
+} | docker run --rm -i -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:17 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  psql "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+        user=$SPRING_DATASOURCE_USERNAME sslmode=require" \
+    -v ON_ERROR_STOP=1 -f /dev/stdin
+'
+```
+
+`ON_ERROR_STOP=1` inside a single transaction means this is all-or-nothing: any
+failure rolls back to the legacy schema under its original name, and nothing is
+half-applied. That is the property the earlier `public` mess lacked.
+
+#### D. Verify before touching CI
+
+```sh
+docker run --rm -i -v /opt/unicornt/prod/.env:/tmp/e:ro postgres:17 sh -c '
+  set -a; . /tmp/e; set +a
+  hostport=$(printf %s "$SPRING_DATASOURCE_URL" | sed -E "s|^jdbc:postgresql://([^/]+)/.*|\1|")
+  export PGPASSWORD="$SPRING_DATASOURCE_PASSWORD"
+  psql "host=${hostport%%:*} port=${hostport##*:} dbname=postgres \
+        user=$SPRING_DATASOURCE_USERNAME sslmode=require" -f /dev/stdin
+' <<'SQL'
+select table_name from information_schema.tables
+where table_schema = 'unicornt_store' order by 1;          -- expect 10
+
+select (select count(*) from unicornt_store.products)   as products,      -- 49
+       (select count(*) from unicornt_store.categories) as categories,
+       (select count(*) from unicornt_store.roles)      as roles;
+
+select column_name from information_schema.columns
+where table_schema='unicornt_store' and table_name='orders'
+  and column_name like 'ship\_%';                          -- V3 applied: 4 rows
+
+select sequencename, last_value from pg_sequences
+where schemaname = 'unicornt_store';                       -- products seq at 50
+SQL
+```
+
+#### E. Clean up the `public` leftovers
+
+Only after step A's row counts confirm they are ours and disposable. They sit
+in a schema shared with the `otfsisacad` project, so this is deliberate, not
+housekeeping-by-reflex.
+
+```sh
+# review first, run second
+DROP TABLE IF EXISTS public.users_roles, public.users, public.roles,
+                     public.products, public.categories, public.product_types CASCADE;
+```
