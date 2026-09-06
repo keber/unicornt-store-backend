@@ -150,3 +150,37 @@ same debugging session elsewhere. Narrative/history of *this* rollout lives in
     demands one approval — and GitHub does not permit approving your own PR.
     With no bypass actors configured, the only way out is editing the ruleset
     in Settings. Worth knowing before it fires mid-release.
+
+## Reverse proxies / containers
+
+17. **A containerised reverse proxy cannot reach your app on
+    `127.0.0.1:<published port>` — that address is the proxy container
+    itself.** Publishing `127.0.0.1:8088:8080` makes the app reachable from the
+    *host*, which is exactly what `curl` on the box proves, and exactly what
+    misleads you. The proxy must join the app's Docker network and address it by
+    **container name** on its **internal** port. Two further details are
+    load-bearing: resolve through Docker's embedded DNS (`resolver 127.0.0.11`),
+    and put the upstream in a variable (`set $backend http://app:8080;
+    proxy_pass $backend;`) so nginx resolves per request instead of at config
+    load. With a literal hostname, a redeploy that briefly removes the container
+    makes `nginx -t` fail, and the site then serves its **default webroot** —
+    so the symptom is **404, not 502**, which reads as "no such route" and sends
+    you hunting in the wrong place entirely.
+
+18. **A secret written through a web UI can silently not save.** An MFA
+    challenge (on another device), a session timeout, or a navigation away
+    leaves the form looking submitted while the value never changes. Everything
+    downstream then fails identically to a wrong value, and re-running the job
+    "with the new secret" re-tests the old one. Never infer that a secret write
+    landed — verify the stored `updated_at`
+    (`gh api repos/{o}/{r}/environments/{env}/secrets`) and compare it to now.
+    Better, avoid the clipboard entirely: pipe the file into
+    `gh secret set NAME --env <env>` so the exact bytes are transmitted.
+
+19. **A health check that treats "not deployed yet" as acceptable stops being a
+    health check the moment you deploy.** A preflight script that downgraded
+    every non-200 to `[WARN]` with a footer saying warnings are fine before the
+    first deploy reported a completely broken prod proxy as healthy. Checks
+    written during bring-up encode "not ready yet" as normal; when the thing
+    goes live, that leniency has to be revoked or the check quietly becomes
+    decorative.

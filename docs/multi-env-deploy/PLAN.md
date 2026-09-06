@@ -4,20 +4,21 @@ Working plan for promoting `unicornt-store-backend` (and the matching
 `unicornt-store-frontend`) through three branch-gated environments, each on its
 own live URL, all sharing one VPS behind the existing nginx + SSL setup.
 
-**Status:** in progress. D1–D8 settled (§2). §3, P0–P4 done. **P5, P6 and P7 all
-done 2026-09-04 — dev and qa are both fully live on both repos**:
-`unicornt-dev.keber.dev` / `api-unicornt-dev.keber.dev` and
-`unicornt-qa.keber.cl` / `api-unicornt-qa.keber.cl`, every pipeline green
-end-to-end, independently verified. `dev_PR_required`/`qa_PR_required` fixed
-(see P7 notes — backend had no required checks at all; frontend required a
-check name that doesn't exist on that repo) and **enabled** on both repos —
-direct pushes to `dev`/`qa` now require a PR on both repos.
+**Status:** **All three environments are live and deploying from CI**
+(2026-09-05). dev `unicornt-dev.keber.dev` / `api-unicornt-dev.keber.dev`, qa
+`unicornt-qa.keber.cl` / `api-unicornt-qa.keber.cl`, prod
+`api-unicornt-store.keber.cl` — each on its own branch, gated by the promotion
+path, with prod behind a manual approval. D1–D10 settled (§2). §3, P0–P8.3
+done.
 
-**Now: P8**, reframed 2026-09-05 after preparing it surfaced two facts the
-original checklist did not account for — the prod storefront is still the
-pre-integration static app, and the backend promotion is independent of it.
-P8.0 (preflight) is done; the prod box is ready and the old deploy path is
-confirmed retired. Read §4 "P8" in full before touching anything.
+The prod database was cut over first (P8.1/P8.2): its Supabase schema turned
+out to hold the *previous* milestone's data model, so it was renamed to
+`unicornt_store_legacy` and a clean one built from `V1 → V3 → V2`. The app
+booted against it first try with `ddl-auto: validate` passing.
+
+Remaining: the prod write-path check (P8.3), then the frontend cutover (P8.4),
+which is gated on demoting the stale `e2e` required check (P8.5). P9 is
+hardening, not blocking.
 
 Owner legend: 🤖 Claude does it in the repo · 🧑 you do it (GitHub settings, VPS,
 DNS, Supabase) · 👥 together (review / merge / watch a deploy).
@@ -559,19 +560,44 @@ under the new name.
       `https://unicornt-store.keber.cl`, matching the `WEB_ORIGIN` the smoke
       step asserts — an unchecked item carried over from the P8 handoff.
 
-#### P8.3 — Backend cutover (👥)
+#### P8.3 — Backend cutover (👥) — **DONE 2026-09-05, prod is live**
 
-- [ ] PR `qa → main`, **squash merge** (D7). Gate requires head = `qa`;
-      required checks are `Run Tests` + `Enforce promotion path`.
-- [ ] Approve the `prod` environment gate in the Actions UI (expected — D5-era
-      required reviewer, not a bug to work around).
-- [ ] Watch `deploy(prod)` → `127.0.0.1:8088`; the smoke step asserts
-      `https://api-unicornt-store.keber.cl/api/v1/products` 200 + CORS =
-      `https://unicornt-store.keber.cl`.
+`https://api-unicornt-store.keber.cl/api/v1/products` → 200, CORS
+`https://unicornt-store.keber.cl`, 49 products, deployed by CI run #80 with the
+`prod` approval gate. All three environments are now live and green.
+
+Two failures on the way, neither of them the ones this phase was designed to
+catch — the Supabase risks were all retired in P8.1/P8.2, and the app booted
+against Supabase first try with `ddl-auto: validate` passing:
+
+1. **`Permission denied (publickey)`.** The `prod` deploy key had never been
+   exercised. `deploy-prod`'s server-side setup was fine (perms, sudoers,
+   forced command all matched qa's); the `prod` Environment's `DEPLOY_SSH_KEY`
+   held key material `ssh` could not load, so no key was ever offered — the
+   giveaway was sshd logging *nothing*, no `Failed publickey` line, at default
+   `LogLevel INFO`. Regenerated the keypair, verified locally from the box
+   before spending a CI round trip (LESSONS #11), and that local verification
+   was itself the first prod deploy.
+   A second round was lost because the replacement secret **silently did not
+   save** — the GitHub UI had asked for MFA on a phone and the write never
+   completed. Nothing indicated failure; only the secret's `updated_at`
+   revealed it was a day stale (LESSONS #18).
+2. **nginx 404, not 502.** `api-unicornt-store.keber.cl`'s `user.conf` pointed
+   `proxy_pass` at `http://api-unicornt-store:8088` — a hostname that is no
+   container, on the host-published port. `nginx -t` therefore failed, the site
+   never loaded the config, and it served its default webroot: a 404 that looks
+   like "no route" rather than "upstream down". The app container was also not
+   attached to the site's Docker network at all. Fixed to match qa's working
+   pattern (LESSONS #17); both are now captured in `deploy/nginx/`.
+
+- [x] PR `qa → main` squash-merged (#15). Gate + `Run Tests` + the `qa`
+      deployment requirement (D10) all satisfied.
+- [x] `prod` environment approval granted; `deploy(prod)` reached
+      `127.0.0.1:8088`; smoke asserted 200 + CORS.
 - [ ] **Write-path contract check against prod** — register → login → add to
-      cart → create order, via `docs/bruno/unicornt-store/`. This is the step
-      that actually exercises Supabase (transactions, sequences, constraints);
-      `GET /products` proves almost nothing about a managed pooled DB.
+      cart → create order, via `docs/bruno/unicornt-store/`. `validate` passing
+      proves the schema matches the mappings; only a write proves transactions
+      and sequences work through the pooler.
 
 #### P8.4 — Frontend cutover (👥) — only once P8.3 is green *and seeded*
 
@@ -630,6 +656,19 @@ steps: a check that cannot pass, gating the branch.
       dangling images, volumes and build cache.
 - [ ] Restrict `publish-reports` + gist badge to `main` (done in P2) — confirm
       no per-branch report noise remains.
+- [ ] **`permissions:` blocks on both workflows** (CodeQL flagged this on #15,
+      Medium). `gate-pr-source.yml` takes `permissions: {}` — it reads two
+      context variables and nothing else; the suggestion GitHub offers there is
+      correct as-is. `main.yml` is **not** safe to accept as suggested: Copilot
+      proposes a workflow-wide `contents: read`, but `publish-reports` pushes an
+      orphan commit to `gh-pages` via `peaceiris/actions-gh-pages` with
+      `GITHUB_TOKEN`, which needs `contents: write`. Committing the suggestion
+      would break the report publish on the next `main` push — and it would fail
+      *after* the deploy, looking unrelated. Correct fix: workflow-level
+      `contents: read`, with `contents: write` scoped to `publish-reports`
+      alone. (`pages: write` / `id-token: write` are for `actions/deploy-pages`,
+      which this repo does not use.)
+- [ ] Bump dev/qa Postgres containers from 16 to 17 to match Supabase (§8).
 
 ---
 
