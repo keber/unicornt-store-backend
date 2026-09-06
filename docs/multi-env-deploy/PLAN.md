@@ -669,6 +669,22 @@ steps: a check that cannot pass, gating the branch.
       alone. (`pages: write` / `id-token: write` are for `actions/deploy-pages`,
       which this repo does not use.)
 - [ ] Bump dev/qa Postgres containers from 16 to 17 to match Supabase (§8).
+- [ ] **Run the Bruno collection in CI after the dev deploy** (`bru run --env
+      dev`). The collection went stale on 2026-09-02 and nobody noticed until
+      it was needed against prod three weeks later, because nothing connects a
+      hand-written `.bru` file to the DTO it copies: commit `41543f7` renamed
+      `qty` → `quantity`, replaced `addressId` with an inline
+      `shippingAddress`, and deleted the whole `/api/v1/addresses` resource,
+      invalidating four requests silently. OpenAPI annotations do not help —
+      they describe the code as it is now, while the collection is a snapshot of
+      what it was. A CI run converts that silent rot into a loud failure, and
+      doubles as a far stronger post-deploy check than the current single
+      `GET /api/v1/products` smoke step, since it exercises the write path.
+      Considered and rejected: regenerating the collection from the OpenAPI
+      spec (loses the hand-written token-capture script), and deleting it in
+      favour of Swagger UI (loses the write-path sequence). Same failure shape
+      as `deploy/deploy.sh` and the compose files — an artifact that describes
+      a system, kept in sync only by discipline.
 
 ---
 
