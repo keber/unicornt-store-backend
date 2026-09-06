@@ -184,3 +184,18 @@ same debugging session elsewhere. Narrative/history of *this* rollout lives in
     written during bring-up encode "not ready yet" as normal; when the thing
     goes live, that leniency has to be revoked or the check quietly becomes
     decorative.
+
+20. **A `.env` value containing `&` is valid for Docker Compose and silently
+    breaks every script that *sources* the file.** Compose parses `env_file`
+    itself, so
+    `URL=jdbc:postgresql://h:5432/db?currentSchema=x&sslmode=require` reaches
+    the container intact and the app works. But `set -a; . ./.env` goes through
+    a shell, where `&` is a command separator: the assignment runs in a
+    backgrounded subshell and the variable is **empty** in yours. Nothing
+    reports a parse error — the failure surfaces much later as a nonsense
+    downstream message (here, `pg_dump: could not translate host name "port="`,
+    because the empty host collapsed the connection string). `$`, backticks,
+    spaces and `#` behave the same way. Parse the file
+    (`grep -m1 '^KEY=' .env | cut -d= -f2-`) instead of sourcing it, or quote
+    the value — and note that a working container proves nothing about whether
+    your scripts can read the same file.
