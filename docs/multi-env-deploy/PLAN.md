@@ -630,14 +630,23 @@ steps: a check that cannot pass, gating the branch.
 
 - [ ] Edit the frontend's `rule_e2e_statuscheck_main` ruleset to drop **only**
       its `required_status_checks` rule. Do not delete the ruleset — it also
-      carries `deletion` and `non_fast_forward` protections.
+      carries `deletion` and `non_fast_forward` protections, and on that repo
+      they are the only thing besides `main_PR_required` protecting `main` from
+      deletion and force-push. Payload built from the live ruleset; a `PUT` is a
+      full replace (LESSONS #15).
 - [ ] Leave `e2e.yml` running as informational, so the maintenance work has a
       signal to chase.
-- [ ] Decide what to do about `e2e-live.yml`: it fires on `workflow_run`
-      after **every** successful Pages deploy from `main`, so it will spend 30
-      minutes going red immediately after the cutover. Recommend gating it off
-      until the suite is maintained — a red run at the moment of final
-      delivery reads badly and says nothing new.
+- [x] **`e2e-live.yml` disabled 2026-09-05** (`gh workflow disable`, state
+      `disabled_manually`). It fires on `workflow_run` after *every* successful
+      Pages deploy from `main`, so the frontend cutover would have set it going
+      red for 30 minutes at the exact moment the delivery looked finished.
+      Disabling rather than editing keeps it off the promotion train — no PR,
+      and `gh workflow enable e2e-live.yml -R keber/unicornt-store-frontend`
+      undoes it. **Re-enabling it is the last step of the suite maintenance**,
+      not a separate chore to forget.
+- [x] `e2e.yml` deliberately left **active**: it still runs on PRs into
+      `main`/`qa`/`dev`, so the maintenance work keeps a signal to chase. Only
+      the *gate* is being removed, not the feedback.
 - [ ] Suite maintenance is its own workstream, not a P8 blocker.
 
 ### P9 — Hardening (later, not blocking)
