@@ -199,3 +199,27 @@ same debugging session elsewhere. Narrative/history of *this* rollout lives in
     (`grep -m1 '^KEY=' .env | cut -d= -f2-`) instead of sourcing it, or quote
     the value — and note that a working container proves nothing about whether
     your scripts can read the same file.
+
+21. **In nginx a matching regex location beats a prefix location, so a
+    proxy-everything vhost inherits any static-asset rules its template
+    ships.** EasyEngine (and most WordPress-oriented templates) define
+    `location ~* \.(css|js)$` and similar for fonts and images. An API vhost
+    whose own config is `location / { proxy_pass ... }` never sees those
+    requests: nginx serves them from the site's webroot, which on an API host
+    is empty, and returns its own 404. The symptom is uniquely misleading —
+    `/swagger-ui/index.html` has no matching extension, so the HTML proxies
+    through and returns 200 while every asset it references 404s. The page
+    loads and cannot paint, and it works perfectly in local containers because
+    nothing sits in front of the app there.
+
+    **Diagnose by who answers, not by the status code.** Compare a
+    `Content-Type: text/html` 404 carrying the proxy's signature against an
+    extension-less path under the same prefix, which should return the
+    application's own error envelope and headers. If one reached the app and
+    the other did not, the proxy is eating the request and no amount of
+    application config will help. (Two application-side theories were pursued
+    here before that one-command comparison settled it in seconds.)
+
+    Fix with `location ^~ /prefix/`, which stops nginx before it evaluates
+    regexes, and put it in the template's *supported override* file rather than
+    the generated config, which gets rewritten.
