@@ -265,4 +265,93 @@ class SecurityChainTest {
     private User account(String email, String role) {
         return new User(1L, "Ada", "Lovelace", email, "irrelevant-hash", Set.of(role));
     }
+
+    /**
+     * The preconditions that make {@code csrf.disable()} in {@link SecurityConfig} safe, pinned
+     * so they cannot be undone by accident.
+     *
+     * <p>A CSRF attack works by making the victim's browser send a request that carries an
+     * <em>ambient</em> credential — a cookie, HTTP Basic credentials, a client certificate —
+     * attached automatically because of who the browser is, not because the page asked. A bearer
+     * token in an {@code Authorization} header is not ambient: script on the attacker's origin
+     * has to put it there, and it cannot, because it cannot read the token out of the
+     * storefront's {@code localStorage}. A forged {@code POST} from another site therefore
+     * arrives unauthenticated and is refused by the {@code anyRequest().authenticated()} default.
+     *
+     * <p>That reasoning holds only while the API accepts <strong>no</strong> ambient credential.
+     * Sonar's {@code java:S4502} flags the disabled CSRF filter because it cannot see that
+     * property; these tests assert it. The day someone adds a session, a cookie or Basic auth,
+     * disabling CSRF stops being safe — and the build goes red here rather than silently
+     * shipping a vulnerability that this comment claims does not exist.
+     */
+    @org.junit.jupiter.api.Nested
+    @org.junit.jupiter.api.DisplayName("the CSRF exemption's preconditions")
+    class CsrfExemptionInvariants {
+
+        @Test
+        @org.junit.jupiter.api.DisplayName("no response ever sets a cookie")
+        void noResponseSetsACookie() throws Exception {
+            stubAccount(USER_EMAIL, "ROLE_USER");
+
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(credentials(USER_EMAIL)))
+                    .andExpect(status().isOk())
+                    .andExpect(header().doesNotExist("Set-Cookie"));
+
+            mockMvc.perform(get("/api/v1/products"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().doesNotExist("Set-Cookie"));
+
+            mockMvc.perform(post("/api/v1/products"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(header().doesNotExist("Set-Cookie"));
+        }
+
+        @Test
+        @org.junit.jupiter.api.DisplayName("no request ever creates a session")
+        void noRequestCreatesASession() throws Exception {
+            stubAccount(USER_EMAIL, "ROLE_USER");
+
+            var login = mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(credentials(USER_EMAIL)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            org.assertj.core.api.Assertions
+                    .assertThat(login.getRequest().getSession(false))
+                    .as("a session would be an ambient credential")
+                    .isNull();
+        }
+
+        @Test
+        @org.junit.jupiter.api.DisplayName("a state-changing request without a bearer token is refused")
+        void writeWithoutABearerTokenIsRefused() throws Exception {
+            mockMvc.perform(post("/api/v1/products"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @org.junit.jupiter.api.DisplayName("cookies grant nothing, including a session cookie")
+        void cookiesGrantNothing() throws Exception {
+            mockMvc.perform(post("/api/v1/products")
+                            .cookie(new jakarta.servlet.http.Cookie("JSESSIONID", "forged-session"),
+                                    new jakarta.servlet.http.Cookie("token", jwtService.generate(
+                                            USER_EMAIL, List.of("ROLE_ADMIN")))))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @org.junit.jupiter.api.DisplayName("HTTP Basic credentials are refused")
+        void basicCredentialsAreRefused() throws Exception {
+            stubAccount(ADMIN_EMAIL, "ROLE_ADMIN");
+            String basic = Base64.getEncoder()
+                    .encodeToString((ADMIN_EMAIL + ":" + PASSWORD).getBytes());
+
+            mockMvc.perform(post("/api/v1/products")
+                            .header("Authorization", "Basic " + basic))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
 }
