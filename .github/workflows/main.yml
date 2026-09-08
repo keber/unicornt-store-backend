@@ -31,14 +31,17 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Build and test
-        id: run-tests
-        run: mvn -B test
+      # `verify`, not `test`. The pom binds jacoco:check (domain + application at
+      # 100%, bundle at 85%/75%), jacoco:report and surefire-report:report-only to
+      # the verify phase, so `mvn test` ran the suite but never the coverage gate
+      # and never produced the reports — which is why a second `mvn` invocation
+      # used to follow. One phase now does both.
+      - name: Build, test and check coverage
+        run: mvn -B verify
 
-      - name: Generate JaCoCo and Surefire reports
+      - name: Assert the reports the later jobs consume exist
         if: always()
         run: |
-          mvn -B jacoco:report surefire-report:report-only
           test -f target/site/jacoco/jacoco.xml
           test -f target/site/surefire-report/surefire-report.html
 
@@ -59,12 +62,6 @@ jobs:
             target/site/surefire-report/
             target/surefire-reports/
           if-no-files-found: error
-
-      - name: Fail job if tests failed
-        if: always() && steps.run-tests.outcome == 'failure'
-        run: |
-          echo "::error::One or more Maven tests failed."
-          exit 1
 
   publish-reports:
     name: Upload Coverage and Publish Reports to GitHub Pages
