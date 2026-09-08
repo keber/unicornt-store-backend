@@ -45,9 +45,21 @@ jobs:
           test -f target/site/jacoco/jacoco.xml
           test -f target/site/surefire-report/surefire-report.html
 
+      # The 16 ArchUnit rules are the repo's headline constraint but sit as 16 rows
+      # inside a 300-plus-test Surefire page. This renders them on their own, for
+      # the README badge to link at. Skipped when the build died before the tests
+      # ran, so a compile failure reports once instead of twice.
+      - name: Render the ArchUnit rules report
+        if: (success() || failure()) && hashFiles('target/surefire-reports/*.xml') != ''
+        run: python3 scripts/arch-report.py
+
+      # main only. The action writes <repo>-junit-tests.json and
+      # <repo>-jacoco-coverage.json to a shared gist with no branch in the
+      # filename, so a run on any branch used to overwrite the badges the README
+      # shows next to main-only report links.
       - name: Generate Test badge
-        if: success() || failure()
-        uses: gaelgirodon/ci-badges-action@v1
+        if: (success() || failure()) && github.ref == 'refs/heads/main'
+        uses: gaelgirodon/ci-badges-action@07a65145ff9feb271f426865f940977a94578ad4 # v1.10.0
         with:
           gist-id: ${{ secrets.GIST_ID }}
           token: ${{ secrets.GIST_TOKEN }}
@@ -60,18 +72,20 @@ jobs:
           path: |
             target/site/jacoco/
             target/site/surefire-report/
+            target/site/architecture/
             target/surefire-reports/
+            target/classes/
+            target/test-classes/
           if-no-files-found: error
 
   publish-reports:
     name: Upload Coverage and Publish Reports to GitHub Pages
     needs: test
-    if: always()
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -80,11 +94,11 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '25'
+        cache: maven
 
-    - name: Compile for Sonar
-      run: mvn -B compile
-
-    - name: Download reports
+    # No `mvn compile` here: the test job uploads target/classes and
+    # target/test-classes with the reports, which is all sonar:sonar needs.
+    - name: Download reports and classes
       uses: actions/download-artifact@v4
       with:
         name: maven-test-reports
@@ -95,15 +109,49 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: mvn -B sonar:sonar
 
+    # The gate check by hand, instead of -Dsonar.qualitygate.wait=true. That flag
+    # fails on this project with "Not authorized or project not found" on scanner
+    # 3.11 and on 5.8 alike, while the very same secret reads
+    # api/qualitygates/project_status at HTTP 200 with the gate OK — so the flag's
+    # own poll is what is broken, not the credential. This waits for the analysis
+    # to leave the compute queue and reads the gate, which is all the flag was
+    # for; `deploy` needing this job is what turns a red gate into a stopped
+    # rollout.
+    # Gated to main because the plan forbids anything else. SonarCloud answers
+    # any non-main gate read with HTTP 403 "Organization is not allowed to access
+    # data from non main branches" — scoped by branch, url-encoded or not, and
+    # even by analysisId when that analysis belongs to a branch. The unscoped
+    # read, which is main's, returns 200 with the same token in the same run.
+    #
+    # That 403 is also what -Dsonar.qualitygate.wait=true hits, on scanner 3.11
+    # and 5.8 alike; it reports it as "Not authorized or project not found",
+    # which reads like a credential problem and is not one. The token is a user
+    # token and api/users/current, api/ce/component and the unscoped gate read
+    # all answer 200 for it.
+    #
+    # So: prod deploys are gated on the gate, dev/qa deploys are not — they still
+    # wait on this job, so a failed analysis or a broken report publish stops
+    # them. Gating those two as well needs a paid plan. PRs are covered by the
+    # "SonarCloud Code Analysis" check, which is worth making a required check on
+    # the rulesets.
+    - name: Fail on a red quality gate
+      if: github.ref == 'refs/heads/main'
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: python3 scripts/quality-gate.py keber_unicornt-store-backend
+
     - name: Upload coverage to Codecov
       if: success() || failure()
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./target/site/jacoco/jacoco.xml
         flags: unittests
         name: codecov-coverage
-        fail_ci_if_error: true
+        # false on purpose: publish-reports now gates the deploy, and a Codecov
+        # upload hiccup is an outage in a reporting service, not a quality
+        # regression. SonarCloud's gate above is the blocking signal.
+        fail_ci_if_error: false
         disable_search: true
 
     # The published report site is per-repo (one gh-pages), so only main
@@ -115,10 +163,11 @@ jobs:
         cp -r target/site/jacoco target/site/combined/coverage
         cp -r target/site/surefire-report target/site/combined/tests
         cp target/site/surefire-report/surefire-report.html target/site/combined/tests/index.html
+        cp -r target/site/architecture target/site/combined/architecture
 
     - name: Deploy reports to GitHub Pages
       if: github.ref == 'refs/heads/main'
-      uses: peaceiris/actions-gh-pages@v4
+      uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./target/site/combined
@@ -173,19 +222,19 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       # The image is built entirely inside the multi-stage Dockerfile (Maven
       # runs there); the `test` job already covers compilation, so there is no
       # separate jar build on the runner.
       - name: Build and push image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           push: true
@@ -198,7 +247,9 @@ jobs:
 
   deploy:
     name: Deploy ${{ needs.resolve-target.outputs.channel }}
-    needs: [resolve-target, build-and-push]
+    # publish-reports is in here for its SonarCloud quality gate: the image still
+    # builds in parallel, but nothing reaches a server while the gate is red.
+    needs: [resolve-target, build-and-push, publish-reports]
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-target.outputs.channel }}
     concurrency: deploy-${{ needs.resolve-target.outputs.channel }}
