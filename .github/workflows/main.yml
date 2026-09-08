@@ -118,7 +118,14 @@ jobs:
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: mvn -B sonar:sonar
+      # TEMPORARY diagnostic, removed before merge: branch data is unreadable on
+      # this plan (403), PR-scoped data is not, and the scanner takes these
+      # coordinates directly.
+      run: >-
+        mvn -B sonar:sonar
+        -Dsonar.pullrequest.key=27
+        -Dsonar.pullrequest.branch=${{ github.ref_name }}
+        -Dsonar.pullrequest.base=main
 
     # The gate check by hand, instead of -Dsonar.qualitygate.wait=true. That flag
     # fails on this project with "Not authorized or project not found" on scanner
