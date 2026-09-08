@@ -109,8 +109,12 @@ Full stack up in Docker (backend + db): `docker compose up -d`.
 ./mvnw clean verify
 ```
 
-- 302 tests. `jacoco:check`: `domain` and `application` at **100% / 100%**, the rest
-  at 85% / 75%.
+- 327 tests. `jacoco:check`: `domain` and `application` at **100% / 100%**, the rest
+  at 85% / 75%. Whole-project coverage is **96.8% of lines, 95.2% of branches**.
+- Coverage is measured over the whole codebase. The single JaCoCo exclusion is
+  `OpenApiConfig` (springdoc metadata, no branch to get wrong), mirrored in
+  `sonar.coverage.exclusions` so JaCoCo, Codecov and SonarCloud report the same
+  number for the same build.
 - ArchUnit dependency rules are **hard** (no freeze store); every layered rule green.
 
 ## API
