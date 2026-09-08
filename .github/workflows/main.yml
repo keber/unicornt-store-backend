@@ -123,13 +123,49 @@ jobs:
         probe "users/current (user tokens only)"           "https://sonarcloud.io/api/users/current"
         probe "qualitygates/project_status (what the wait polls)"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=keber_unicornt-store-backend"
         probe "ce/activity (the task poll)"           "https://sonarcloud.io/api/ce/activity?component=keber_unicornt-store-backend&ps=1"
+        probe "ce/component branch-scoped"           "https://sonarcloud.io/api/ce/component?component=keber_unicornt-store-backend&branch=${GITHUB_REF_NAME}"
+        probe "project_status branch-scoped"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=keber_unicornt-store-backend&branch=${GITHUB_REF_NAME}"
 
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # qualitygate.wait polls until the gate is decided and fails the step on red.
-      # Combined with `deploy` needing this job, a red gate stops the rollout.
-      run: mvn -B sonar:sonar -Dsonar.qualitygate.wait=true
+      run: mvn -B sonar:sonar
+
+    # The gate check by hand, instead of -Dsonar.qualitygate.wait=true. That flag
+    # fails on this project with "Not authorized or project not found" on scanner
+    # 3.11 and on 5.8 alike, while the very same secret reads
+    # api/qualitygates/project_status at HTTP 200 with the gate OK — so the flag's
+    # own poll is what is broken, not the credential. This waits for the analysis
+    # to leave the compute queue and reads the gate, which is all the flag was
+    # for; `deploy` needing this job is what turns a red gate into a stopped
+    # rollout.
+    - name: Fail on a red quality gate
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        PROJECT: keber_unicornt-store-backend
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        set -euo pipefail
+        if [ -n "${PR_NUMBER}" ]; then scope="pullRequest=${PR_NUMBER}"; else scope="branch=${GITHUB_REF_NAME}"; fi
+        echo "reading the gate for ${scope}"
+
+        for i in $(seq 1 60); do
+          queued=$(curl -sS -u "${SONAR_TOKEN}:"             "https://sonarcloud.io/api/ce/component?component=${PROJECT}&${scope}"             | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("queue") or []))')
+          [ "${queued}" = "0" ] && break
+          echo "  analysis still queued (${queued}), waiting..."
+          sleep 5
+        done
+
+        curl -sS -u "${SONAR_TOKEN}:"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=${PROJECT}&${scope}" > gate.json
+        status=$(python3 -c 'import json; print(json.load(open("gate.json")).get("projectStatus",{}).get("status","UNKNOWN"))')
+        echo "quality gate: ${status}"
+
+        if [ "${status}" != "OK" ]; then
+          echo "failing conditions:"
+          cat gate.json
+          echo "::error::SonarCloud quality gate is ${status}"
+          exit 1
+        fi
 
     - name: Upload coverage to Codecov
       if: success() || failure()
