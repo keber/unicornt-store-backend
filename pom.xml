@@ -29,6 +29,7 @@
         <surefire.version>3.5.6</surefire.version>
         <jacoco.version>0.8.15</jacoco.version>
         <archunit.version>1.4.1</archunit.version>
+		<sonar.plugin.version>5.8.0.7211</sonar.plugin.version>
 		<sonar.projectKey>keber_unicornt-store-backend</sonar.projectKey>
 		<sonar.organization>keber</sonar.organization>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -339,10 +340,20 @@
             </plugin>
 
 
+            <!--
+                5.x, not 3.11. The 3.11 line predates SonarQube Cloud's API move to
+                api.sonarcloud.io: its analysis upload still works, but the
+                -Dsonar.qualitygate.wait poll gets a 403 there and reports it as
+                "Not authorized or project not found", which sends you hunting for a
+                token problem that does not exist. Probed with the CI secret: the
+                token reads api/qualitygates/project_status and api/users/current
+                fine (HTTP 200, gate OK), while the same endpoints under
+                api.sonarcloud.io answer 403 to the old client.
+            -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
-                <version>3.11.0.3922</version>
+                <version>${sonar.plugin.version}</version>
             </plugin>
         </plugins>
     </build>
