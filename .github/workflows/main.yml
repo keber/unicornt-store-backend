@@ -141,7 +141,14 @@ jobs:
         PROJECT: keber_unicornt-store-backend
       run: |
         set -euo pipefail
-        api() { curl -sS -u "${SONAR_TOKEN}:" "https://sonarcloud.io/api/$1"; }
+
+        # The token goes to curl through a config on stdin, not through -u: an
+        # argument is visible in the process list to anything else on the runner,
+        # and the newer scanner flags it. echo is a shell builtin, so the value
+        # never becomes a process argument at all.
+        api() {
+          echo "user = \"${SONAR_TOKEN}:\"" | curl -sS --config - "https://sonarcloud.io/api/$1"
+        }
 
         for i in $(seq 1 60); do
           queued=$(api "ce/component?component=${PROJECT}"             | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("queue") or []))')
