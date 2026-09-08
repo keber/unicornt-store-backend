@@ -118,14 +118,7 @@ jobs:
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # TEMPORARY diagnostic, removed before merge: branch data is unreadable on
-      # this plan (403), PR-scoped data is not, and the scanner takes these
-      # coordinates directly.
-      run: >-
-        mvn -B sonar:sonar
-        -Dsonar.pullrequest.key=27
-        -Dsonar.pullrequest.branch=${{ github.ref_name }}
-        -Dsonar.pullrequest.base=main
+      run: mvn -B sonar:sonar
 
     # The gate check by hand, instead of -Dsonar.qualitygate.wait=true. That flag
     # fails on this project with "Not authorized or project not found" on scanner
@@ -368,12 +361,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      # Installed explicitly, not through `npx --yes`, which resolves and runs a
+      # package on demand along with its lifecycle scripts (githubactions:S6505).
+      # --ignore-scripts is the same precaution P9 asks of the frontend's npm ci:
+      # a postinstall in any transitive dependency would otherwise run here.
+      - name: Install the Bruno CLI
+        run: npm install --no-save --ignore-scripts @usebruno/cli@4.1.0
+
       - name: Run the Bruno write path against dev
         working-directory: docs/bruno/unicornt-store
         env:
           API_BASE_URL: https://${{ vars.HOST }}
         run: >-
-          npx --yes @usebruno/cli@4.1.0 run
+          "$GITHUB_WORKSPACE/node_modules/.bin/bru" run
           "Auth/Register.bru" "Auth/Login.bru" "Auth/Me.bru"
           "Cart/Add Item.bru" "Cart/Get Cart.bru"
           "Orders/Create Order.bru" "Orders/Get Order.bru"

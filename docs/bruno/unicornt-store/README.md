@@ -45,9 +45,15 @@ The `api-write-path` job runs exactly this sequence against **dev** after every
 dev deploy, which is what keeps the collection from rotting unnoticed:
 
 ```bash
+npm install --no-save --ignore-scripts @usebruno/cli@4.1.0
 cd docs/bruno/unicornt-store
-npx --yes @usebruno/cli@4.1.0 run   "Auth/Register.bru" "Auth/Login.bru" "Auth/Me.bru"   "Cart/Add Item.bru" "Cart/Get Cart.bru"   "Orders/Create Order.bru" "Orders/Get Order.bru"   --env dev
+"$PWD/../../../node_modules/.bin/bru" run   "Auth/Register.bru" "Auth/Login.bru" "Auth/Me.bru"   "Cart/Add Item.bru" "Cart/Get Cart.bru"   "Orders/Create Order.bru" "Orders/Get Order.bru"   --env dev
 ```
+
+The CLI is installed rather than invoked through `npx --yes`, which resolves and
+runs a package on demand together with its lifecycle scripts — flagged as
+`githubactions:S6505`, and the same precaution P9 asks of the frontend's
+`npm ci --ignore-scripts`.
 
 The requests are named one by one rather than run as folders, because a folder
 run follows `seq` and `Cart/Remove Item` (seq 4) would empty the cart before
