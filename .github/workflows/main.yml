@@ -138,34 +138,7 @@ jobs:
       if: github.ref == 'refs/heads/main'
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        PROJECT: keber_unicornt-store-backend
-      run: |
-        set -euo pipefail
-
-        # The token goes to curl through a config on stdin, not through -u: an
-        # argument is visible in the process list to anything else on the runner,
-        # and the newer scanner flags it. echo is a shell builtin, so the value
-        # never becomes a process argument at all.
-        api() {
-          echo "user = \"${SONAR_TOKEN}:\"" | curl -sS --config - "https://sonarcloud.io/api/$1"
-        }
-
-        for i in $(seq 1 60); do
-          queued=$(api "ce/component?component=${PROJECT}"             | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("queue") or []))')
-          [ "${queued}" = "0" ] && break
-          echo "  analysis still queued (${queued}), waiting..."
-          sleep 5
-        done
-
-        api "qualitygates/project_status?projectKey=${PROJECT}" > gate.json
-        status=$(python3 -c 'import json; print(json.load(open("gate.json")).get("projectStatus",{}).get("status","UNKNOWN"))')
-        echo "quality gate: ${status}"
-
-        if [ "${status}" != "OK" ]; then
-          cat gate.json
-          echo "::error::SonarCloud quality gate is ${status}"
-          exit 1
-        fi
+      run: python3 scripts/quality-gate.py keber_unicornt-store-backend
 
     - name: Upload coverage to Codecov
       if: success() || failure()
