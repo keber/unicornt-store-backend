@@ -17,6 +17,17 @@ headers {
 body:json {
   {
     "productId": 1,
-    "quantity": 2
+    "quantity": 1
   }
+}
+
+tests {
+  // 201 when the line is new, 200 when an existing line is topped up — both are
+  // in the contract, and a fresh account always takes the first branch.
+  test("the item is in the cart", function () {
+    expect(res.getStatus()).to.be.oneOf([200, 201]);
+    const line = res.getBody().items.find((item) => item.productId === 1);
+    expect(line, "no line for product 1").to.not.be.undefined;
+    expect(line.quantity).to.be.at.least(1);
+  });
 }

@@ -659,6 +659,20 @@ steps: a check that cannot pass, gating the branch.
 
 ### P9 — Hardening (later, not blocking)
 
+The workflow items landed together; what they needed beyond the plan is recorded
+with each. Three surprises worth carrying forward:
+
+1. The gist-badge restriction was recorded here as already done. It was not —
+   worth checking a "done" claim against the file before trusting it.
+2. `-Dsonar.qualitygate.wait=true` cannot work on this plan at all. SonarCloud
+   answers every non-main gate read with `403 "Organization is not allowed to
+   access data from non main branches"`, and the scanner reports that as "Not
+   authorized or project not found" — a credentials message for a problem that
+   is not about credentials. The gate is asserted by `scripts/quality-gate.py`
+   on `main` only; dev and qa cannot be gated without a paid plan.
+3. The Bruno collection had **no assertions at all**, so a CI run would have
+   passed no matter what the API returned. Running it was only half the item.
+
 - [ ] Add `org.springframework.boot:spring-boot-flyway`; set
       `FLYWAY_ENABLED=true`, `SQL_INIT_MODE=never`; convert `V1..V3` to Flyway
       migrations. Prod stops mutating schema on boot.
@@ -671,9 +685,11 @@ steps: a check that cannot pass, gating the branch.
       actually installed on the box does not prune, so every deploy leaves the
       previous image behind on a shared VPS. A weekly cron should cover
       dangling images, volumes and build cache.
-- [ ] Restrict `publish-reports` + gist badge to `main` (done in P2) — confirm
-      no per-branch report noise remains.
-- [ ] **`permissions:` blocks on both workflows** (CodeQL flagged this on #15,
+- [x] Restrict `publish-reports` + gist badge to `main` — **was not actually
+      done in P2**; only the Pages publish steps were gated, so every branch's
+      run overwrote the gist badges the README shows next to main-only report
+      links. The badge step is now `main`-only.
+- [x] **`permissions:` blocks on both workflows** (CodeQL flagged this on #15,
       Medium). `gate-pr-source.yml` takes `permissions: {}` — it reads two
       context variables and nothing else; the suggestion GitHub offers there is
       correct as-is. `main.yml` is **not** safe to accept as suggested: Copilot
@@ -686,7 +702,8 @@ steps: a check that cannot pass, gating the branch.
       alone. (`pages: write` / `id-token: write` are for `actions/deploy-pages`,
       which this repo does not use.)
 - [ ] Bump dev/qa Postgres containers from 16 to 17 to match Supabase (§8).
-- [ ] **Stop expanding secrets inside `run:` blocks** (Sonar, Medium, both
+- [x] **Stop expanding secrets inside `run:` blocks** (backend done; frontend
+      `deploy-vps.yml` still open, it is the other repo) (Sonar, Medium, both
       repos). `${{ secrets.X }}` in a `run:` script is substituted into the
       shell text before execution, so the value lands in the script on disk and
       any metacharacter would be interpreted rather than quoted. Frontend
@@ -703,7 +720,7 @@ steps: a check that cannot pass, gating the branch.
       both have historically needed install scripts, so this needs a green build
       to prove rather than assume. Alternative if it breaks the build: mark the
       hotspot accepted in SonarCloud with the reasoning written down.
-- [ ] **Run the Bruno collection in CI after the dev deploy** (`bru run --env
+- [x] **Run the Bruno collection in CI after the dev deploy** (`bru run --env
       dev`). The collection went stale on 2026-09-02 and nobody noticed until
       it was needed against prod three weeks later, because nothing connects a
       hand-written `.bru` file to the DTO it copies: commit `41543f7` renamed
