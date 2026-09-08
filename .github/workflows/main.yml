@@ -45,8 +45,20 @@ jobs:
           test -f target/site/jacoco/jacoco.xml
           test -f target/site/surefire-report/surefire-report.html
 
+      # The 16 ArchUnit rules are the repo's headline constraint but sit as 16 rows
+      # inside a 300-plus-test Surefire page. This renders them on their own, for
+      # the README badge to link at. Skipped when the build died before the tests
+      # ran, so a compile failure reports once instead of twice.
+      - name: Render the ArchUnit rules report
+        if: (success() || failure()) && hashFiles('target/surefire-reports/*.xml') != ''
+        run: python3 scripts/arch-report.py
+
+      # main only. The action writes <repo>-junit-tests.json and
+      # <repo>-jacoco-coverage.json to a shared gist with no branch in the
+      # filename, so a run on any branch used to overwrite the badges the README
+      # shows next to main-only report links.
       - name: Generate Test badge
-        if: success() || failure()
+        if: (success() || failure()) && github.ref == 'refs/heads/main'
         uses: gaelgirodon/ci-badges-action@v1
         with:
           gist-id: ${{ secrets.GIST_ID }}
@@ -60,18 +72,20 @@ jobs:
           path: |
             target/site/jacoco/
             target/site/surefire-report/
+            target/site/architecture/
             target/surefire-reports/
+            target/classes/
+            target/test-classes/
           if-no-files-found: error
 
   publish-reports:
     name: Upload Coverage and Publish Reports to GitHub Pages
     needs: test
-    if: always()
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -80,11 +94,11 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '25'
+        cache: maven
 
-    - name: Compile for Sonar
-      run: mvn -B compile
-
-    - name: Download reports
+    # No `mvn compile` here: the test job uploads target/classes and
+    # target/test-classes with the reports, which is all sonar:sonar needs.
+    - name: Download reports and classes
       uses: actions/download-artifact@v4
       with:
         name: maven-test-reports
@@ -93,7 +107,10 @@ jobs:
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: mvn -B sonar:sonar
+      # qualitygate.wait blocks until SonarCloud finishes and fails the step if the
+      # gate is red. Combined with `deploy` needing this job, a red gate stops the
+      # deploy rather than being a badge nobody is obliged to look at.
+      run: mvn -B sonar:sonar -Dsonar.qualitygate.wait=true
 
     - name: Upload coverage to Codecov
       if: success() || failure()
@@ -103,7 +120,10 @@ jobs:
         files: ./target/site/jacoco/jacoco.xml
         flags: unittests
         name: codecov-coverage
-        fail_ci_if_error: true
+        # false on purpose: publish-reports now gates the deploy, and a Codecov
+        # upload hiccup is an outage in a reporting service, not a quality
+        # regression. SonarCloud's gate above is the blocking signal.
+        fail_ci_if_error: false
         disable_search: true
 
     # The published report site is per-repo (one gh-pages), so only main
@@ -115,6 +135,7 @@ jobs:
         cp -r target/site/jacoco target/site/combined/coverage
         cp -r target/site/surefire-report target/site/combined/tests
         cp target/site/surefire-report/surefire-report.html target/site/combined/tests/index.html
+        cp -r target/site/architecture target/site/combined/architecture
 
     - name: Deploy reports to GitHub Pages
       if: github.ref == 'refs/heads/main'
@@ -198,7 +219,9 @@ jobs:
 
   deploy:
     name: Deploy ${{ needs.resolve-target.outputs.channel }}
-    needs: [resolve-target, build-and-push]
+    # publish-reports is in here for its SonarCloud quality gate: the image still
+    # builds in parallel, but nothing reaches a server while the gate is red.
+    needs: [resolve-target, build-and-push, publish-reports]
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-target.outputs.channel }}
     concurrency: deploy-${{ needs.resolve-target.outputs.channel }}
