@@ -107,10 +107,20 @@ jobs:
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # qualitygate.wait blocks until SonarCloud finishes and fails the step if the
-      # gate is red. Combined with `deploy` needing this job, a red gate stops the
-      # deploy rather than being a badge nobody is obliged to look at.
-      run: mvn -B sonar:sonar -Dsonar.qualitygate.wait=true
+      # `deploy` needs this job, so a failed analysis already stops a rollout.
+      #
+      # The stronger form — -Dsonar.qualitygate.wait=true, which polls until the
+      # gate is decided and fails on red — is NOT enabled, because it cannot work
+      # with the current secret. Run #34239187366 proved it: the analysis uploaded
+      # fine and the gate came back green, then the wait step died with "Not
+      # authorized or project not found". Submitting an analysis and reading the
+      # gate result are separate permissions, and SONAR_TOKEN is a project
+      # analysis token, which only has the first.
+      #
+      # To turn it on: SonarCloud > My Account > Security > generate a **User
+      # Token**, replace the SONAR_TOKEN repo secret with it, then append
+      # -Dsonar.qualitygate.wait=true to the line below. Nothing else changes.
+      run: mvn -B sonar:sonar
 
     - name: Upload coverage to Codecov
       if: success() || failure()
