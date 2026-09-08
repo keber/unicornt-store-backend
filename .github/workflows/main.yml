@@ -104,23 +104,32 @@ jobs:
         name: maven-test-reports
         path: target/
 
+    # TEMPORARY diagnostic, removed before merge. Attempt 1 of the quality-gate
+    # wait failed with "Not authorized or project not found" and the cause was
+    # inferred from that string alone. This asks the API directly, with the same
+    # secret the scanner uses, so the next failure names itself. Prints HTTP
+    # codes and bodies only — never the token.
+    - name: Probe what SONAR_TOKEN is allowed to do
+      continue-on-error: true
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        probe() {
+          code=$(curl -s -o /tmp/body -w '%{http_code}' -u "${SONAR_TOKEN}:" "$2")
+          echo "--- $1 -> HTTP ${code}"
+          head -c 400 /tmp/body; echo
+        }
+        probe "authentication/validate"           "https://sonarcloud.io/api/authentication/validate"
+        probe "users/current (user tokens only)"           "https://sonarcloud.io/api/users/current"
+        probe "qualitygates/project_status (what the wait polls)"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=keber_unicornt-store-backend"
+        probe "ce/activity (the task poll)"           "https://sonarcloud.io/api/ce/activity?component=keber_unicornt-store-backend&ps=1"
+
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # `deploy` needs this job, so a failed analysis already stops a rollout.
-      #
-      # The stronger form — -Dsonar.qualitygate.wait=true, which polls until the
-      # gate is decided and fails on red — is NOT enabled, because it cannot work
-      # with the current secret. Run #34239187366 proved it: the analysis uploaded
-      # fine and the gate came back green, then the wait step died with "Not
-      # authorized or project not found". Submitting an analysis and reading the
-      # gate result are separate permissions, and SONAR_TOKEN is a project
-      # analysis token, which only has the first.
-      #
-      # To turn it on: SonarCloud > My Account > Security > generate a **User
-      # Token**, replace the SONAR_TOKEN repo secret with it, then append
-      # -Dsonar.qualitygate.wait=true to the line below. Nothing else changes.
-      run: mvn -B sonar:sonar
+      # qualitygate.wait polls until the gate is decided and fails the step on red.
+      # Combined with `deploy` needing this job, a red gate stops the rollout.
+      run: mvn -B sonar:sonar -Dsonar.qualitygate.wait=true
 
     - name: Upload coverage to Codecov
       if: success() || failure()
