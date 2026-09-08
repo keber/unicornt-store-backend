@@ -59,7 +59,7 @@ jobs:
       # shows next to main-only report links.
       - name: Generate Test badge
         if: (success() || failure()) && github.ref == 'refs/heads/main'
-        uses: gaelgirodon/ci-badges-action@v1
+        uses: gaelgirodon/ci-badges-action@07a65145ff9feb271f426865f940977a94578ad4 # v1.10.0
         with:
           gist-id: ${{ secrets.GIST_ID }}
           token: ${{ secrets.GIST_TOKEN }}
@@ -107,15 +107,7 @@ jobs:
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # TEMPORARY, removed once the finding is identified. Analysing under
-      # pullrequest coordinates makes the result readable: this organization
-      # cannot read branch data (HTTP 403) but PR-scoped reads answer 200, and
-      # the scanner takes these without a real GitHub PR existing.
-      run: >-
-        mvn -B sonar:sonar
-        -Dsonar.pullrequest.key=24
-        -Dsonar.pullrequest.branch=${{ github.ref_name }}
-        -Dsonar.pullrequest.base=main
+      run: mvn -B sonar:sonar
 
     # The gate check by hand, instead of -Dsonar.qualitygate.wait=true. That flag
     # fails on this project with "Not authorized or project not found" on scanner
@@ -150,7 +142,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       if: success() || failure()
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./target/site/jacoco/jacoco.xml
@@ -175,7 +167,7 @@ jobs:
 
     - name: Deploy reports to GitHub Pages
       if: github.ref == 'refs/heads/main'
-      uses: peaceiris/actions-gh-pages@v4
+      uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./target/site/combined
@@ -230,19 +222,19 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       # The image is built entirely inside the multi-stage Dockerfile (Maven
       # runs there); the `test` job already covers compilation, so there is no
       # separate jar build on the runner.
       - name: Build and push image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           push: true
