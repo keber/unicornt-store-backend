@@ -104,32 +104,6 @@ jobs:
         name: maven-test-reports
         path: target/
 
-    # TEMPORARY diagnostic, removed before merge. Attempt 1 of the quality-gate
-    # wait failed with "Not authorized or project not found" and the cause was
-    # inferred from that string alone. This asks the API directly, with the same
-    # secret the scanner uses, so the next failure names itself. Prints HTTP
-    # codes and bodies only — never the token.
-    - name: Probe what SONAR_TOKEN is allowed to do
-      continue-on-error: true
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      run: |
-        probe() {
-          code=$(curl -s -o /tmp/body -w '%{http_code}' -u "${SONAR_TOKEN}:" "$2")
-          echo "--- $1 -> HTTP ${code}"
-          head -c 400 /tmp/body; echo
-        }
-        probe "authentication/validate"           "https://sonarcloud.io/api/authentication/validate"
-        probe "users/current (user tokens only)"           "https://sonarcloud.io/api/users/current"
-        probe "qualitygates/project_status (what the wait polls)"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=keber_unicornt-store-backend"
-        probe "ce/activity (the task poll)"           "https://sonarcloud.io/api/ce/activity?component=keber_unicornt-store-backend&ps=1"
-        probe "ce/component branch-scoped"           "https://sonarcloud.io/api/ce/component?component=keber_unicornt-store-backend&branch=${GITHUB_REF_NAME}"
-        probe "project_status branch-scoped"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=keber_unicornt-store-backend&branch=${GITHUB_REF_NAME}"
-        enc=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["GITHUB_REF_NAME"], safe=""))')
-        probe "project_status branch-scoped, url-encoded"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=keber_unicornt-store-backend&branch=${enc}"
-        aid=$(curl -s -u "${SONAR_TOKEN}:" "https://sonarcloud.io/api/ce/component?component=keber_unicornt-store-backend&branch=${GITHUB_REF_NAME}" | python3 -c 'import json,sys; print((json.load(sys.stdin).get("current") or {}).get("analysisId",""))')
-        probe "project_status by analysisId (${aid:-none})"           "https://sonarcloud.io/api/qualitygates/project_status?analysisId=${aid}"
-
     - name: Run SonarCloud analysis
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -143,41 +117,42 @@ jobs:
     # to leave the compute queue and reads the gate, which is all the flag was
     # for; `deploy` needing this job is what turns a red gate into a stopped
     # rollout.
+    # Gated to main because the plan forbids anything else. SonarCloud answers
+    # any non-main gate read with HTTP 403 "Organization is not allowed to access
+    # data from non main branches" — scoped by branch, url-encoded or not, and
+    # even by analysisId when that analysis belongs to a branch. The unscoped
+    # read, which is main's, returns 200 with the same token in the same run.
+    #
+    # That 403 is also what -Dsonar.qualitygate.wait=true hits, on scanner 3.11
+    # and 5.8 alike; it reports it as "Not authorized or project not found",
+    # which reads like a credential problem and is not one. The token is a user
+    # token and api/users/current, api/ce/component and the unscoped gate read
+    # all answer 200 for it.
+    #
+    # So: prod deploys are gated on the gate, dev/qa deploys are not — they still
+    # wait on this job, so a failed analysis or a broken report publish stops
+    # them. Gating those two as well needs a paid plan. PRs are covered by the
+    # "SonarCloud Code Analysis" check, which is worth making a required check on
+    # the rulesets.
     - name: Fail on a red quality gate
+      if: github.ref == 'refs/heads/main'
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         PROJECT: keber_unicornt-store-backend
-        PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
         set -euo pipefail
-        if [ -n "${PR_NUMBER}" ]; then scope="pullRequest=${PR_NUMBER}"; else scope="branch=${GITHUB_REF_NAME}"; fi
-
         api() { curl -sS -u "${SONAR_TOKEN}:" "https://sonarcloud.io/api/$1"; }
 
-        # Wait for the analysis this job just submitted to leave the compute queue,
-        # then take its id. Asking for the gate by analysisId is deliberate: the
-        # branch-scoped read (projectKey + branch), which is what
-        # -Dsonar.qualitygate.wait=true does under the hood, answers 403 for this
-        # token — proven by the probe step, where the unscoped read returns 200 in
-        # the same breath. ce/component accepts the same branch fine.
-        analysis=""
         for i in $(seq 1 60); do
-          state=$(api "ce/component?component=${PROJECT}&${scope}")
-          queued=$(printf '%s' "${state}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d.get("queue") or []))')
-          analysis=$(printf '%s' "${state}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print((d.get("current") or {}).get("analysisId",""))')
-          if [ "${queued}" = "0" ] && [ -n "${analysis}" ]; then break; fi
-          echo "  waiting for the analysis (${queued} queued)..."
+          queued=$(api "ce/component?component=${PROJECT}"             | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("queue") or []))')
+          [ "${queued}" = "0" ] && break
+          echo "  analysis still queued (${queued}), waiting..."
           sleep 5
         done
 
-        if [ -z "${analysis}" ]; then
-          echo "::error::no completed SonarCloud analysis for ${scope} after 5 minutes"
-          exit 1
-        fi
-
-        api "qualitygates/project_status?analysisId=${analysis}" > gate.json
+        api "qualitygates/project_status?projectKey=${PROJECT}" > gate.json
         status=$(python3 -c 'import json; print(json.load(open("gate.json")).get("projectStatus",{}).get("status","UNKNOWN"))')
-        echo "quality gate for analysis ${analysis}: ${status}"
+        echo "quality gate: ${status}"
 
         if [ "${status}" != "OK" ]; then
           cat gate.json
