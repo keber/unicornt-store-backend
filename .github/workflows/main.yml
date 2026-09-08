@@ -113,7 +113,7 @@ jobs:
       # the scanner takes these without a real GitHub PR existing.
       run: >-
         mvn -B sonar:sonar
-        -Dsonar.pullrequest.key=9999
+        -Dsonar.pullrequest.key=24
         -Dsonar.pullrequest.branch=${{ github.ref_name }}
         -Dsonar.pullrequest.base=main
 
