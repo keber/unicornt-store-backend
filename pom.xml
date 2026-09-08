@@ -32,6 +32,12 @@
 		<sonar.projectKey>keber_unicornt-store-backend</sonar.projectKey>
 		<sonar.organization>keber</sonar.organization>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<!--
+		    Mirrors the jacoco-maven-plugin <excludes> below. Without this, Sonar scores every
+		    file missing from jacoco.xml as 0% covered and reports a different number than
+		    JaCoCo and Codecov do for the same build.
+		-->
+		<sonar.coverage.exclusions>**/infrastructure/config/OpenApiConfig.java</sonar.coverage.exclusions>
     </properties>
 
     <dependencyManagement>
@@ -212,12 +218,20 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
                 <configuration>
+                    <!--
+                        One exclusion, and it has to earn its place: OpenApiConfig is springdoc
+                        metadata (a title, a version, a licence block) with no branch to get wrong,
+                        so a test there would assert a literal. Everything else that used to sit in
+                        this list was measured with instrumentation on before being removed:
+                        ErrorResponse and CorsConfig came out at 100%, the DTO records at 95%, the
+                        JPA entities at 82% (covered incidentally by the mapper and adapter tests) —
+                        excluding them bought nothing and inflated the headline number. The two that
+                        genuinely read 0%, ProductionApiDocsGuard and the StoreApplication admin
+                        bootstrap, were hiding real logic and now have tests of their own.
+                        Keep this mirrored in sonar.coverage.exclusions.
+                    -->
                     <excludes>
-                        <exclude>com/unicornt/store/StoreApplication.class</exclude>
-                        <exclude>com/unicornt/store/infrastructure/config/**</exclude>
-                        <exclude>com/unicornt/store/infrastructure/web/dto/**</exclude>
-                        <exclude>com/unicornt/store/infrastructure/persistence/entity/**</exclude>
-                        <exclude>com/unicornt/store/infrastructure/web/error/ErrorResponse*</exclude>
+                        <exclude>com/unicornt/store/infrastructure/config/OpenApiConfig.class</exclude>
                     </excludes>
                 </configuration>
                 <executions>
