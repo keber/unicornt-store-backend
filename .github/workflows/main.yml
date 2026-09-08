@@ -15,6 +15,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Least privilege by default. Only publish-reports needs more, and it says so
+# on itself: peaceiris/actions-gh-pages pushes an orphan commit to gh-pages
+# with GITHUB_TOKEN, which read alone cannot do. A workflow-wide `contents:
+# read` with no job-level override — the fix a scanner will suggest here —
+# breaks the report publish on the next push to main, and it fails *after* the
+# deploy, looking unrelated.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Run Tests
@@ -82,6 +91,8 @@ jobs:
     name: Upload Coverage and Publish Reports to GitHub Pages
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh-pages publish; see the note at the top of the file
 
     steps:
     - name: Checkout repo
@@ -182,6 +193,7 @@ jobs:
   resolve-target:
     name: Resolve deploy channel
     needs: test
+    permissions: {}
     if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/qa' || github.ref == 'refs/heads/main')
@@ -253,19 +265,28 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-target.outputs.channel }}
     concurrency: deploy-${{ needs.resolve-target.outputs.channel }}
+    permissions: {}
 
     steps:
       - name: Set up SSH key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
           mkdir -p ~/.ssh
           # printf preserves newlines; Actions masks the secret in logs.
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$DEPLOY_PORT" "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Trigger deploy on the server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          CHANNEL: ${{ needs.resolve-target.outputs.channel }}
+          SHA_TAG: ${{ needs.resolve-target.outputs.sha_tag }}
         run: |
           # DEPLOY_USER is deploy-<channel>. Its key is pinned server-side to
           #   restrict,command="sudo -n /usr/local/sbin/deploy-unicornt-<channel>"
@@ -275,10 +296,10 @@ jobs:
           # channel tag that `build-and-push` just updated. The trailing args are
           # only a breadcrumb in the CI log and the server's auth log.
           ssh -i ~/.ssh/deploy_key \
-              -p "${{ secrets.DEPLOY_PORT }}" \
+              -p "$DEPLOY_PORT" \
               -o StrictHostKeyChecking=yes \
-              "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-              "deploy ${{ needs.resolve-target.outputs.channel }} ${{ needs.resolve-target.outputs.sha_tag }}"
+              "$DEPLOY_USER@$DEPLOY_HOST" \
+              "deploy $CHANNEL $SHA_TAG"
 
       - name: Smoke check (API 200 + CORS)
         env:
@@ -309,3 +330,44 @@ jobs:
       - name: Clean up SSH key
         if: always()
         run: rm -f ~/.ssh/deploy_key
+
+  # ---------------------------------------------------------------------------
+  # P9: the write path, after the dev deploy.
+  #
+  # The smoke step in `deploy` is a single GET /products — one read, which proves
+  # almost nothing about a database. This registers an account, logs in, fills a
+  # cart and places an order, exercising the identity sequences, the users_roles
+  # join and the transaction spanning orders + order_items + the cart clear.
+  #
+  # It also keeps the collection honest. It went stale on 2026-09-02 and nobody
+  # noticed for three weeks, because nothing connects a hand-written .bru file to
+  # the DTO it copies: commit 41543f7 renamed qty -> quantity, replaced addressId
+  # with an inline shippingAddress and deleted /api/v1/addresses, silently
+  # invalidating four requests. A CI run turns that silence into a red build.
+  #
+  # dev only, deliberately: this writes real rows, and dev's data is disposable.
+  # The requests are named one by one rather than by folder, because a folder run
+  # goes in seq order and Cart/Remove Item (seq 4) would empty the cart before
+  # Orders ever runs.
+  # ---------------------------------------------------------------------------
+  api-write-path:
+    name: API write-path check
+    needs: [resolve-target, deploy]
+    if: needs.resolve-target.outputs.channel == 'dev'
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Run the Bruno write path against dev
+        working-directory: docs/bruno/unicornt-store
+        env:
+          API_BASE_URL: https://${{ vars.HOST }}
+        run: >-
+          npx --yes @usebruno/cli@4.1.0 run
+          "Auth/Register.bru" "Auth/Login.bru" "Auth/Me.bru"
+          "Cart/Add Item.bru" "Cart/Get Cart.bru"
+          "Orders/Create Order.bru" "Orders/Get Order.bru"
+          --env dev --env-var baseUrl="$API_BASE_URL"
