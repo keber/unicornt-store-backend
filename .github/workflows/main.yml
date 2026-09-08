@@ -125,6 +125,10 @@ jobs:
         probe "ce/activity (the task poll)"           "https://sonarcloud.io/api/ce/activity?component=keber_unicornt-store-backend&ps=1"
         probe "ce/component branch-scoped"           "https://sonarcloud.io/api/ce/component?component=keber_unicornt-store-backend&branch=${GITHUB_REF_NAME}"
         probe "project_status branch-scoped"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=keber_unicornt-store-backend&branch=${GITHUB_REF_NAME}"
+        enc=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["GITHUB_REF_NAME"], safe=""))')
+        probe "project_status branch-scoped, url-encoded"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=keber_unicornt-store-backend&branch=${enc}"
+        aid=$(curl -s -u "${SONAR_TOKEN}:" "https://sonarcloud.io/api/ce/component?component=keber_unicornt-store-backend&branch=${GITHUB_REF_NAME}" | python3 -c 'import json,sys; print((json.load(sys.stdin).get("current") or {}).get("analysisId",""))')
+        probe "project_status by analysisId (${aid:-none})"           "https://sonarcloud.io/api/qualitygates/project_status?analysisId=${aid}"
 
     - name: Run SonarCloud analysis
       env:
@@ -147,21 +151,35 @@ jobs:
       run: |
         set -euo pipefail
         if [ -n "${PR_NUMBER}" ]; then scope="pullRequest=${PR_NUMBER}"; else scope="branch=${GITHUB_REF_NAME}"; fi
-        echo "reading the gate for ${scope}"
 
+        api() { curl -sS -u "${SONAR_TOKEN}:" "https://sonarcloud.io/api/$1"; }
+
+        # Wait for the analysis this job just submitted to leave the compute queue,
+        # then take its id. Asking for the gate by analysisId is deliberate: the
+        # branch-scoped read (projectKey + branch), which is what
+        # -Dsonar.qualitygate.wait=true does under the hood, answers 403 for this
+        # token — proven by the probe step, where the unscoped read returns 200 in
+        # the same breath. ce/component accepts the same branch fine.
+        analysis=""
         for i in $(seq 1 60); do
-          queued=$(curl -sS -u "${SONAR_TOKEN}:"             "https://sonarcloud.io/api/ce/component?component=${PROJECT}&${scope}"             | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("queue") or []))')
-          [ "${queued}" = "0" ] && break
-          echo "  analysis still queued (${queued}), waiting..."
+          state=$(api "ce/component?component=${PROJECT}&${scope}")
+          queued=$(printf '%s' "${state}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d.get("queue") or []))')
+          analysis=$(printf '%s' "${state}" | python3 -c 'import json,sys; d=json.load(sys.stdin); print((d.get("current") or {}).get("analysisId",""))')
+          if [ "${queued}" = "0" ] && [ -n "${analysis}" ]; then break; fi
+          echo "  waiting for the analysis (${queued} queued)..."
           sleep 5
         done
 
-        curl -sS -u "${SONAR_TOKEN}:"           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=${PROJECT}&${scope}" > gate.json
+        if [ -z "${analysis}" ]; then
+          echo "::error::no completed SonarCloud analysis for ${scope} after 5 minutes"
+          exit 1
+        fi
+
+        api "qualitygates/project_status?analysisId=${analysis}" > gate.json
         status=$(python3 -c 'import json; print(json.load(open("gate.json")).get("projectStatus",{}).get("status","UNKNOWN"))')
-        echo "quality gate: ${status}"
+        echo "quality gate for analysis ${analysis}: ${status}"
 
         if [ "${status}" != "OK" ]; then
-          echo "failing conditions:"
           cat gate.json
           echo "::error::SonarCloud quality gate is ${status}"
           exit 1
