@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Product.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.domain.model</a> &gt; <span class="el_source">Product.java</span></div><h1>Product.java</h1><pre class="source lang-java linenums">package com.unicornt.store.domain.model;
+
+import com.unicornt.store.domain.valueobject.Money;
+
+import java.util.Objects;
+
+/**
+ * A catalog product.
+ *
+ * &lt;p&gt;Plain Java. Invariants enforced on construction (PLAN.md &amp;sect;2.4):
+ * the name is required and at most {@value #MAX_NAME_LENGTH} characters, the price
+ * is strictly positive, the stock is not negative, and both the category and the
+ * product type are referenced by a positive id. The &lt;em&gt;existence&lt;/em&gt; of that
+ * category and product type is a cross-aggregate check the use case performs
+ * against the repositories.&lt;/p&gt;
+ *
+ * &lt;p&gt;{@code categoryName} / {@code productTypeName} are read-model labels filled by
+ * the persistence layer; they never carry an invariant.&lt;/p&gt;
+ */
+public final class Product {
+
+    public static final int MAX_NAME_LENGTH = 200;
+
+    private final long id;
+    private final String name;
+    private final String description;
+    private final String imageBase;
+    private final Money price;
+    private final long categoryId;
+    private final String categoryName;
+    private final long productTypeId;
+    private final String productTypeName;
+    private final int stock;
+    private final boolean active;
+
+    public Product(long id, String name, String description, String imageBase, Money price,
+                   long categoryId, String categoryName,
+                   long productTypeId, String productTypeName,
+<span class="fc" id="L39">                   int stock, boolean active) {</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        String trimmedName = name == null ? &quot;&quot; : name.trim();</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">        if (trimmedName.isEmpty()) {</span>
+<span class="fc" id="L42">            throw new IllegalArgumentException(&quot;product name is required&quot;);</span>
+        }
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (trimmedName.length() &gt; MAX_NAME_LENGTH) {</span>
+<span class="fc" id="L45">            throw new IllegalArgumentException(</span>
+                    &quot;product name must not exceed &quot; + MAX_NAME_LENGTH + &quot; characters&quot;);
+        }
+<span class="fc" id="L48">        Objects.requireNonNull(price, &quot;price is required&quot;);</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        if (!price.isPositive()) {</span>
+<span class="fc" id="L50">            throw new IllegalArgumentException(&quot;price must be greater than 0&quot;);</span>
+        }
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        if (stock &lt; 0) {</span>
+<span class="fc" id="L53">            throw new IllegalArgumentException(&quot;stock must not be negative&quot;);</span>
+        }
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (categoryId &lt;= 0) {</span>
+<span class="fc" id="L56">            throw new IllegalArgumentException(&quot;a category must be referenced&quot;);</span>
+        }
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (productTypeId &lt;= 0) {</span>
+<span class="fc" id="L59">            throw new IllegalArgumentException(&quot;a product type must be referenced&quot;);</span>
+        }
+<span class="fc" id="L61">        this.id = id;</span>
+<span class="fc" id="L62">        this.name = trimmedName;</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        this.description = description == null ? &quot;&quot; : description;</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        this.imageBase = imageBase == null ? &quot;&quot; : imageBase;</span>
+<span class="fc" id="L65">        this.price = price;</span>
+<span class="fc" id="L66">        this.categoryId = categoryId;</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        this.categoryName = categoryName == null ? &quot;&quot; : categoryName;</span>
+<span class="fc" id="L68">        this.productTypeId = productTypeId;</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        this.productTypeName = productTypeName == null ? &quot;&quot; : productTypeName;</span>
+<span class="fc" id="L70">        this.stock = stock;</span>
+<span class="fc" id="L71">        this.active = active;</span>
+<span class="fc" id="L72">    }</span>
+
+    /** A brand-new product with no id and no read-model labels yet. */
+    public static Product create(String name, String description, String imageBase, Money price,
+                                 long categoryId, long productTypeId, int stock, boolean active) {
+<span class="fc" id="L77">        return new Product(0L, name, description, imageBase, price,</span>
+                categoryId, null, productTypeId, null, stock, active);
+    }
+
+    /** The same product with a different stock level (e.g. after an order decrements it). */
+    public Product withStock(int newStock) {
+<span class="fc" id="L83">        return new Product(id, name, description, imageBase, price,</span>
+                categoryId, categoryName, productTypeId, productTypeName, newStock, active);
+    }
+
+    public boolean hasStockFor(int units) {
+<span class="fc bfc" id="L88" title="All 2 branches covered.">        return stock &gt;= units;</span>
+    }
+
+    public long id() {
+<span class="fc" id="L92">        return id;</span>
+    }
+
+    public String name() {
+<span class="fc" id="L96">        return name;</span>
+    }
+
+    public String description() {
+<span class="fc" id="L100">        return description;</span>
+    }
+
+    public String imageBase() {
+<span class="fc" id="L104">        return imageBase;</span>
+    }
+
+    public Money price() {
+<span class="fc" id="L108">        return price;</span>
+    }
+
+    public long categoryId() {
+<span class="fc" id="L112">        return categoryId;</span>
+    }
+
+    public String categoryName() {
+<span class="fc" id="L116">        return categoryName;</span>
+    }
+
+    public long productTypeId() {
+<span class="fc" id="L120">        return productTypeId;</span>
+    }
+
+    public String productTypeName() {
+<span class="fc" id="L124">        return productTypeName;</span>
+    }
+
+    public int stock() {
+<span class="fc" id="L128">        return stock;</span>
+    }
+
+    public boolean isActive() {
+<span class="fc" id="L132">        return active;</span>
+    }
+
+    @Override
+    public boolean equals(Object other) {
+<span class="fc bfc" id="L137" title="All 2 branches covered.">        return other instanceof Product product</span>
+                &amp;&amp; product.id == this.id
+<span class="fc bfc" id="L139" title="All 2 branches covered.">                &amp;&amp; product.name.equals(this.name)</span>
+<span class="fc bfc" id="L140" title="All 10 branches covered.">                &amp;&amp; product.price.equals(this.price)</span>
+                &amp;&amp; product.categoryId == this.categoryId
+                &amp;&amp; product.productTypeId == this.productTypeId
+                &amp;&amp; product.stock == this.stock
+<span class="fc bfc" id="L144" title="All 2 branches covered.">                &amp;&amp; product.active == this.active;</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="fc" id="L149">        return Objects.hash(id, name, price, categoryId, productTypeId, stock, active);</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L154">        return &quot;Product{id=&quot; + id + &quot;, name='&quot; + name + &quot;', price=&quot; + price</span>
+                + &quot;, stock=&quot; + stock + &quot;, active=&quot; + active + '}';
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

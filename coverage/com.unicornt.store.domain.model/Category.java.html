@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Category.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.domain.model</a> &gt; <span class="el_source">Category.java</span></div><h1>Category.java</h1><pre class="source lang-java linenums">package com.unicornt.store.domain.model;
+
+import java.text.Normalizer;
+import java.util.Locale;
+import java.util.Objects;
+
+/**
+ * A product category (Unicorns, Rainbows, Stars).
+ *
+ * &lt;p&gt;Plain Java. Invariants are enforced on construction: the name is required and
+ * at most {@value #MAX_NAME_LENGTH} characters, and the slug is a non-empty,
+ * lower-case, accent-free, hyphen-separated token. Slug &lt;em&gt;uniqueness&lt;/em&gt; spans
+ * the whole catalog, so it is checked by the use case against the repository, not
+ * here.&lt;/p&gt;
+ */
+public final class Category {
+
+    public static final int MAX_NAME_LENGTH = 100;
+
+    private final long id;
+    private final String name;
+    private final String slug;
+
+<span class="fc" id="L24">    public Category(long id, String name, String slug) {</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">        String trimmedName = name == null ? &quot;&quot; : name.trim();</span>
+<span class="fc bfc" id="L26" title="All 2 branches covered.">        if (trimmedName.isEmpty()) {</span>
+<span class="fc" id="L27">            throw new IllegalArgumentException(&quot;category name is required&quot;);</span>
+        }
+<span class="fc bfc" id="L29" title="All 2 branches covered.">        if (trimmedName.length() &gt; MAX_NAME_LENGTH) {</span>
+<span class="fc" id="L30">            throw new IllegalArgumentException(</span>
+                    &quot;category name must not exceed &quot; + MAX_NAME_LENGTH + &quot; characters&quot;);
+        }
+<span class="fc bfc" id="L33" title="All 4 branches covered.">        String normalizedSlug = slug == null || slug.isBlank() ? slugify(trimmedName) : slugify(slug);</span>
+<span class="fc" id="L34">        this.id = id;</span>
+<span class="fc" id="L35">        this.name = trimmedName;</span>
+<span class="fc" id="L36">        this.slug = normalizedSlug;</span>
+<span class="fc" id="L37">    }</span>
+
+    /** A brand-new category (no id yet); the slug is derived from the name when blank. */
+    public static Category create(String name, String slug) {
+<span class="fc" id="L41">        return new Category(0L, name, slug);</span>
+    }
+
+    /**
+     * Builds a URL-friendly identifier: lower case, accent free, hyphen separated.
+     * NFD splits an accented letter into a base letter plus a combining mark; the
+     * alphanumeric filter then drops the marks. Throws when nothing survives.
+     */
+    public static String slugify(String value) {
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        String decomposed = Normalizer.normalize(value == null ? &quot;&quot; : value, Normalizer.Form.NFD);</span>
+<span class="fc" id="L51">        String withoutMarks = decomposed.replaceAll(&quot;\\p{M}+&quot;, &quot;&quot;);</span>
+<span class="fc" id="L52">        String slug = withoutMarks.toLowerCase(Locale.ROOT)</span>
+<span class="fc" id="L53">                .replaceAll(&quot;[^a-z0-9]+&quot;, &quot;-&quot;)</span>
+<span class="fc" id="L54">                .replaceAll(&quot;(^-|-$)&quot;, &quot;&quot;);</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (slug.isBlank()) {</span>
+<span class="fc" id="L56">            throw new IllegalArgumentException(</span>
+                    &quot;category name must contain at least one alphanumeric character&quot;);
+        }
+<span class="fc" id="L59">        return slug;</span>
+    }
+
+    public long id() {
+<span class="fc" id="L63">        return id;</span>
+    }
+
+    public String name() {
+<span class="fc" id="L67">        return name;</span>
+    }
+
+    public String slug() {
+<span class="fc" id="L71">        return slug;</span>
+    }
+
+    @Override
+    public boolean equals(Object other) {
+<span class="fc bfc" id="L76" title="All 2 branches covered.">        return other instanceof Category category</span>
+                &amp;&amp; category.id == this.id
+<span class="fc bfc" id="L78" title="All 2 branches covered.">                &amp;&amp; category.name.equals(this.name)</span>
+<span class="fc bfc" id="L79" title="All 4 branches covered.">                &amp;&amp; category.slug.equals(this.slug);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="fc" id="L84">        return Objects.hash(id, name, slug);</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L89">        return &quot;Category{id=&quot; + id + &quot;, name='&quot; + name + &quot;', slug='&quot; + slug + &quot;'}&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

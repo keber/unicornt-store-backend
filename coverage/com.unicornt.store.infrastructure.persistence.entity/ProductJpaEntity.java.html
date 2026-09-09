@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductJpaEntity.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.persistence.entity</a> &gt; <span class="el_source">ProductJpaEntity.java</span></div><h1>ProductJpaEntity.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.persistence.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+
+/**
+ * Catalog product row. The transient category and product-type names are filled by
+ * the persistence mapper from a lookup; they are not columns of the products table.
+ */
+@Entity
+@Table(name = &quot;products&quot;)
+public class ProductJpaEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    private String name;
+
+    @Column(name = &quot;product_type_id&quot;)
+    private int productTypeId;
+
+    @Transient
+    private String productTypeName;
+
+    @Column(name = &quot;category_id&quot;)
+    private int categoryId;
+
+    @Transient
+    private String categoryName;
+
+    private int price;
+    private String description;
+
+    @Column(name = &quot;image_base&quot;)
+    private String imageBase;
+
+    @Column(name = &quot;is_active&quot;)
+    private boolean active;
+
+    private int stock;
+
+<span class="fc" id="L48">    public ProductJpaEntity() {</span>
+        // required no-arg constructor for JPA; rows are populated through the setters
+<span class="fc" id="L50">    }</span>
+
+    public int getId() {
+<span class="fc" id="L53">        return id;</span>
+    }
+
+    public String getName() {
+<span class="fc" id="L57">        return name;</span>
+    }
+
+    public int getProductTypeId() {
+<span class="fc" id="L61">        return productTypeId;</span>
+    }
+
+    public String getProductTypeName() {
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        return productTypeName != null ? productTypeName : &quot;&quot;;</span>
+    }
+
+    public int getCategoryId() {
+<span class="fc" id="L69">        return categoryId;</span>
+    }
+
+    public String getCategoryName() {
+<span class="fc bfc" id="L73" title="All 2 branches covered.">        return categoryName != null ? categoryName : &quot;&quot;;</span>
+    }
+
+    public int getPrice() {
+<span class="fc" id="L77">        return price;</span>
+    }
+
+    public String getDescription() {
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        return description != null ? description : &quot;&quot;;</span>
+    }
+
+    public String getImageBase() {
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        return imageBase != null ? imageBase : &quot;&quot;;</span>
+    }
+
+    public boolean isActive() {
+<span class="fc" id="L89">        return active;</span>
+    }
+
+    public int getStock() {
+<span class="fc" id="L93">        return stock;</span>
+    }
+
+    public void setId(int id) {
+<span class="fc" id="L97">        this.id = id;</span>
+<span class="fc" id="L98">    }</span>
+
+    public void setName(String name) {
+<span class="fc" id="L101">        this.name = name;</span>
+<span class="fc" id="L102">    }</span>
+
+    public void setProductTypeId(int productTypeId) {
+<span class="fc" id="L105">        this.productTypeId = productTypeId;</span>
+<span class="fc" id="L106">    }</span>
+
+    public void setProductTypeName(String productTypeName) {
+<span class="fc" id="L109">        this.productTypeName = productTypeName;</span>
+<span class="fc" id="L110">    }</span>
+
+    public void setCategoryId(int categoryId) {
+<span class="fc" id="L113">        this.categoryId = categoryId;</span>
+<span class="fc" id="L114">    }</span>
+
+    public void setCategoryName(String categoryName) {
+<span class="fc" id="L117">        this.categoryName = categoryName;</span>
+<span class="fc" id="L118">    }</span>
+
+    public void setPrice(int price) {
+<span class="fc" id="L121">        this.price = price;</span>
+<span class="fc" id="L122">    }</span>
+
+    public void setDescription(String description) {
+<span class="fc" id="L125">        this.description = description;</span>
+<span class="fc" id="L126">    }</span>
+
+    public void setImageBase(String imageBase) {
+<span class="fc" id="L129">        this.imageBase = imageBase;</span>
+<span class="fc" id="L130">    }</span>
+
+    public void setActive(boolean active) {
+<span class="fc" id="L133">        this.active = active;</span>
+<span class="fc" id="L134">    }</span>
+
+    public void setStock(int stock) {
+<span class="fc" id="L137">        this.stock = stock;</span>
+<span class="fc" id="L138">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

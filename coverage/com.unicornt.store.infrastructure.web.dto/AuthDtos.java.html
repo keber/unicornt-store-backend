@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthDtos.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.web.dto</a> &gt; <span class="el_source">AuthDtos.java</span></div><h1>AuthDtos.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.web.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+import java.util.List;
+
+/** Request and response payloads of the authentication endpoints. */
+public final class AuthDtos {
+
+    private AuthDtos() {
+    }
+
+    /** Body of a self-registration request. */
+    @Schema(name = &quot;RegisterRequest&quot;, description = &quot;Data required to open a new account&quot;)
+<span class="fc" id="L18">    public record RegisterRequest(</span>
+
+            @Schema(description = &quot;Given name&quot;, example = &quot;Ada&quot;, requiredMode = Schema.RequiredMode.REQUIRED)
+            @NotBlank(message = &quot;First name is required&quot;)
+            @Size(max = 100, message = &quot;First name must not exceed 100 characters&quot;)
+            String firstName,
+
+            @Schema(description = &quot;Family name&quot;, example = &quot;Lovelace&quot;, requiredMode = Schema.RequiredMode.REQUIRED)
+            @NotBlank(message = &quot;Last name is required&quot;)
+            @Size(max = 100, message = &quot;Last name must not exceed 100 characters&quot;)
+            String lastName,
+
+            @Schema(description = &quot;Email, also used as the login identity&quot;, example = &quot;ada@example.com&quot;,
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            @NotBlank(message = &quot;Email is required&quot;)
+            @Email(message = &quot;Email must be a well formed address&quot;)
+            @Size(max = 150, message = &quot;Email must not exceed 150 characters&quot;)
+            String email,
+
+            @Schema(description = &quot;Plain password, stored hashed with BCrypt&quot;, example = &quot;s3cret!&quot;,
+                    requiredMode = Schema.RequiredMode.REQUIRED, minLength = 6)
+            @NotBlank(message = &quot;Password is required&quot;)
+            @Size(min = 6, max = 100, message = &quot;Password must be between 6 and 100 characters&quot;)
+            String password) {
+    }
+
+    /** Body of a login request. */
+    @Schema(name = &quot;LoginRequest&quot;, description = &quot;Credentials exchanged for an access token&quot;)
+<span class="fc" id="L46">    public record LoginRequest(</span>
+
+            @Schema(description = &quot;Registered email&quot;, example = &quot;ada@example.com&quot;,
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            @NotBlank(message = &quot;Email is required&quot;)
+            String email,
+
+            @Schema(description = &quot;Account password&quot;, example = &quot;s3cret!&quot;,
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            @NotBlank(message = &quot;Password is required&quot;)
+            String password) {
+    }
+
+    /** Access token issued after a successful login. */
+    @Schema(name = &quot;TokenResponse&quot;, description = &quot;Signed access token and its lifetime&quot;)
+<span class="fc" id="L61">    public record TokenResponse(</span>
+
+            @Schema(description = &quot;JWT to be sent as an Authorization Bearer header&quot;,
+                    example = &quot;eyJhbGciOiJIUzI1NiJ9...&quot;)
+            String token,
+
+            @Schema(description = &quot;Token lifetime in milliseconds&quot;, example = &quot;3600000&quot;)
+            long expiresIn) {
+    }
+
+    /** Identity of the caller, resolved from the security context. */
+    @Schema(name = &quot;MeResponse&quot;, description = &quot;Account behind the presented token&quot;)
+<span class="fc" id="L73">    public record MeResponse(</span>
+
+            @Schema(description = &quot;Account identifier&quot;, example = &quot;7&quot;)
+            Long id,
+
+            @Schema(description = &quot;Given name&quot;, example = &quot;Ada&quot;)
+            String firstName,
+
+            @Schema(description = &quot;Family name&quot;, example = &quot;Lovelace&quot;)
+            String lastName,
+
+            @Schema(description = &quot;Registered email&quot;, example = &quot;ada@example.com&quot;)
+            String email,
+
+            @Schema(description = &quot;Granted authorities, prefixed with ROLE_&quot;, example = &quot;[\&quot;ROLE_USER\&quot;]&quot;)
+            List&lt;String&gt; roles) {
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

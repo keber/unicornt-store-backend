@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PlaceOrderUseCase.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.application.usecase.ordering</a> &gt; <span class="el_source">PlaceOrderUseCase.java</span></div><h1>PlaceOrderUseCase.java</h1><pre class="source lang-java linenums">package com.unicornt.store.application.usecase.ordering;
+
+import com.unicornt.store.application.usecase.cart.ClearCartUseCase;
+import com.unicornt.store.application.usecase.cart.GetCartUseCase;
+import com.unicornt.store.application.usecase.cart.PricedCart;
+import com.unicornt.store.domain.exception.OutOfStockException;
+import com.unicornt.store.domain.model.Order;
+import com.unicornt.store.domain.model.OrderItem;
+import com.unicornt.store.domain.model.ShippingAddress;
+import com.unicornt.store.domain.repository.OrderRepository;
+import com.unicornt.store.domain.repository.StockRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Confirms the caller's cart into an order. One transaction, all or nothing:
+ * &lt;pre&gt;
+ *   load priced cart -&amp;gt; assert non-empty
+ *   for each line: decrement stock (fail -&amp;gt; OutOfStockException, rolls everything back)
+ *                  snapshot product name + unit price
+ *   build Order (total computed in the domain) -&amp;gt; save -&amp;gt; clear the cart
+ * &lt;/pre&gt;
+ * Payment is simulated, so the order is born {@code CONFIRMED}.
+ */
+@Service
+public class PlaceOrderUseCase {
+
+    private final GetCartUseCase getCart;
+    private final ClearCartUseCase clearCart;
+    private final StockRepository stock;
+    private final OrderRepository orders;
+
+    public PlaceOrderUseCase(GetCartUseCase getCart, ClearCartUseCase clearCart,
+<span class="fc" id="L37">                             StockRepository stock, OrderRepository orders) {</span>
+<span class="fc" id="L38">        this.getCart = getCart;</span>
+<span class="fc" id="L39">        this.clearCart = clearCart;</span>
+<span class="fc" id="L40">        this.stock = stock;</span>
+<span class="fc" id="L41">        this.orders = orders;</span>
+<span class="fc" id="L42">    }</span>
+
+    @Transactional
+    public OrderConfirmation execute(String userId, ShippingAddress shippingAddress) {
+<span class="fc" id="L46">        PricedCart cart = getCart.execute(userId);</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (cart.items().isEmpty()) {</span>
+<span class="fc" id="L48">            throw new IllegalArgumentException(&quot;The cart is empty&quot;);</span>
+        }
+
+<span class="fc" id="L51">        List&lt;OrderItem&gt; lines = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        for (PricedCart.Line line : cart.items()) {</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">            if (!stock.decreaseStock(line.productId(), line.quantity())) {</span>
+<span class="fc" id="L54">                throw new OutOfStockException(line.productId());</span>
+            }
+<span class="fc" id="L56">            lines.add(new OrderItem(line.productId(), line.productName(), line.unitPrice(), line.quantity()));</span>
+<span class="fc" id="L57">        }</span>
+
+<span class="fc" id="L59">        Order saved = orders.save(Order.place(userId, shippingAddress, lines));</span>
+<span class="fc" id="L60">        clearCart.execute(userId);</span>
+
+<span class="fc" id="L62">        return new OrderConfirmation(saved.id(), saved.status().name(), saved.total().amount());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

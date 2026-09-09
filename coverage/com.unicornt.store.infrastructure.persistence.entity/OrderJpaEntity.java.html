@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OrderJpaEntity.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.persistence.entity</a> &gt; <span class="el_source">OrderJpaEntity.java</span></div><h1>OrderJpaEntity.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.persistence.entity;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Order row. The shipping address is snapshotted inline in the {@code ship_*} columns
+ * (see migration V3); the legacy {@code address_id} / {@code shipping_address} columns
+ * are left unmapped and NULL.
+ */
+@Entity
+@Table(name = &quot;orders&quot;)
+public class OrderJpaEntity {
+
+<span class="fc" id="L29">    public enum Status {</span>
+<span class="fc" id="L30">        CONFIRMED,</span>
+<span class="fc" id="L31">        CANCELLED</span>
+    }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;user_id&quot;, nullable = false)
+    private Long userId;
+
+    @Column(name = &quot;ship_street&quot;)
+    private String shipStreet;
+
+    @Column(name = &quot;ship_city&quot;)
+    private String shipCity;
+
+    @Column(name = &quot;ship_region&quot;)
+    private String shipRegion;
+
+    @Column(name = &quot;ship_zip&quot;)
+    private String shipZip;
+
+<span class="fc" id="L53">    @Column(name = &quot;total&quot;, nullable = false, precision = 12, scale = 2)</span>
+    private BigDecimal total = BigDecimal.ZERO;
+
+<span class="fc" id="L56">    @Enumerated(EnumType.STRING)</span>
+    @Column(name = &quot;status&quot;, nullable = false, length = 20)
+    private Status status = Status.CONFIRMED;
+
+<span class="fc" id="L60">    @Column(name = &quot;created_at&quot;, nullable = false)</span>
+<span class="fc" id="L61">    private Instant createdAt = Instant.now();</span>
+
+<span class="fc" id="L63">    @OneToMany(mappedBy = &quot;order&quot;, cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)</span>
+    private List&lt;OrderItemJpaEntity&gt; items = new ArrayList&lt;&gt;();
+
+<span class="fc" id="L66">    public OrderJpaEntity() {</span>
+        // required no-arg constructor for JPA; rows are populated through the setters and addItem
+<span class="fc" id="L68">    }</span>
+
+    public void addItem(OrderItemJpaEntity item) {
+<span class="fc" id="L71">        item.setOrder(this);</span>
+<span class="fc" id="L72">        items.add(item);</span>
+<span class="fc" id="L73">    }</span>
+
+<span class="fc" id="L75">    public Long getId() { return id; }</span>
+<span class="fc" id="L76">    public void setId(Long id) { this.id = id; }</span>
+
+<span class="fc" id="L78">    public Long getUserId() { return userId; }</span>
+<span class="fc" id="L79">    public void setUserId(Long userId) { this.userId = userId; }</span>
+
+<span class="fc" id="L81">    public String getShipStreet() { return shipStreet; }</span>
+<span class="fc" id="L82">    public void setShipStreet(String shipStreet) { this.shipStreet = shipStreet; }</span>
+
+<span class="fc" id="L84">    public String getShipCity() { return shipCity; }</span>
+<span class="fc" id="L85">    public void setShipCity(String shipCity) { this.shipCity = shipCity; }</span>
+
+<span class="fc" id="L87">    public String getShipRegion() { return shipRegion; }</span>
+<span class="fc" id="L88">    public void setShipRegion(String shipRegion) { this.shipRegion = shipRegion; }</span>
+
+<span class="fc" id="L90">    public String getShipZip() { return shipZip; }</span>
+<span class="fc" id="L91">    public void setShipZip(String shipZip) { this.shipZip = shipZip; }</span>
+
+<span class="fc" id="L93">    public BigDecimal getTotal() { return total; }</span>
+<span class="fc" id="L94">    public void setTotal(BigDecimal total) { this.total = total; }</span>
+
+<span class="fc" id="L96">    public Status getStatus() { return status; }</span>
+<span class="fc" id="L97">    public void setStatus(Status status) { this.status = status; }</span>
+
+<span class="fc" id="L99">    public Instant getCreatedAt() { return createdAt; }</span>
+<span class="fc" id="L100">    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }</span>
+
+<span class="fc" id="L102">    public List&lt;OrderItemJpaEntity&gt; getItems() { return items; }</span>
+<span class="nc" id="L103">    public void setItems(List&lt;OrderItemJpaEntity&gt; items) { this.items = items; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

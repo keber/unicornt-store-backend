@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserPersistenceMapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.persistence.mapper</a> &gt; <span class="el_source">UserPersistenceMapper.java</span></div><h1>UserPersistenceMapper.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.persistence.mapper;
+
+import com.unicornt.store.domain.model.User;
+import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
+import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+/** Converts between the {@link UserEntity} row and the {@link User} domain model. */
+public final class UserPersistenceMapper {
+
+    private UserPersistenceMapper() {
+    }
+
+    public static User toDomain(UserEntity entity) {
+<span class="fc" id="L17">        Set&lt;String&gt; roleNames = new LinkedHashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L18" title="All 2 branches covered.">        for (RoleEntity role : entity.getRoles()) {</span>
+<span class="fc" id="L19">            roleNames.add(role.getName());</span>
+<span class="fc" id="L20">        }</span>
+<span class="fc" id="L21">        return new User(</span>
+<span class="fc" id="L22">                entity.getId(),</span>
+<span class="fc" id="L23">                entity.getFirstName(),</span>
+<span class="fc" id="L24">                entity.getLastName(),</span>
+<span class="fc" id="L25">                entity.getEmail(),</span>
+<span class="fc" id="L26">                entity.getPassword(),</span>
+                roleNames);
+    }
+
+    /**
+     * Copies the scalar fields of {@code user} onto {@code target}. Roles are resolved
+     * against persisted {@link RoleEntity} rows by the repository adapter, so they are
+     * not touched here.
+     */
+    public static void copyScalars(User user, UserEntity target) {
+<span class="fc" id="L36">        target.setFirstName(user.firstName());</span>
+<span class="fc" id="L37">        target.setLastName(user.lastName());</span>
+<span class="fc" id="L38">        target.setEmail(user.email());</span>
+<span class="fc" id="L39">        target.setPassword(user.passwordHash());</span>
+<span class="fc" id="L40">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

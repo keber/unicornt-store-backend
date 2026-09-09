@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserRepositoryAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.persistence.adapter</a> &gt; <span class="el_source">UserRepositoryAdapter.java</span></div><h1>UserRepositoryAdapter.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.persistence.adapter;
+
+import com.unicornt.store.domain.exception.ResourceNotFoundException;
+import com.unicornt.store.domain.model.User;
+import com.unicornt.store.domain.repository.UserRepository;
+import com.unicornt.store.infrastructure.persistence.entity.RoleEntity;
+import com.unicornt.store.infrastructure.persistence.entity.UserEntity;
+import com.unicornt.store.infrastructure.persistence.mapper.UserPersistenceMapper;
+import org.springframework.stereotype.Component;
+
+import java.util.LinkedHashSet;
+import java.util.Optional;
+import java.util.Set;
+
+/**
+ * JPA-backed implementation of the {@link UserRepository} domain port.
+ *
+ * &lt;p&gt;It delegates to the Spring Data
+ * {@code infrastructure.persistence.repository.SpringDataUserRepository} (referenced by its
+ * fully qualified name to avoid the clash with the port above) and resolves role
+ * names against the seeded {@link RoleEntity} rows at the boundary.&lt;/p&gt;
+ */
+@Component
+public class UserRepositoryAdapter implements UserRepository {
+
+    private final com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository users;
+    private final com.unicornt.store.infrastructure.persistence.repository.SpringDataRoleRepository roles;
+
+    public UserRepositoryAdapter(
+            com.unicornt.store.infrastructure.persistence.repository.SpringDataUserRepository users,
+<span class="fc" id="L31">            com.unicornt.store.infrastructure.persistence.repository.SpringDataRoleRepository roles) {</span>
+<span class="fc" id="L32">        this.users = users;</span>
+<span class="fc" id="L33">        this.roles = roles;</span>
+<span class="fc" id="L34">    }</span>
+
+    @Override
+    public Optional&lt;User&gt; findByEmail(String email) {
+<span class="fc" id="L38">        return users.findByEmail(email).map(UserPersistenceMapper::toDomain);</span>
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+<span class="fc" id="L43">        return users.findByEmail(email).isPresent();</span>
+    }
+
+    @Override
+    public User save(User user) {
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        UserEntity entity = user.id() == null</span>
+<span class="fc" id="L49">                ? new UserEntity()</span>
+<span class="fc" id="L50">                : users.findById(user.id())</span>
+<span class="pc" id="L51">                        .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;User&quot;, user.id()));</span>
+<span class="fc" id="L52">        UserPersistenceMapper.copyScalars(user, entity);</span>
+<span class="fc" id="L53">        entity.setRoles(resolveRoles(user.roles()));</span>
+<span class="fc" id="L54">        return UserPersistenceMapper.toDomain(users.save(entity));</span>
+    }
+
+    private Set&lt;RoleEntity&gt; resolveRoles(Set&lt;String&gt; roleNames) {
+<span class="fc" id="L58">        Set&lt;RoleEntity&gt; resolved = new LinkedHashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        for (String name : roleNames) {</span>
+<span class="fc" id="L60">            resolved.add(roles.findByName(name)</span>
+<span class="fc" id="L61">                    .orElseThrow(() -&gt; new ResourceNotFoundException(</span>
+                            &quot;Role &quot; + name + &quot; not found. Run the reference-data seed first.&quot;)));
+<span class="fc" id="L63">        }</span>
+<span class="fc" id="L64">        return resolved;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

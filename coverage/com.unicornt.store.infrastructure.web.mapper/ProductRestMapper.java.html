@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductRestMapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.web.mapper</a> &gt; <span class="el_source">ProductRestMapper.java</span></div><h1>ProductRestMapper.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.web.mapper;
+
+import com.unicornt.store.application.usecase.catalog.ProductCommand;
+import com.unicornt.store.domain.model.Product;
+import com.unicornt.store.domain.repository.PageResult;
+import com.unicornt.store.infrastructure.web.dto.ProductDtos.ProductCreateRequest;
+import com.unicornt.store.infrastructure.web.dto.ProductDtos.ProductPageResponse;
+import com.unicornt.store.infrastructure.web.dto.ProductDtos.ProductResponse;
+import com.unicornt.store.infrastructure.web.dto.ProductDtos.ProductUpdateRequest;
+
+/** Translation between the product transport records and the domain model / use-case input. */
+public final class ProductRestMapper {
+
+    private ProductRestMapper() {
+    }
+
+    public static ProductResponse toResponse(Product product) {
+<span class="fc" id="L18">        return new ProductResponse(</span>
+<span class="fc" id="L19">                product.id(),</span>
+<span class="fc" id="L20">                product.name(),</span>
+<span class="fc" id="L21">                product.description(),</span>
+<span class="fc" id="L22">                product.imageBase(),</span>
+<span class="fc" id="L23">                product.price().amount(),</span>
+<span class="fc" id="L24">                product.categoryId(),</span>
+<span class="fc" id="L25">                product.categoryName(),</span>
+<span class="fc" id="L26">                product.productTypeId(),</span>
+<span class="fc" id="L27">                product.productTypeName(),</span>
+<span class="fc" id="L28">                product.stock(),</span>
+<span class="fc" id="L29">                product.isActive());</span>
+    }
+
+    public static ProductPageResponse toPageResponse(PageResult&lt;Product&gt; page) {
+<span class="fc" id="L33">        return new ProductPageResponse(</span>
+<span class="fc" id="L34">                page.content().stream().map(ProductRestMapper::toResponse).toList(),</span>
+<span class="fc" id="L35">                page.page(),</span>
+<span class="fc" id="L36">                page.size(),</span>
+<span class="fc" id="L37">                page.totalElements(),</span>
+<span class="fc" id="L38">                page.totalPages());</span>
+    }
+
+    public static ProductCommand toCommand(ProductCreateRequest request) {
+<span class="fc" id="L42">        return new ProductCommand(</span>
+<span class="fc" id="L43">                request.name(), request.description(), request.imageBase(),</span>
+<span class="fc" id="L44">                request.price(), request.categoryId(), request.productTypeId(),</span>
+<span class="pc bpc" id="L45" title="2 of 4 branches missed.">                request.stock(), request.active() == null || request.active());</span>
+    }
+
+    public static ProductCommand toCommand(ProductUpdateRequest request) {
+<span class="nc" id="L49">        return new ProductCommand(</span>
+<span class="nc" id="L50">                request.name(), request.description(), request.imageBase(),</span>
+<span class="nc" id="L51">                request.price(), request.categoryId(), request.productTypeId(),</span>
+<span class="nc bnc" id="L52" title="All 4 branches missed.">                request.stock(), request.active() == null || request.active());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

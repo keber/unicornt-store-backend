@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductRepositoryAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.persistence.adapter</a> &gt; <span class="el_source">ProductRepositoryAdapter.java</span></div><h1>ProductRepositoryAdapter.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.persistence.adapter;
+
+import com.unicornt.store.domain.model.Product;
+import com.unicornt.store.domain.repository.PageResult;
+import com.unicornt.store.domain.repository.ProductRepository;
+import com.unicornt.store.infrastructure.persistence.EntityIds;
+import com.unicornt.store.infrastructure.persistence.entity.CategoryJpaEntity;
+import com.unicornt.store.infrastructure.persistence.entity.ProductJpaEntity;
+import com.unicornt.store.infrastructure.persistence.entity.ProductTypeJpaEntity;
+import com.unicornt.store.infrastructure.persistence.mapper.ProductPersistenceMapper;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataCategoryRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataProductRepository;
+import com.unicornt.store.infrastructure.persistence.repository.SpringDataProductTypeRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/** JPA-backed implementation of the {@link ProductRepository} port. */
+@Component
+public class ProductRepositoryAdapter implements ProductRepository {
+
+<span class="fc" id="L28">    private static final Sort BY_ID = Sort.by(Sort.Direction.ASC, &quot;id&quot;);</span>
+
+    private final SpringDataProductRepository products;
+    private final SpringDataCategoryRepository categories;
+    private final SpringDataProductTypeRepository productTypes;
+
+    public ProductRepositoryAdapter(SpringDataProductRepository products,
+                                    SpringDataCategoryRepository categories,
+<span class="fc" id="L36">                                    SpringDataProductTypeRepository productTypes) {</span>
+<span class="fc" id="L37">        this.products = products;</span>
+<span class="fc" id="L38">        this.categories = categories;</span>
+<span class="fc" id="L39">        this.productTypes = productTypes;</span>
+<span class="fc" id="L40">    }</span>
+
+    @Override
+    public PageResult&lt;Product&gt; search(String categoryFilter, String textFilter, int page, int size) {
+<span class="fc" id="L44">        Page&lt;ProductJpaEntity&gt; result = products.search(</span>
+<span class="fc" id="L45">                nullToEmpty(categoryFilter), nullToEmpty(textFilter),</span>
+<span class="fc" id="L46">                PageRequest.of(page, size, BY_ID));</span>
+<span class="fc" id="L47">        List&lt;Product&gt; content = toDomainList(result.getContent());</span>
+<span class="fc" id="L48">        return new PageResult&lt;&gt;(content, result.getNumber(), result.getSize(), result.getTotalElements());</span>
+    }
+
+    @Override
+    public Optional&lt;Product&gt; findById(long id) {
+<span class="fc" id="L53">        Integer entityId = EntityIds.toInt(id);</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        if (entityId == null) {</span>
+<span class="fc" id="L55">            return Optional.empty();</span>
+        }
+<span class="fc" id="L57">        return products.findById(entityId).map(entity -&gt; toDomainList(List.of(entity)).get(0));</span>
+    }
+
+    @Override
+    public boolean existsById(long id) {
+<span class="fc" id="L62">        Integer entityId = EntityIds.toInt(id);</span>
+<span class="pc bpc" id="L63" title="1 of 4 branches missed.">        return entityId != null &amp;&amp; products.existsById(entityId);</span>
+    }
+
+    @Override
+    public Product save(Product product) {
+<span class="fc" id="L68">        ProductJpaEntity saved = products.save(ProductPersistenceMapper.toEntity(product));</span>
+<span class="fc" id="L69">        return toDomainList(List.of(saved)).get(0);</span>
+    }
+
+    @Override
+    public void deleteById(long id) {
+<span class="fc" id="L74">        Integer entityId = EntityIds.toInt(id);</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (entityId == null) {</span>
+<span class="fc" id="L76">            return;</span>
+        }
+<span class="fc" id="L78">        products.deleteById(entityId);</span>
+<span class="fc" id="L79">    }</span>
+
+    /** Fills the transient category and product-type name labels, then maps to the domain model. */
+    private List&lt;Product&gt; toDomainList(List&lt;ProductJpaEntity&gt; entities) {
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        if (entities.isEmpty()) {</span>
+<span class="fc" id="L84">            return List.of();</span>
+        }
+<span class="fc" id="L86">        Map&lt;Integer, String&gt; categoryNames = categories.findAll().stream()</span>
+<span class="fc" id="L87">                .collect(Collectors.toMap(CategoryJpaEntity::getId, CategoryJpaEntity::getName, keepFirst()));</span>
+<span class="fc" id="L88">        Map&lt;Integer, String&gt; typeNames = productTypes.findAll().stream()</span>
+<span class="fc" id="L89">                .collect(Collectors.toMap(ProductTypeJpaEntity::getId, ProductTypeJpaEntity::getName, keepFirst()));</span>
+<span class="fc" id="L90">        return entities.stream().map(entity -&gt; {</span>
+<span class="fc" id="L91">            entity.setCategoryName(categoryNames.get(entity.getCategoryId()));</span>
+<span class="fc" id="L92">            entity.setProductTypeName(typeNames.get(entity.getProductTypeId()));</span>
+<span class="fc" id="L93">            return ProductPersistenceMapper.toDomain(entity);</span>
+<span class="fc" id="L94">        }).toList();</span>
+    }
+
+    private static &lt;T&gt; java.util.function.BinaryOperator&lt;T&gt; keepFirst() {
+<span class="pc" id="L98">        return (first, second) -&gt; first;</span>
+    }
+
+    private static String nullToEmpty(String value) {
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        return value == null ? &quot;&quot; : value;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

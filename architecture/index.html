@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture rules — unicornt-store-backend</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1a; --bg:#fff; --muted:#666; --line:#e2e2e2;
+           --ok:#1a7f37; --bad:#c1121f; --meh:#8a6d00; --code:#f6f6f6; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e8e8e8; --bg:#101214; --muted:#9aa0a6; --line:#2c2f33;
+             --ok:#4ac26b; --bad:#ff6b6b; --meh:#d9b100; --code:#1a1d20; }
+  }
+  body { margin:0 auto; padding:2rem 1.25rem 4rem; max-width:60rem; background:var(--bg); color:var(--fg);
+         font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  h1 { font-size:1.6rem; margin:0 0 .35rem; }
+  h2 { font-size:1.05rem; margin:2.25rem 0 .25rem; }
+  .lede, .blurb, .meta { color:var(--muted); }
+  .lede { margin:0 0 1.5rem; }
+  .blurb { margin:0 0 .75rem; font-size:.92rem; }
+  .meta { font-size:.85rem; margin-top:3rem; border-top:1px solid var(--line); padding-top:1rem; }
+  .verdict { display:inline-block; padding:.3rem .7rem; border-radius:999px; font-weight:600;
+              background:var(--code); }
+  .verdict.ok { color:var(--ok); } .verdict.bad { color:var(--bad); }
+  table { border-collapse:collapse; width:100%; }
+  th, td { text-align:left; padding:.5rem .6rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  code { background:var(--code); padding:.1rem .3rem; border-radius:4px; font-size:.86rem; }
+  .pretty { color:var(--muted); font-size:.85rem; margin-top:.2rem; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); font-weight:600; } .meh { color:var(--meh); }
+  .num { color:var(--muted); white-space:nowrap; }
+  .detail pre { background:var(--code); padding:.75rem; border-radius:6px; overflow-x:auto; font-size:.8rem; }
+  a { color:inherit; }
+</style>
+</head>
+<body>
+<h1>Architecture rules</h1>
+<p class="lede">
+  ArchUnit enforces the dependency rule in <code>unicornt-store-backend</code>: the domain depends on
+  nobody, the application layer depends only on domain ports, and infrastructure may depend on both.
+  There is <strong>no freeze baseline</strong> — a new violation fails the build rather than being
+  recorded as accepted. These 16 rules run inside <code>mvn verify</code> with the rest of the suite.
+</p>
+<p><span class="verdict ok">all rules green</span></p>
+<h2>DependencyRulesTest</h2>
+<p class='blurb'>Nothing may point inward at Spring, JPA or the web layer, and no package may take part in a cycle.</p>
+<table><thead><tr><th>Rule</th><th>Status</th><th>Time</th></tr></thead><tbody>
+<tr><td><code>domain_is_free_of_spring</code><div class='pretty'>domain is free of spring</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.039s</td></tr>
+<tr><td><code>domain_is_free_of_jpa</code><div class='pretty'>domain is free of jpa</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.002s</td></tr>
+<tr><td><code>domain_is_free_of_bean_validation</code><div class='pretty'>domain is free of bean validation</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.002s</td></tr>
+<tr><td><code>domain_is_free_of_infrastructure</code><div class='pretty'>domain is free of infrastructure</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.002s</td></tr>
+<tr><td><code>domain_is_free_of_application</code><div class='pretty'>domain is free of application</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.003s</td></tr>
+<tr><td><code>application_is_free_of_infrastructure</code><div class='pretty'>application is free of infrastructure</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.002s</td></tr>
+<tr><td><code>application_is_free_of_spring_data</code><div class='pretty'>application is free of spring data</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.001s</td></tr>
+<tr><td><code>layers_respect_the_dependency_rule</code><div class='pretty'>layers respect the dependency rule</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.400s</td></tr>
+<tr><td><code>packages_are_free_of_cycles</code><div class='pretty'>packages are free of cycles</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.136s</td></tr>
+</tbody></table>
+<h2>LayeredArchitectureRulesTest</h2>
+<p class='blurb'>The layers themselves: who is allowed to call whom.</p>
+<table><thead><tr><th>Rule</th><th>Status</th><th>Time</th></tr></thead><tbody>
+<tr><td><code>rest_controllers_live_only_in_web_rest</code><div class='pretty'>rest controllers live only in web rest</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.021s</td></tr>
+<tr><td><code>domain_does_not_depend_on_web</code><div class='pretty'>domain does not depend on web</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.001s</td></tr>
+<tr><td><code>web_does_not_reach_spring_data_repositories</code><div class='pretty'>web does not reach spring data repositories</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.007s</td></tr>
+</tbody></table>
+<h2>TargetArchitectureRulesTest</h2>
+<p class='blurb'>The shape of the ports-and-adapters wiring — where repository interfaces live and what adapters implement.</p>
+<table><thead><tr><th>Rule</th><th>Status</th><th>Time</th></tr></thead><tbody>
+<tr><td><code>catalog_repository_ports_are_interfaces_in_domain</code><div class='pretty'>catalog repository ports are interfaces in domain</div></td><td class='ok'>&#10003; passed</td><td class='num'>2.525s</td></tr>
+<tr><td><code>persistence_adapters_implement_a_domain_port</code><div class='pretty'>persistence adapters implement a domain port</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.030s</td></tr>
+<tr><td><code>use_cases_do_not_depend_on_jpa_entities</code><div class='pretty'>use cases do not depend on jpa entities</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.013s</td></tr>
+<tr><td><code>every_repository_interface_lives_in_domain</code><div class='pretty'>every repository interface lives in domain</div></td><td class='ok'>&#10003; passed</td><td class='num'>0.001s</td></tr>
+</tbody></table>
+<p class="meta">
+  Generated 2026-09-09 00:39 UTC · commit <code>873b50c</code> · <a href='https://github.com/keber/unicornt-store-backend/actions/runs/34295858491'>CI run</a> ·
+  <a href="../coverage/">coverage report</a> ·
+  <a href="../tests/">full test report</a>
+</p>
+</body>
+</html>

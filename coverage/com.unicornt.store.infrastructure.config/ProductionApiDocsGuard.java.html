@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductionApiDocsGuard.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.config</a> &gt; <span class="el_source">ProductionApiDocsGuard.java</span></div><h1>ProductionApiDocsGuard.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.config;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+/**
+ * Production-grade security, dimension 3: the OpenAPI description and Swagger UI are
+ * a {@code dev}-only tool. They are disabled by {@code springdoc.*} in
+ * {@code application*.yml}; this servlet filter is the belt-and-suspenders so that
+ * under the {@code prod} profile every {@code /v3/api-docs} and {@code /swagger-ui}
+ * path answers {@code 404} regardless of springdoc's own defaults. Runs before the
+ * dispatcher, so springdoc never sees the request.
+ */
+@Component
+@Profile(&quot;prod&quot;)
+<span class="fc" id="L23">public class ProductionApiDocsGuard extends OncePerRequestFilter {</span>
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+<span class="fc" id="L28">        String path = request.getRequestURI();</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">        if (isApiDocsPath(path)) {</span>
+            // setStatus, not sendError: sendError triggers an /error dispatch that the
+            // stateless security chain then answers with 401.
+<span class="fc" id="L32">            response.setStatus(HttpServletResponse.SC_NOT_FOUND);</span>
+<span class="fc" id="L33">            response.setContentType(&quot;application/json&quot;);</span>
+<span class="fc" id="L34">            response.getWriter().write(&quot;{\&quot;status\&quot;:404,\&quot;error\&quot;:\&quot;Not Found\&quot;,\&quot;path\&quot;:\&quot;&quot; + path + &quot;\&quot;}&quot;);</span>
+<span class="fc" id="L35">            return;</span>
+        }
+<span class="fc" id="L37">        filterChain.doFilter(request, response);</span>
+<span class="fc" id="L38">    }</span>
+
+    private static boolean isApiDocsPath(String path) {
+<span class="fc bfc" id="L41" title="All 2 branches covered.">        return path.startsWith(&quot;/v3/api-docs&quot;)</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">                || path.startsWith(&quot;/swagger-ui&quot;)</span>
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">                || path.equals(&quot;/swagger-ui.html&quot;)</span>
+<span class="fc bfc" id="L44" title="All 2 branches covered.">                || path.startsWith(&quot;/api-docs&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

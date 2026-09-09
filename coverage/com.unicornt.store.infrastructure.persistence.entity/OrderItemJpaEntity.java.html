@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OrderItemJpaEntity.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.persistence.entity</a> &gt; <span class="el_source">OrderItemJpaEntity.java</span></div><h1>OrderItemJpaEntity.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.persistence.entity;
+
+import jakarta.persistence.*;
+
+import java.math.BigDecimal;
+
+/** One line of a confirmed order, with the product name and unit price frozen at purchase time. */
+@Entity
+@Table(name = &quot;order_items&quot;)
+public class OrderItemJpaEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = &quot;order_id&quot;, nullable = false)
+    private OrderJpaEntity order;
+
+    @Column(name = &quot;product_id&quot;, nullable = false)
+    private int productId;
+
+    @Column(name = &quot;product_name&quot;, nullable = false, length = 200)
+    private String productName;
+
+<span class="pc" id="L26">    @Column(name = &quot;unit_price&quot;, nullable = false, precision = 12, scale = 2)</span>
+    private BigDecimal unitPrice = BigDecimal.ZERO;
+
+    @Column(name = &quot;quantity&quot;, nullable = false)
+    private int quantity;
+
+<span class="pc" id="L32">    @Column(name = &quot;subtotal&quot;, nullable = false, precision = 12, scale = 2)</span>
+    private BigDecimal subtotal = BigDecimal.ZERO;
+
+<span class="nc" id="L35">    public OrderItemJpaEntity() {</span>
+        // required no-arg constructor for JPA; rows are populated through the setters
+<span class="nc" id="L37">    }</span>
+
+<span class="fc" id="L39">    public OrderItemJpaEntity(int productId, String productName, BigDecimal unitPrice, int quantity, BigDecimal subtotal) {</span>
+<span class="fc" id="L40">        this.productId = productId;</span>
+<span class="fc" id="L41">        this.productName = productName;</span>
+<span class="fc" id="L42">        this.unitPrice = unitPrice;</span>
+<span class="fc" id="L43">        this.quantity = quantity;</span>
+<span class="fc" id="L44">        this.subtotal = subtotal;</span>
+<span class="fc" id="L45">    }</span>
+
+<span class="nc" id="L47">    public Long getId() { return id; }</span>
+<span class="nc" id="L48">    public void setId(Long id) { this.id = id; }</span>
+
+<span class="fc" id="L50">    public OrderJpaEntity getOrder() { return order; }</span>
+<span class="fc" id="L51">    public void setOrder(OrderJpaEntity order) { this.order = order; }</span>
+
+<span class="fc" id="L53">    public int getProductId() { return productId; }</span>
+<span class="nc" id="L54">    public void setProductId(int productId) { this.productId = productId; }</span>
+
+<span class="fc" id="L56">    public String getProductName() { return productName; }</span>
+<span class="nc" id="L57">    public void setProductName(String productName) { this.productName = productName; }</span>
+
+<span class="fc" id="L59">    public BigDecimal getUnitPrice() { return unitPrice; }</span>
+<span class="nc" id="L60">    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }</span>
+
+<span class="fc" id="L62">    public int getQuantity() { return quantity; }</span>
+<span class="nc" id="L63">    public void setQuantity(int quantity) { this.quantity = quantity; }</span>
+
+<span class="fc" id="L65">    public BigDecimal getSubtotal() { return subtotal; }</span>
+<span class="nc" id="L66">    public void setSubtotal(BigDecimal subtotal) { this.subtotal = subtotal; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

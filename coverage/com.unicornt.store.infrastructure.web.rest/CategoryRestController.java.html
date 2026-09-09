@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CategoryRestController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.web.rest</a> &gt; <span class="el_source">CategoryRestController.java</span></div><h1>CategoryRestController.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.web.rest;
+
+import com.unicornt.store.application.usecase.catalog.CreateCategoryUseCase;
+import com.unicornt.store.application.usecase.catalog.ListCategoriesUseCase;
+import com.unicornt.store.domain.model.Category;
+import com.unicornt.store.infrastructure.web.dto.CategoryDtos.CategoryCreateRequest;
+import com.unicornt.store.infrastructure.web.dto.CategoryDtos.CategoryResponse;
+import com.unicornt.store.infrastructure.web.error.ErrorResponse;
+import com.unicornt.store.infrastructure.web.mapper.CategoryRestMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+import java.util.List;
+
+/** Product category resource. Reads are public; creation requires the administrator role. */
+@RestController
+@RequestMapping(&quot;/api/v1/categories&quot;)
+@Tag(name = &quot;Categories&quot;, description = &quot;Product category management&quot;)
+public class CategoryRestController {
+
+    private final ListCategoriesUseCase listCategories;
+    private final CreateCategoryUseCase createCategory;
+
+    public CategoryRestController(ListCategoriesUseCase listCategories,
+<span class="fc" id="L39">                                 CreateCategoryUseCase createCategory) {</span>
+<span class="fc" id="L40">        this.listCategories = listCategories;</span>
+<span class="fc" id="L41">        this.createCategory = createCategory;</span>
+<span class="fc" id="L42">    }</span>
+
+    @GetMapping
+    @Operation(summary = &quot;List categories&quot;, description = &quot;Returns every product category ordered by name&quot;)
+    @ApiResponses(@ApiResponse(responseCode = &quot;200&quot;, description = &quot;All categories&quot;))
+    public List&lt;CategoryResponse&gt; list() {
+<span class="fc" id="L48">        return listCategories.execute().stream().map(CategoryRestMapper::toResponse).toList();</span>
+    }
+
+    @PostMapping
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @SecurityRequirement(name = &quot;bearerAuth&quot;)
+    @Operation(summary = &quot;Create a category&quot;, description = &quot;Administrator only&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;201&quot;, description = &quot;Category created, its URI is in the Location header&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid payload&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Authentication required&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;403&quot;, description = &quot;Administrator role required&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;409&quot;, description = &quot;A category with the same slug already exists&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity&lt;CategoryResponse&gt; create(@Valid @RequestBody CategoryCreateRequest request) {
+<span class="fc" id="L67">        Category created = createCategory.execute(request.name(), request.slug());</span>
+<span class="fc" id="L68">        return ResponseEntity</span>
+<span class="fc" id="L69">                .created(URI.create(&quot;/api/v1/categories/&quot; + created.id()))</span>
+<span class="fc" id="L70">                .body(CategoryRestMapper.toResponse(created));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthRestController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.web.rest</a> &gt; <span class="el_source">AuthRestController.java</span></div><h1>AuthRestController.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.web.rest;
+
+import com.unicornt.store.application.usecase.identity.GetUserByEmailUseCase;
+import com.unicornt.store.application.usecase.identity.RegisterUserUseCase;
+import com.unicornt.store.domain.model.User;
+import com.unicornt.store.infrastructure.security.JwtService;
+import com.unicornt.store.infrastructure.web.dto.AuthDtos.LoginRequest;
+import com.unicornt.store.infrastructure.web.dto.AuthDtos.MeResponse;
+import com.unicornt.store.infrastructure.web.dto.AuthDtos.RegisterRequest;
+import com.unicornt.store.infrastructure.web.dto.AuthDtos.TokenResponse;
+import com.unicornt.store.infrastructure.web.error.ErrorResponse;
+import com.unicornt.store.infrastructure.web.mapper.AuthRestMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+import java.util.List;
+
+/** Registration, login and identity of the caller. Thin: it delegates to the identity use cases. */
+@RestController
+@RequestMapping(&quot;/api/v1/auth&quot;)
+@Tag(name = &quot;Authentication&quot;, description = &quot;Account registration and stateless token issuing&quot;)
+public class AuthRestController {
+
+    private final RegisterUserUseCase registerUser;
+    private final GetUserByEmailUseCase getUserByEmail;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
+
+    public AuthRestController(RegisterUserUseCase registerUser,
+                             GetUserByEmailUseCase getUserByEmail,
+                             AuthenticationManager authenticationManager,
+<span class="fc" id="L50">                             JwtService jwtService) {</span>
+<span class="fc" id="L51">        this.registerUser = registerUser;</span>
+<span class="fc" id="L52">        this.getUserByEmail = getUserByEmail;</span>
+<span class="fc" id="L53">        this.authenticationManager = authenticationManager;</span>
+<span class="fc" id="L54">        this.jwtService = jwtService;</span>
+<span class="fc" id="L55">    }</span>
+
+    @PostMapping(&quot;/register&quot;)
+    @Operation(summary = &quot;Register a new account&quot;,
+            description = &quot;Creates an account with a BCrypt hashed password and the ROLE_USER role&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;201&quot;, description = &quot;Account created&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid payload&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;409&quot;, description = &quot;Email already registered&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity&lt;MeResponse&gt; register(@Valid @RequestBody RegisterRequest request) {
+<span class="fc" id="L68">        User user = registerUser.execute(</span>
+<span class="fc" id="L69">                request.firstName(), request.lastName(), request.email(), request.password());</span>
+<span class="fc" id="L70">        return ResponseEntity.created(URI.create(&quot;/api/v1/auth/me&quot;)).body(AuthRestMapper.toMeResponse(user));</span>
+    }
+
+    @PostMapping(&quot;/login&quot;)
+    @Operation(summary = &quot;Exchange credentials for an access token&quot;,
+            description = &quot;Returns a signed JWT to be sent as an Authorization Bearer header&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Token issued&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid payload&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Bad credentials&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity&lt;TokenResponse&gt; login(@Valid @RequestBody LoginRequest request) {
+<span class="fc" id="L84">        Authentication authentication = authenticationManager.authenticate(</span>
+<span class="fc" id="L85">                new UsernamePasswordAuthenticationToken(request.email(), request.password()));</span>
+<span class="fc" id="L86">        List&lt;String&gt; roles = authentication.getAuthorities().stream()</span>
+<span class="fc" id="L87">                .map(GrantedAuthority::getAuthority)</span>
+<span class="fc" id="L88">                .toList();</span>
+<span class="fc" id="L89">        String token = jwtService.generate(authentication.getName(), roles);</span>
+<span class="fc" id="L90">        return ResponseEntity.ok(new TokenResponse(token, jwtService.expirationMs()));</span>
+    }
+
+    @GetMapping(&quot;/me&quot;)
+    @Operation(summary = &quot;Describe the authenticated account&quot;,
+            description = &quot;Resolves the caller from the token in the security context&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Account returned&quot;),
+            @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Missing or invalid token&quot;,
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity&lt;MeResponse&gt; me(Authentication authentication) {
+<span class="pc bpc" id="L102" title="1 of 4 branches missed.">        if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {</span>
+<span class="fc" id="L103">            throw new InsufficientAuthenticationException(&quot;Authentication required&quot;);</span>
+        }
+<span class="fc" id="L105">        return ResponseEntity.ok(AuthRestMapper.toMeResponse(getUserByEmail.execute(authentication.getName())));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>

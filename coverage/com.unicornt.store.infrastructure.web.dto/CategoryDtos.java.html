@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CategoryDtos.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">unicornt-store-backend</a> &gt; <a href="index.source.html" class="el_package">com.unicornt.store.infrastructure.web.dto</a> &gt; <span class="el_source">CategoryDtos.java</span></div><h1>CategoryDtos.java</h1><pre class="source lang-java linenums">package com.unicornt.store.infrastructure.web.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+/** Transport contract of the category resource. */
+public final class CategoryDtos {
+
+    private CategoryDtos() {
+    }
+
+    /** Body of {@code POST /api/v1/categories}. */
+    @Schema(name = &quot;CategoryCreateRequest&quot;, description = &quot;New product category&quot;)
+<span class="fc" id="L16">    public record CategoryCreateRequest(</span>
+
+            @Schema(description = &quot;Display name of the category&quot;, example = &quot;Hoodies&quot;,
+                    requiredMode = Schema.RequiredMode.REQUIRED)
+            @NotBlank(message = &quot;name is required&quot;)
+            @Size(max = 100, message = &quot;name must not exceed 100 characters&quot;)
+            String name,
+
+            @Schema(description = &quot;URL friendly identifier; derived from the name when omitted&quot;,
+                    example = &quot;hoodies&quot;)
+            @Size(max = 100, message = &quot;slug must not exceed 100 characters&quot;)
+            @Pattern(regexp = &quot;^[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$&quot;,
+                    message = &quot;slug must contain only alphanumeric characters separated by hyphens&quot;)
+            String slug) {
+    }
+
+    /** Representation returned by every category endpoint. */
+    @Schema(name = &quot;CategoryResponse&quot;, description = &quot;Product category as exposed by the API&quot;)
+<span class="fc" id="L34">    public record CategoryResponse(</span>
+
+            @Schema(description = &quot;Category identifier&quot;, example = &quot;3&quot;)
+            int id,
+
+            @Schema(description = &quot;Display name of the category&quot;, example = &quot;Hoodies&quot;)
+            String name,
+
+            @Schema(description = &quot;URL friendly identifier&quot;, example = &quot;hoodies&quot;)
+            String slug) {
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.15.202606040825</span></div></body></html>
