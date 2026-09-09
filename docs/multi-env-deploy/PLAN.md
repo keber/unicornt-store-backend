@@ -4,20 +4,21 @@ Working plan for promoting `unicornt-store-backend` (and the matching
 `unicornt-store-frontend`) through three branch-gated environments, each on its
 own live URL, all sharing one VPS behind the existing nginx + SSL setup.
 
-**Status:** in progress. D1–D8 settled (§2). §3, P0–P4 done. **P5, P6 and P7 all
-done 2026-09-04 — dev and qa are both fully live on both repos**:
-`unicornt-dev.keber.dev` / `api-unicornt-dev.keber.dev` and
-`unicornt-qa.keber.cl` / `api-unicornt-qa.keber.cl`, every pipeline green
-end-to-end, independently verified. `dev_PR_required`/`qa_PR_required` fixed
-(see P7 notes — backend had no required checks at all; frontend required a
-check name that doesn't exist on that repo) and **enabled** on both repos —
-direct pushes to `dev`/`qa` now require a PR on both repos.
+**Status:** **All three environments are live and deploying from CI**
+(2026-09-05). dev `unicornt-dev.keber.dev` / `api-unicornt-dev.keber.dev`, qa
+`unicornt-qa.keber.cl` / `api-unicornt-qa.keber.cl`, prod
+`api-unicornt-store.keber.cl` — each on its own branch, gated by the promotion
+path, with prod behind a manual approval. D1–D10 settled (§2). §3, P0–P8.3
+done.
 
-**Now: P8**, reframed 2026-09-05 after preparing it surfaced two facts the
-original checklist did not account for — the prod storefront is still the
-pre-integration static app, and the backend promotion is independent of it.
-P8.0 (preflight) is done; the prod box is ready and the old deploy path is
-confirmed retired. Read §4 "P8" in full before touching anything.
+The prod database was cut over first (P8.1/P8.2): its Supabase schema turned
+out to hold the *previous* milestone's data model, so it was renamed to
+`unicornt_store_legacy` and a clean one built from `V1 → V3 → V2`. The app
+booted against it first try with `ddl-auto: validate` passing.
+
+Remaining: the prod write-path check (P8.3), then the frontend cutover (P8.4),
+which is gated on demoting the stale `e2e` required check (P8.5). P9 is
+hardening, not blocking.
 
 Owner legend: 🤖 Claude does it in the repo · 🧑 you do it (GitHub settings, VPS,
 DNS, Supabase) · 👥 together (review / merge / watch a deploy).
@@ -98,20 +99,20 @@ force-push, no branch deletion, linear history.
 - [x] 🤖 `.github/workflows/gate-pr-source.yml` written (backend) — fails a PR
       into `main` whose head is not `qa`, and a PR into `qa` whose head is not
       `dev`. Final version in §7.1. Lands on `dev` with the P2 PR.
-- [ ] 🤖 Add the same `gate-pr-source.yml` to the **frontend** repo.
+- [x] 🤖 Add the same `gate-pr-source.yml` to the **frontend** repo.
 - [x] 🧑 Backend rulesets for `main` / `qa` / `dev` created, **currently
       disabled** — re-enable when P2 merges so the checks exist.
-- [ ] 🧑 When re-enabling, confirm each ruleset:
+- [x] 🧑 When re-enabling, confirm each ruleset:
   - Require a pull request before merging (0 approvals — D4).
   - Required status checks: `Enforce promotion path` (gate-pr-source job name)
     + `Run Tests`. "Require branches up to date before merging."
   - Block force pushes. Restrict deletions. Require linear history.
-- [ ] 🧑 Verify the `Run Tests` trigger covers PRs into `qa`: `main.yml`'s
+- [x] 🧑 Verify the `Run Tests` trigger covers PRs into `qa`: `main.yml`'s
       `pull_request` trigger is currently `branches: [main]` only — P2 widens it
       to `[main, qa]` so the check actually runs on `dev → qa` PRs.
-- [ ] 🧑 Frontend rulesets for `main` / `qa` / `dev`: same, checks
+- [x] 🧑 Frontend rulesets for `main` / `qa` / `dev`: same, checks
       `quality` (from `ci.yml`) + `Enforce promotion path`.
-- [ ] 👥 Smoke-test once enabled: throwaway PR `feature/x → main` must be
+- [x] 👥 Smoke-test once enabled: throwaway PR `feature/x → main` must be
       blocked by the gate; `dev → qa` must pass it.
 
 ### P2 — Backend code changes (🤖) — **done, on branch `ci/multi-env-pipeline`, PR to `dev` pending**
@@ -164,7 +165,7 @@ force-push, no branch deletion, linear history.
 - [X] 🧑 Create **three** deploy SSH keys, one per env; each `authorized_keys`
       entry uses `command="/usr/local/sbin/deploy-unicornt-<env>",no-port-forwarding,...`
       pointing at that env's `deploy.sh` (§7.2).
-- [ ] 🧑 `mkdir -p /var/www/unicornt-dev /var/www/unicornt-qa`; give the
+- [x] 🧑 `mkdir -p /var/www/unicornt-dev /var/www/unicornt-qa`; give the
       frontend deploy key write access (rsync target).
 
 **Verified 2026-09-04 via `deploy/vps-check.sh` + manual dump.** Actual infra:
@@ -178,19 +179,19 @@ match. Remaining before the dev cutover (P5):
 
 - [x] 🧑 dev `.env`: `IMAGE_TAG=latest` → `IMAGE_TAG=dev`, `chmod 600`. **qa
       still pending** — same edit, `IMAGE_TAG=qa`, before P7.
-- [ ] 🧑 qa needs the same two fixes dev needed (see P5's "three bugs" note):
+- [x] 🧑 qa needs the same two fixes dev needed (see P5's "three bugs" note):
       reset `unicornt-qa-db` (stale pre-refactor schema →
       `ON CONFLICT (slug)` crash) and add `networks: [default,
       unicornt-qa-network]` under `qa/compose.yml`'s `app:` service (currently
       has no `networks:` key at all, same gap as dev had). Do both before or
       at the start of P7 — qa's first real deploy will 502/crash-loop
       otherwise, exactly like dev did.
-- [ ] 🧑 `/opt/unicornt/qa/compose.yml`: the `networks:` **key name** is
+- [x] 🧑 `/opt/unicornt/qa/compose.yml`: the `networks:` **key name** is
       `unicornt-dev-network` (copy-paste from dev) instead of
       `unicornt-qa-network`. The external `name:` value is already correct
       (`api-unicornt-qa.keber.cl`) — only the label is wrong. Purely cosmetic,
       fix whenever convenient.
-- [ ] 🧑 `/opt/unicornt/prod/.env` is missing `DOCKERHUB_USERNAME`,
+- [x] 🧑 `/opt/unicornt/prod/.env` is missing `DOCKERHUB_USERNAME`,
       `SPRING_DATASOURCE_URL` (+ confirm `APP_CORS_ALLOWED_ORIGINS`,
       `APP_JWT_SECRET`) — not urgent, prod is P8.
 - [x] 🧑 Repo secrets `DOCKERHUB_USERNAME` (`keberflores`) + `DOCKERHUB_TOKEN` set.
@@ -199,7 +200,7 @@ match. Remaining before the dev cutover (P5):
 
 Backend repo → Settings → Environments: `dev`, `qa`, `prod`.
 
-- [ ] Per environment secrets: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`,
+- [x] Per environment secrets: `DEPLOY_HOST`, `DEPLOY_PORT`, `DEPLOY_USER`,
       `DEPLOY_SSH_KEY` (that env's private key).
 - [   ] Per environment variables: `API_BASE_URL` (for the smoke job),
       `FRONTEND_ORIGIN` (for the CORS assertion).
@@ -207,7 +208,7 @@ Backend repo → Settings → Environments: `dev`, `qa`, `prod`.
       `main` only. `qa` → `qa` only. `dev` → `dev` only.
 - [x] Leave `DOCKERHUB_USERNAME/TOKEN`, `SONAR_TOKEN`, `CODECOV_TOKEN`,
       `GIST_*` as repo-level secrets.
-- [ ] Frontend repo Environments `dev` / `qa` / `prod`: `VPS_HOST`, `VPS_USER`,
+- [x] Frontend repo Environments `dev` / `qa` / `prod`: `VPS_HOST`, `VPS_USER`,
       `VPS_SSH_KEY` (dev/qa only), and variable `VITE_API_BASE_URL`:
       `https://api-unicornt-dev.keber.dev` (dev) ·
       `https://api-unicornt-qa.keber.cl` (qa) ·
@@ -526,14 +527,14 @@ under the new name.
 
 #### P8.2 — Prod schema management (🧑)
 
-- [ ] Rename + create per the decision above, then run `V1 → V3 → V2` into the
+- [x] Rename + create per the decision above, then run `V1 → V3 → V2` into the
       new schema **with `search_path` set explicitly** (§9.5). The JDBC
       `currentSchema=` parameter is JDBC-only; `psql` does not read it, which
       is exactly how the `public` leftovers got there.
-- [ ] Verify before going further: ten tables in `unicornt_store`, 49 products,
+- [x] Verify before going further: ten tables in `unicornt_store`, 49 products,
       `orders` carries the V3 `ship_*` columns, and the `products` identity
       sequence sits at 50.
-- [ ] Keep `SQL_INIT_MODE=never` in `/opt/unicornt/prod/.env`. Boot-time schema
+- [x] Keep `SQL_INIT_MODE=never` in `/opt/unicornt/prod/.env`. Boot-time schema
       mutation against a pooled managed database is the wrong default — and the
       `public` leftovers are what a half-finished boot-time init looks like.
       **There is no `JPA_DDL_AUTO` env var**; `application-prod.yml` hardcodes
@@ -550,35 +551,68 @@ under the new name.
       two users created, the catalog insert never finished. A half-completed
       boot-time init, which is the argument for `SQL_INIT_MODE=never` in one
       artefact.
-- [ ] **Set `SQL_INIT_MODE=never` in the server's `/opt/unicornt/prod/.env`.**
+- [x] **Set `SQL_INIT_MODE=never` in the server's `/opt/unicornt/prod/.env`.**
       The file was written from the old template that said `always`; the chore
       fixing the template does not touch the box. Left as-is, the first prod
       boot re-runs V1/V3/V2 over the hand-built schema — idempotent, but it is
       the same mechanism that made the `public` mess.
-- [ ] Confirm the server's `APP_CORS_ALLOWED_ORIGINS` is exactly
+- [x] Confirm the server's `APP_CORS_ALLOWED_ORIGINS` is exactly
       `https://unicornt-store.keber.cl`, matching the `WEB_ORIGIN` the smoke
       step asserts — an unchecked item carried over from the P8 handoff.
 
-#### P8.3 — Backend cutover (👥)
+#### P8.3 — Backend cutover (👥) — **DONE 2026-09-05, prod is live**
 
-- [ ] PR `qa → main`, **squash merge** (D7). Gate requires head = `qa`;
-      required checks are `Run Tests` + `Enforce promotion path`.
-- [ ] Approve the `prod` environment gate in the Actions UI (expected — D5-era
-      required reviewer, not a bug to work around).
-- [ ] Watch `deploy(prod)` → `127.0.0.1:8088`; the smoke step asserts
-      `https://api-unicornt-store.keber.cl/api/v1/products` 200 + CORS =
-      `https://unicornt-store.keber.cl`.
-- [ ] **Write-path contract check against prod** — register → login → add to
-      cart → create order, via `docs/bruno/unicornt-store/`. This is the step
-      that actually exercises Supabase (transactions, sequences, constraints);
-      `GET /products` proves almost nothing about a managed pooled DB.
+`https://api-unicornt-store.keber.cl/api/v1/products` → 200, CORS
+`https://unicornt-store.keber.cl`, 49 products, deployed by CI run #80 with the
+`prod` approval gate. All three environments are now live and green.
 
-#### P8.4 — Frontend cutover (👥) — only once P8.3 is green *and seeded*
+Two failures on the way, neither of them the ones this phase was designed to
+catch — the Supabase risks were all retired in P8.1/P8.2, and the app booted
+against Supabase first try with `ddl-auto: validate` passing:
 
-- [ ] Demote the stale `e2e` suite from required first — see P8.5.
-- [ ] Record the current Pages run id, so rollback is a known button rather
+1. **`Permission denied (publickey)`.** The `prod` deploy key had never been
+   exercised. `deploy-prod`'s server-side setup was fine (perms, sudoers,
+   forced command all matched qa's); the `prod` Environment's `DEPLOY_SSH_KEY`
+   held key material `ssh` could not load, so no key was ever offered — the
+   giveaway was sshd logging *nothing*, no `Failed publickey` line, at default
+   `LogLevel INFO`. Regenerated the keypair, verified locally from the box
+   before spending a CI round trip (LESSONS #11), and that local verification
+   was itself the first prod deploy.
+   A second round was lost because the replacement secret **silently did not
+   save** — the GitHub UI had asked for MFA on a phone and the write never
+   completed. Nothing indicated failure; only the secret's `updated_at`
+   revealed it was a day stale (LESSONS #18).
+2. **nginx 404, not 502.** `api-unicornt-store.keber.cl`'s `user.conf` pointed
+   `proxy_pass` at `http://api-unicornt-store:8088` — a hostname that is no
+   container, on the host-published port. `nginx -t` therefore failed, the site
+   never loaded the config, and it served its default webroot: a 404 that looks
+   like "no route" rather than "upstream down". The app container was also not
+   attached to the site's Docker network at all. Fixed to match qa's working
+   pattern (LESSONS #17); both are now captured in `deploy/nginx/`.
+
+- [x] PR `qa → main` squash-merged (#15). Gate + `Run Tests` + the `qa`
+      deployment requirement (D10) all satisfied.
+- [x] `prod` environment approval granted; `deploy(prod)` reached
+      `127.0.0.1:8088`; smoke asserted 200 + CORS.
+- [x] **Write-path contract check against prod** — register → login → add to
+      cart → create order, via `docs/bruno/unicornt-store/`. `validate` passing
+      proves the schema matches the mappings; only a write proves transactions
+      and sequences work through the pooler.
+
+#### P8.4 — Frontend cutover (👥) — **DONE 2026-09-05, the storefront is live**
+
+`https://unicornt-store.keber.cl` now serves the backend-integrated app against
+`https://api-unicornt-store.keber.cl`. Verified from outside: the live bundle
+carries the prod API host, no `data/products.json` reference survives anywhere,
+and the API answers 200 with `Access-Control-Allow-Origin` for that exact
+browser origin. Merged as frontend PR #28. Sonar's quality gate went red on new
+code and was accepted deliberately — it is not a required check, and the
+findings sit in `deploy-vps.yml`, which never runs on `main` (now tracked in P9).
+
+- [x] Demote the stale `e2e` suite from required first — see P8.5.
+- [x] Record the current Pages run id, so rollback is a known button rather
       than a search.
-- [ ] Optional but recommended rehearsal: temporarily add
+- [~] **Skipped deliberately** (outcome: cutover fine). Optional rehearsal: add
       `http://localhost:4173` to prod's `APP_CORS_ALLOWED_ORIGINS`, build the
       frontend locally with
       `VITE_API_BASE_URL=https://api-unicornt-store.keber.cl`, `npm run
@@ -588,9 +622,9 @@ under the new name.
       public site depends on it. (The heavier alternative — a canary host on
       the idle `deploy-front-prod` machinery — buys the same signal for a DNS
       record and a cert, and is not worth it here.)
-- [ ] PR `qa → main` on the frontend, **squash merge**. Required checks:
+- [x] PR `qa → main` on the frontend, **squash merge**. Required checks:
       `quality` + `Enforce promotion path`.
-- [ ] Confirm `static.yml` bakes the prod API host and the Pages site reaches
+- [x] Confirm `static.yml` bakes the prod API host and the Pages site reaches
       it.
 
 #### P8.5 — E2E suite (🧑, blocking P8.4)
@@ -602,19 +636,42 @@ and time out again — which is why a run takes the full 30-minute cap. Keeping
 it as a required check on `main` is the LESSONS #3 failure mode with extra
 steps: a check that cannot pass, gating the branch.
 
-- [ ] Edit the frontend's `rule_e2e_statuscheck_main` ruleset to drop **only**
+- [x] Edit the frontend's `rule_e2e_statuscheck_main` ruleset to drop **only**
       its `required_status_checks` rule. Do not delete the ruleset — it also
-      carries `deletion` and `non_fast_forward` protections.
-- [ ] Leave `e2e.yml` running as informational, so the maintenance work has a
+      carries `deletion` and `non_fast_forward` protections, and on that repo
+      they are the only thing besides `main_PR_required` protecting `main` from
+      deletion and force-push. Payload built from the live ruleset; a `PUT` is a
+      full replace (LESSONS #15).
+- [x] Leave `e2e.yml` running as informational, so the maintenance work has a
       signal to chase.
-- [ ] Decide what to do about `e2e-live.yml`: it fires on `workflow_run`
-      after **every** successful Pages deploy from `main`, so it will spend 30
-      minutes going red immediately after the cutover. Recommend gating it off
-      until the suite is maintained — a red run at the moment of final
-      delivery reads badly and says nothing new.
+- [x] **`e2e-live.yml` disabled 2026-09-05** (`gh workflow disable`, state
+      `disabled_manually`). It fires on `workflow_run` after *every* successful
+      Pages deploy from `main`, so the frontend cutover would have set it going
+      red for 30 minutes at the exact moment the delivery looked finished.
+      Disabling rather than editing keeps it off the promotion train — no PR,
+      and `gh workflow enable e2e-live.yml -R keber/unicornt-store-frontend`
+      undoes it. **Re-enabling it is the last step of the suite maintenance**,
+      not a separate chore to forget.
+- [x] `e2e.yml` deliberately left **active**: it still runs on PRs into
+      `main`/`qa`/`dev`, so the maintenance work keeps a signal to chase. Only
+      the *gate* is being removed, not the feedback.
 - [ ] Suite maintenance is its own workstream, not a P8 blocker.
 
 ### P9 — Hardening (later, not blocking)
+
+The workflow items landed together; what they needed beyond the plan is recorded
+with each. Three surprises worth carrying forward:
+
+1. The gist-badge restriction was recorded here as already done. It was not —
+   worth checking a "done" claim against the file before trusting it.
+2. `-Dsonar.qualitygate.wait=true` cannot work on this plan at all. SonarCloud
+   answers every non-main gate read with `403 "Organization is not allowed to
+   access data from non main branches"`, and the scanner reports that as "Not
+   authorized or project not found" — a credentials message for a problem that
+   is not about credentials. The gate is asserted by `scripts/quality-gate.py`
+   on `main` only; dev and qa cannot be gated without a paid plan.
+3. The Bruno collection had **no assertions at all**, so a CI run would have
+   passed no matter what the API returned. Running it was only half the item.
 
 - [ ] Add `org.springframework.boot:spring-boot-flyway`; set
       `FLYWAY_ENABLED=true`, `SQL_INIT_MODE=never`; convert `V1..V3` to Flyway
@@ -628,8 +685,57 @@ steps: a check that cannot pass, gating the branch.
       actually installed on the box does not prune, so every deploy leaves the
       previous image behind on a shared VPS. A weekly cron should cover
       dangling images, volumes and build cache.
-- [ ] Restrict `publish-reports` + gist badge to `main` (done in P2) — confirm
-      no per-branch report noise remains.
+- [x] Restrict `publish-reports` + gist badge to `main` — **was not actually
+      done in P2**; only the Pages publish steps were gated, so every branch's
+      run overwrote the gist badges the README shows next to main-only report
+      links. The badge step is now `main`-only.
+- [x] **`permissions:` blocks on both workflows** (CodeQL flagged this on #15,
+      Medium). `gate-pr-source.yml` takes `permissions: {}` — it reads two
+      context variables and nothing else; the suggestion GitHub offers there is
+      correct as-is. `main.yml` is **not** safe to accept as suggested: Copilot
+      proposes a workflow-wide `contents: read`, but `publish-reports` pushes an
+      orphan commit to `gh-pages` via `peaceiris/actions-gh-pages` with
+      `GITHUB_TOKEN`, which needs `contents: write`. Committing the suggestion
+      would break the report publish on the next `main` push — and it would fail
+      *after* the deploy, looking unrelated. Correct fix: workflow-level
+      `contents: read`, with `contents: write` scoped to `publish-reports`
+      alone. (`pages: write` / `id-token: write` are for `actions/deploy-pages`,
+      which this repo does not use.)
+- [ ] Bump dev/qa Postgres containers from 16 to 17 to match Supabase (§8).
+- [x] **Stop expanding secrets inside `run:` blocks** (backend done; frontend
+      `deploy-vps.yml` still open, it is the other repo) (Sonar, Medium, both
+      repos). `${{ secrets.X }}` in a `run:` script is substituted into the
+      shell text before execution, so the value lands in the script on disk and
+      any metacharacter would be interpreted rather than quoted. Frontend
+      `deploy-vps.yml` has five (`DEPLOY_PORT`, `DEPLOY_HOST`, `DEPLOY_USER` at
+      L114/L123/L125); backend `main.yml` has the same pattern in its deploy
+      job. The fix is already demonstrated two lines above the frontend ones —
+      pass through `env:` and reference `$VAR`. **Not the same as LESSONS #1**,
+      which forbids routing secrets through step *outputs*; `env:` is the
+      recommended path and the conclusions are opposite.
+- [ ] **`npm ci --ignore-scripts` in the frontend workflows** (Sonar, Medium).
+      That job holds `DEPLOY_SSH_KEY`, so a malicious `postinstall` in any
+      transitive dependency runs with a deploy credential in scope. Not a
+      one-line change: `vite` pulls `esbuild`, and `sharp` is a devDependency —
+      both have historically needed install scripts, so this needs a green build
+      to prove rather than assume. Alternative if it breaks the build: mark the
+      hotspot accepted in SonarCloud with the reasoning written down.
+- [x] **Run the Bruno collection in CI after the dev deploy** (`bru run --env
+      dev`). The collection went stale on 2026-09-02 and nobody noticed until
+      it was needed against prod three weeks later, because nothing connects a
+      hand-written `.bru` file to the DTO it copies: commit `41543f7` renamed
+      `qty` → `quantity`, replaced `addressId` with an inline
+      `shippingAddress`, and deleted the whole `/api/v1/addresses` resource,
+      invalidating four requests silently. OpenAPI annotations do not help —
+      they describe the code as it is now, while the collection is a snapshot of
+      what it was. A CI run converts that silent rot into a loud failure, and
+      doubles as a far stronger post-deploy check than the current single
+      `GET /api/v1/products` smoke step, since it exercises the write path.
+      Considered and rejected: regenerating the collection from the OpenAPI
+      spec (loses the hand-written token-capture script), and deleting it in
+      favour of Swagger UI (loses the write-path sequence). Same failure shape
+      as `deploy/deploy.sh` and the compose files — an artifact that describes
+      a system, kept in sync only by discipline.
 
 ---
 

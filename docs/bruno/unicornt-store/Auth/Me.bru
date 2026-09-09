@@ -13,3 +13,13 @@ get {
 headers {
   Authorization: Bearer {{token}}
 }
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the token identifies the account that just registered", function () {
+    expect(res.getBody().email).to.equal(bru.getEnvVar("email"));
+  });
+}

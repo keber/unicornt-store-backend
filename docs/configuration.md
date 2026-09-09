@@ -58,6 +58,25 @@ Spring Boot maps `SPRING_DATASOURCE_URL` to `spring.datasource.url` automaticall
 SPRING_PROFILES_ACTIVE=dev   # or qa, or prod
 ```
 
+### Where the documentation actually lives
+
+`dev` and `qa` override springdoc's default paths, so the usual springdoc URLs
+do **not** work — `/v3/api-docs` returns the API's own `ENDPOINT_NOT_FOUND`:
+
+| What | Path |
+|---|---|
+| OpenAPI spec (JSON) | `/api-docs` |
+| Swagger UI | `/swagger-ui.html` (302 → `/swagger-ui/index.html`) |
+
+Live: `https://api-unicornt-dev.keber.dev/swagger-ui.html` and
+`https://api-unicornt-qa.keber.cl/swagger-ui.html`. Documentation is served by
+the **backend** host, not the frontend one. It is disabled entirely on prod by
+requirement.
+
+Behind the VPS's nginx the UI additionally needs the `location ^~ /swagger-ui/`
+block in `deploy/nginx/<api-host>.user.conf` — without it the page loads and
+every asset 404s. See that file's comments for why.
+
 The three profile files `application-{dev,qa,prod}.yml` are **gitignored**; only
 the committed `application-{dev,qa,prod}.yml.example` templates are tracked. They
 are regenerated from the templates during the Docker build, and by

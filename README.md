@@ -1,3 +1,12 @@
+[![CI](https://github.com/keber/unicornt-store-backend/actions/workflows/main.yml/badge.svg)](https://github.com/keber/unicornt-store-backend/actions/workflows/main.yml)
+[![Tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Fkeber%2Fbf1bff0a38948277a263377401536440%2Fraw%2Funicornt-store-backend-junit-tests.json)](https://keber.github.io/unicornt-store-backend/tests/)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Fkeber%2Fbf1bff0a38948277a263377401536440%2Fraw%2Funicornt-store-backend-jacoco-coverage.json)](https://keber.github.io/unicornt-store-backend/coverage/)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=keber_unicornt-store-backend&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=keber_unicornt-store-backend)
+[![Architecture](https://img.shields.io/badge/architecture-ArchUnit%20enforced-0A9EDC)](https://keber.github.io/unicornt-store-backend/architecture/)
+[![Docker image](https://img.shields.io/docker/image-size/keberflores/unicornt-store/latest?logo=docker&logoColor=white&label=image)](https://hub.docker.com/r/keberflores/unicornt-store)
+[![Java 25](https://img.shields.io/badge/Java-25-007396?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/25/)
+[![Spring Boot 4.0.8](https://img.shields.io/badge/Spring%20Boot-4.0.8-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+
 # Unicornt Store — Backend
 
 REST microservice for the Unicornt store: product catalog, shopping cart, checkout
@@ -109,8 +118,12 @@ Full stack up in Docker (backend + db): `docker compose up -d`.
 ./mvnw clean verify
 ```
 
-- 302 tests. `jacoco:check`: `domain` and `application` at **100% / 100%**, the rest
-  at 85% / 75%.
+- 327 tests. `jacoco:check`: `domain` and `application` at **100% / 100%**, the rest
+  at 85% / 75%. Whole-project coverage is **96.8% of lines, 95.2% of branches**.
+- Coverage is measured over the whole codebase. The single JaCoCo exclusion is
+  `OpenApiConfig` (springdoc metadata, no branch to get wrong), mirrored in
+  `sonar.coverage.exclusions` so JaCoCo, Codecov and SonarCloud report the same
+  number for the same build.
 - ArchUnit dependency rules are **hard** (no freeze store); every layered rule green.
 
 ## API

@@ -11,6 +11,9 @@ on:
   pull_request:
     branches: [main, qa]
 
+# Reads two context variables and touches nothing. Nothing to grant.
+permissions: {}
+
 jobs:
   check:
     name: Enforce promotion path

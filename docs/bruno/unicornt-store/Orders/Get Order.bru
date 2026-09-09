@@ -5,11 +5,26 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/orders/1
+  url: {{baseUrl}}/api/v1/orders/{{orderId}}
   body: none
   auth: none
 }
 
 headers {
   Authorization: Bearer {{token}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+tests {
+  test("the order reads back with its shipping address and lines", function () {
+    const order = res.getBody();
+    expect(String(order.id)).to.equal(String(bru.getEnvVar("orderId")));
+    expect(order.status).to.equal("CONFIRMED");
+    expect(order.shippingAddress.city).to.equal("Santiago");
+    expect(order.shippingAddress.zipCode).to.equal("7500000");
+    expect(order.items, "an order with no lines").to.have.lengthOf.at.least(1);
+  });
 }

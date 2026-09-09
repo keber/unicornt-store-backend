@@ -5,3 +5,20 @@ headers {
 auth {
   mode: none
 }
+
+script:pre-request {
+  // A fresh account per run. Registering twice with one address is a 409, which
+  // is why this collection used to carry the instruction to edit the email by
+  // hand before every run against a real environment — a step that is easy to
+  // forget and impossible to enforce. Generated once per run (the guard makes
+  // the collection-level hook idempotent across requests) and overridable with
+  // `--env-var email=...` when you want a specific address.
+  if (!bru.getEnvVar("email")) {
+    const stamp = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14);
+    const salt = Math.random().toString(36).slice(2, 8);
+    bru.setEnvVar("email", `smoke-${stamp}-${salt}@example.com`);
+  }
+  if (!bru.getEnvVar("password")) {
+    bru.setEnvVar("password", "password123");
+  }
+}
