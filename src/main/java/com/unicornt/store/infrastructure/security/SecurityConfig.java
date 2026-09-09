@@ -61,6 +61,20 @@ public class SecurityConfig {
                               AccessDeniedHandler accessDeniedHandler) throws Exception {
         http
                 .cors(Customizer.withDefaults())
+                // Disabled deliberately, and safely only because this API accepts no ambient
+                // credential. CSRF works by making a victim's browser send a request carrying a
+                // credential it attaches automatically — a cookie, HTTP Basic, a client
+                // certificate. A bearer token is not ambient: script on the attacker's origin has
+                // to set the header, and it cannot read the token out of the storefront's
+                // localStorage to do so. A forged cross-site POST therefore arrives
+                // unauthenticated and dies on anyRequest().authenticated() below.
+                //
+                // The reasoning depends entirely on that "no ambient credential" property, which
+                // this file cannot prove on its own — which is why SonarCloud flags it as
+                // java:S4502. SecurityChainTest.CsrfExemptionInvariants asserts it: no response
+                // sets a cookie, no request creates a session, cookies grant nothing, and Basic
+                // credentials are refused. Add a session, a cookie or basic auth and those tests
+                // fail, which is the point: this line would then be a real vulnerability.
                 .csrf(csrf -> csrf.disable())
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())

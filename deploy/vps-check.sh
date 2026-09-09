@@ -121,7 +121,7 @@ for e in $ENVS; do
     img=$(docker inspect -f '{{.Config.Image}}' "$cid" 2>/dev/null)
     ok "app container up (image: $img)"
   else
-    warn "app container unicornt-$e-app not running (expected until first CI deploy)"
+    bad "app container unicornt-$e-app not running"
   fi
 
   have ss && { ss -ltn 2>/dev/null | grep -q "127.0.0.1:$PORT " && ok "listening on 127.0.0.1:$PORT" || warn "nothing on 127.0.0.1:$PORT"; }
@@ -137,11 +137,13 @@ for e in $ENVS; do
   loc=$(curl -s -o /dev/null -w '%{redirect_url}' "https://$APIHOST/api/v1/products" 2>/dev/null)
   case "$hc" in
     200) ok "GET https://$APIHOST/api/v1/products -> 200" ;;
-    000) warn "https://$APIHOST unreachable (proxy/app not ready)" ;;
+    000) bad "https://$APIHOST unreachable (proxy/app not ready)" ;;
     30*) warn "GET .../api/v1/products -> $hc redirect to ${loc:-?}  (stale image if -> /login)" ;;
-    *)   warn "GET .../api/v1/products -> $hc" ;;
+    404) bad "GET .../api/v1/products -> 404 (nginx is not proxying to the app; check the site's custom/user.conf and that the app container is on the site network)" ;;
+    *)   bad "GET .../api/v1/products -> $hc" ;;
   esac
 done
 
 hdr "Done"
-echo "[WARN] is acceptable before the first CI deploy. Clear every [FAIL]."
+echo "All three environments are live since 2026-09-05; a non-200 API is a [FAIL],"
+echo "not an acceptable pre-deploy state. Clear every [FAIL]."

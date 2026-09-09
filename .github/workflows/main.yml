@@ -15,6 +15,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Least privilege by default. Only publish-reports needs more, and it says so
+# on itself: peaceiris/actions-gh-pages pushes an orphan commit to gh-pages
+# with GITHUB_TOKEN, which read alone cannot do. A workflow-wide `contents:
+# read` with no job-level override — the fix a scanner will suggest here —
+# breaks the report publish on the next push to main, and it fails *after* the
+# deploy, looking unrelated.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Run Tests
@@ -31,20 +40,35 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Build and test
-        id: run-tests
-        run: mvn -B test
+      # `verify`, not `test`. The pom binds jacoco:check (domain + application at
+      # 100%, bundle at 85%/75%), jacoco:report and surefire-report:report-only to
+      # the verify phase, so `mvn test` ran the suite but never the coverage gate
+      # and never produced the reports — which is why a second `mvn` invocation
+      # used to follow. One phase now does both.
+      - name: Build, test and check coverage
+        run: mvn -B verify
 
-      - name: Generate JaCoCo and Surefire reports
+      - name: Assert the reports the later jobs consume exist
         if: always()
         run: |
-          mvn -B jacoco:report surefire-report:report-only
           test -f target/site/jacoco/jacoco.xml
           test -f target/site/surefire-report/surefire-report.html
 
+      # The 16 ArchUnit rules are the repo's headline constraint but sit as 16 rows
+      # inside a 300-plus-test Surefire page. This renders them on their own, for
+      # the README badge to link at. Skipped when the build died before the tests
+      # ran, so a compile failure reports once instead of twice.
+      - name: Render the ArchUnit rules report
+        if: (success() || failure()) && hashFiles('target/surefire-reports/*.xml') != ''
+        run: python3 scripts/arch-report.py
+
+      # main only. The action writes <repo>-junit-tests.json and
+      # <repo>-jacoco-coverage.json to a shared gist with no branch in the
+      # filename, so a run on any branch used to overwrite the badges the README
+      # shows next to main-only report links.
       - name: Generate Test badge
-        if: success() || failure()
-        uses: gaelgirodon/ci-badges-action@v1
+        if: (success() || failure()) && github.ref == 'refs/heads/main'
+        uses: gaelgirodon/ci-badges-action@07a65145ff9feb271f426865f940977a94578ad4 # v1.10.0
         with:
           gist-id: ${{ secrets.GIST_ID }}
           token: ${{ secrets.GIST_TOKEN }}
@@ -57,24 +81,22 @@ jobs:
           path: |
             target/site/jacoco/
             target/site/surefire-report/
+            target/site/architecture/
             target/surefire-reports/
+            target/classes/
+            target/test-classes/
           if-no-files-found: error
-
-      - name: Fail job if tests failed
-        if: always() && steps.run-tests.outcome == 'failure'
-        run: |
-          echo "::error::One or more Maven tests failed."
-          exit 1
 
   publish-reports:
     name: Upload Coverage and Publish Reports to GitHub Pages
     needs: test
-    if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh-pages publish; see the note at the top of the file
 
     steps:
     - name: Checkout repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -83,11 +105,11 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '25'
+        cache: maven
 
-    - name: Compile for Sonar
-      run: mvn -B compile
-
-    - name: Download reports
+    # No `mvn compile` here: the test job uploads target/classes and
+    # target/test-classes with the reports, which is all sonar:sonar needs.
+    - name: Download reports and classes
       uses: actions/download-artifact@v4
       with:
         name: maven-test-reports
@@ -98,15 +120,49 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: mvn -B sonar:sonar
 
+    # The gate check by hand, instead of -Dsonar.qualitygate.wait=true. That flag
+    # fails on this project with "Not authorized or project not found" on scanner
+    # 3.11 and on 5.8 alike, while the very same secret reads
+    # api/qualitygates/project_status at HTTP 200 with the gate OK — so the flag's
+    # own poll is what is broken, not the credential. This waits for the analysis
+    # to leave the compute queue and reads the gate, which is all the flag was
+    # for; `deploy` needing this job is what turns a red gate into a stopped
+    # rollout.
+    # Gated to main because the plan forbids anything else. SonarCloud answers
+    # any non-main gate read with HTTP 403 "Organization is not allowed to access
+    # data from non main branches" — scoped by branch, url-encoded or not, and
+    # even by analysisId when that analysis belongs to a branch. The unscoped
+    # read, which is main's, returns 200 with the same token in the same run.
+    #
+    # That 403 is also what -Dsonar.qualitygate.wait=true hits, on scanner 3.11
+    # and 5.8 alike; it reports it as "Not authorized or project not found",
+    # which reads like a credential problem and is not one. The token is a user
+    # token and api/users/current, api/ce/component and the unscoped gate read
+    # all answer 200 for it.
+    #
+    # So: prod deploys are gated on the gate, dev/qa deploys are not — they still
+    # wait on this job, so a failed analysis or a broken report publish stops
+    # them. Gating those two as well needs a paid plan. PRs are covered by the
+    # "SonarCloud Code Analysis" check, which is worth making a required check on
+    # the rulesets.
+    - name: Fail on a red quality gate
+      if: github.ref == 'refs/heads/main'
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: python3 scripts/quality-gate.py keber_unicornt-store-backend
+
     - name: Upload coverage to Codecov
       if: success() || failure()
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./target/site/jacoco/jacoco.xml
         flags: unittests
         name: codecov-coverage
-        fail_ci_if_error: true
+        # false on purpose: publish-reports now gates the deploy, and a Codecov
+        # upload hiccup is an outage in a reporting service, not a quality
+        # regression. SonarCloud's gate above is the blocking signal.
+        fail_ci_if_error: false
         disable_search: true
 
     # The published report site is per-repo (one gh-pages), so only main
@@ -118,10 +174,11 @@ jobs:
         cp -r target/site/jacoco target/site/combined/coverage
         cp -r target/site/surefire-report target/site/combined/tests
         cp target/site/surefire-report/surefire-report.html target/site/combined/tests/index.html
+        cp -r target/site/architecture target/site/combined/architecture
 
     - name: Deploy reports to GitHub Pages
       if: github.ref == 'refs/heads/main'
-      uses: peaceiris/actions-gh-pages@v4
+      uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./target/site/combined
@@ -136,6 +193,7 @@ jobs:
   resolve-target:
     name: Resolve deploy channel
     needs: test
+    permissions: {}
     if: >-
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/qa' || github.ref == 'refs/heads/main')
@@ -176,19 +234,19 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       # The image is built entirely inside the multi-stage Dockerfile (Maven
       # runs there); the `test` job already covers compilation, so there is no
       # separate jar build on the runner.
       - name: Build and push image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           push: true
@@ -201,23 +259,34 @@ jobs:
 
   deploy:
     name: Deploy ${{ needs.resolve-target.outputs.channel }}
-    needs: [resolve-target, build-and-push]
+    # publish-reports is in here for its SonarCloud quality gate: the image still
+    # builds in parallel, but nothing reaches a server while the gate is red.
+    needs: [resolve-target, build-and-push, publish-reports]
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-target.outputs.channel }}
     concurrency: deploy-${{ needs.resolve-target.outputs.channel }}
+    permissions: {}
 
     steps:
       - name: Set up SSH key
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
           mkdir -p ~/.ssh
           # printf preserves newlines; Actions masks the secret in logs.
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$DEPLOY_PORT" "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Trigger deploy on the server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          CHANNEL: ${{ needs.resolve-target.outputs.channel }}
+          SHA_TAG: ${{ needs.resolve-target.outputs.sha_tag }}
         run: |
           # DEPLOY_USER is deploy-<channel>. Its key is pinned server-side to
           #   restrict,command="sudo -n /usr/local/sbin/deploy-unicornt-<channel>"
@@ -227,10 +296,10 @@ jobs:
           # channel tag that `build-and-push` just updated. The trailing args are
           # only a breadcrumb in the CI log and the server's auth log.
           ssh -i ~/.ssh/deploy_key \
-              -p "${{ secrets.DEPLOY_PORT }}" \
+              -p "$DEPLOY_PORT" \
               -o StrictHostKeyChecking=yes \
-              "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-              "deploy ${{ needs.resolve-target.outputs.channel }} ${{ needs.resolve-target.outputs.sha_tag }}"
+              "$DEPLOY_USER@$DEPLOY_HOST" \
+              "deploy $CHANNEL $SHA_TAG"
 
       - name: Smoke check (API 200 + CORS)
         env:
@@ -261,3 +330,51 @@ jobs:
       - name: Clean up SSH key
         if: always()
         run: rm -f ~/.ssh/deploy_key
+
+  # ---------------------------------------------------------------------------
+  # P9: the write path, after the dev deploy.
+  #
+  # The smoke step in `deploy` is a single GET /products — one read, which proves
+  # almost nothing about a database. This registers an account, logs in, fills a
+  # cart and places an order, exercising the identity sequences, the users_roles
+  # join and the transaction spanning orders + order_items + the cart clear.
+  #
+  # It also keeps the collection honest. It went stale on 2026-09-02 and nobody
+  # noticed for three weeks, because nothing connects a hand-written .bru file to
+  # the DTO it copies: commit 41543f7 renamed qty -> quantity, replaced addressId
+  # with an inline shippingAddress and deleted /api/v1/addresses, silently
+  # invalidating four requests. A CI run turns that silence into a red build.
+  #
+  # dev only, deliberately: this writes real rows, and dev's data is disposable.
+  # The requests are named one by one rather than by folder, because a folder run
+  # goes in seq order and Cart/Remove Item (seq 4) would empty the cart before
+  # Orders ever runs.
+  # ---------------------------------------------------------------------------
+  api-write-path:
+    name: API write-path check
+    needs: [resolve-target, deploy]
+    if: needs.resolve-target.outputs.channel == 'dev'
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # Installed explicitly, not through `npx --yes`, which resolves and runs a
+      # package on demand along with its lifecycle scripts (githubactions:S6505).
+      # --ignore-scripts is the same precaution P9 asks of the frontend's npm ci:
+      # a postinstall in any transitive dependency would otherwise run here.
+      - name: Install the Bruno CLI
+        run: npm install --no-save --ignore-scripts @usebruno/cli@4.1.0
+
+      - name: Run the Bruno write path against dev
+        working-directory: docs/bruno/unicornt-store
+        env:
+          API_BASE_URL: https://${{ vars.HOST }}
+        run: >-
+          "$GITHUB_WORKSPACE/node_modules/.bin/bru" run
+          "Auth/Register.bru" "Auth/Login.bru" "Auth/Me.bru"
+          "Cart/Add Item.bru" "Cart/Get Cart.bru"
+          "Orders/Create Order.bru" "Orders/Get Order.bru"
+          --env dev --env-var baseUrl="$API_BASE_URL"

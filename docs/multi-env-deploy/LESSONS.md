@@ -150,3 +150,76 @@ same debugging session elsewhere. Narrative/history of *this* rollout lives in
     demands one approval — and GitHub does not permit approving your own PR.
     With no bypass actors configured, the only way out is editing the ruleset
     in Settings. Worth knowing before it fires mid-release.
+
+## Reverse proxies / containers
+
+17. **A containerised reverse proxy cannot reach your app on
+    `127.0.0.1:<published port>` — that address is the proxy container
+    itself.** Publishing `127.0.0.1:8088:8080` makes the app reachable from the
+    *host*, which is exactly what `curl` on the box proves, and exactly what
+    misleads you. The proxy must join the app's Docker network and address it by
+    **container name** on its **internal** port. Two further details are
+    load-bearing: resolve through Docker's embedded DNS (`resolver 127.0.0.11`),
+    and put the upstream in a variable (`set $backend http://app:8080;
+    proxy_pass $backend;`) so nginx resolves per request instead of at config
+    load. With a literal hostname, a redeploy that briefly removes the container
+    makes `nginx -t` fail, and the site then serves its **default webroot** —
+    so the symptom is **404, not 502**, which reads as "no such route" and sends
+    you hunting in the wrong place entirely.
+
+18. **A secret written through a web UI can silently not save.** An MFA
+    challenge (on another device), a session timeout, or a navigation away
+    leaves the form looking submitted while the value never changes. Everything
+    downstream then fails identically to a wrong value, and re-running the job
+    "with the new secret" re-tests the old one. Never infer that a secret write
+    landed — verify the stored `updated_at`
+    (`gh api repos/{o}/{r}/environments/{env}/secrets`) and compare it to now.
+    Better, avoid the clipboard entirely: pipe the file into
+    `gh secret set NAME --env <env>` so the exact bytes are transmitted.
+
+19. **A health check that treats "not deployed yet" as acceptable stops being a
+    health check the moment you deploy.** A preflight script that downgraded
+    every non-200 to `[WARN]` with a footer saying warnings are fine before the
+    first deploy reported a completely broken prod proxy as healthy. Checks
+    written during bring-up encode "not ready yet" as normal; when the thing
+    goes live, that leniency has to be revoked or the check quietly becomes
+    decorative.
+
+20. **A `.env` value containing `&` is valid for Docker Compose and silently
+    breaks every script that *sources* the file.** Compose parses `env_file`
+    itself, so
+    `URL=jdbc:postgresql://h:5432/db?currentSchema=x&sslmode=require` reaches
+    the container intact and the app works. But `set -a; . ./.env` goes through
+    a shell, where `&` is a command separator: the assignment runs in a
+    backgrounded subshell and the variable is **empty** in yours. Nothing
+    reports a parse error — the failure surfaces much later as a nonsense
+    downstream message (here, `pg_dump: could not translate host name "port="`,
+    because the empty host collapsed the connection string). `$`, backticks,
+    spaces and `#` behave the same way. Parse the file
+    (`grep -m1 '^KEY=' .env | cut -d= -f2-`) instead of sourcing it, or quote
+    the value — and note that a working container proves nothing about whether
+    your scripts can read the same file.
+
+21. **In nginx a matching regex location beats a prefix location, so a
+    proxy-everything vhost inherits any static-asset rules its template
+    ships.** EasyEngine (and most WordPress-oriented templates) define
+    `location ~* \.(css|js)$` and similar for fonts and images. An API vhost
+    whose own config is `location / { proxy_pass ... }` never sees those
+    requests: nginx serves them from the site's webroot, which on an API host
+    is empty, and returns its own 404. The symptom is uniquely misleading —
+    `/swagger-ui/index.html` has no matching extension, so the HTML proxies
+    through and returns 200 while every asset it references 404s. The page
+    loads and cannot paint, and it works perfectly in local containers because
+    nothing sits in front of the app there.
+
+    **Diagnose by who answers, not by the status code.** Compare a
+    `Content-Type: text/html` 404 carrying the proxy's signature against an
+    extension-less path under the same prefix, which should return the
+    application's own error envelope and headers. If one reached the app and
+    the other did not, the proxy is eating the request and no amount of
+    application config will help. (Two application-side theories were pursued
+    here before that one-command comparison settled it in seconds.)
+
+    Fix with `location ^~ /prefix/`, which stops nginx before it evaluates
+    regexes, and put it in the template's *supported override* file rather than
+    the generated config, which gets rewritten.

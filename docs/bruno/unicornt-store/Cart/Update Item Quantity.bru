@@ -4,7 +4,7 @@ meta {
   seq: 3
 }
 
-patch {
+put {
   url: {{baseUrl}}/api/v1/cart/items/1
   body: json
   auth: none
@@ -16,6 +16,6 @@ headers {
 
 body:json {
   {
-    "qty": 3
+    "quantity": 3
   }
 }
